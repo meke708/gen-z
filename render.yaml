@@ -2,16 +2,12 @@ services:
   - type: web
     name: z-namibia
     runtime: node
-    plan: starter
+    plan: free
     region: frankfurt
     buildCommand: npm ci --prefix server
     startCommand: npm --prefix server start
     healthCheckPath: /health
     autoDeploy: true
-    disk:
-      name: z-kyc-documents
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: NODE_ENV
         value: production
@@ -19,8 +15,8 @@ services:
         value: mock
       - key: MOCK_PAYMENTS_ENABLED
         value: "false"
-      - key: KYC_STORAGE_DIR
-        value: /var/data/kyc
+      - key: KYC_STORAGE_DURABLE
+        value: "false"
       - key: AI_MODEL
         value: llama3.2:3b
       - key: MONGODB_URI

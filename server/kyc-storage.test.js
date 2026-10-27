@@ -5,7 +5,8 @@ const {
   decryptKycDocument,
   detectKycDocumentMime,
   encryptKycDocument,
-  getKycEncryptionKey
+  getKycEncryptionKey,
+  isKycStorageConfigured
 } = require('./kyc-storage');
 
 test('KYC document signatures identify supported file types, not MIME claims', () => {
@@ -30,4 +31,12 @@ test('KYC encryption key must be configured as a base64 32-byte key', () => {
   assert.throws(() => getKycEncryptionKey(''), /not configured/);
   assert.throws(() => getKycEncryptionKey(Buffer.from('short').toString('base64')), /32-byte/);
   assert.equal(getKycEncryptionKey(randomBytes(32).toString('base64')).length, 32);
+});
+
+test('production KYC requires both a valid key and durable storage', () => {
+  const key = randomBytes(32).toString('base64');
+  assert.equal(isKycStorageConfigured({ nodeEnv: 'production', durableStorage: false, encodedKey: key }), false);
+  assert.equal(isKycStorageConfigured({ nodeEnv: 'production', durableStorage: true, encodedKey: '' }), false);
+  assert.equal(isKycStorageConfigured({ nodeEnv: 'production', durableStorage: true, encodedKey: key }), true);
+  assert.equal(isKycStorageConfigured({ nodeEnv: 'development', durableStorage: false, encodedKey: key }), true);
 });

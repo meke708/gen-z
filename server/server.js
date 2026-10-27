@@ -12,7 +12,7 @@ const helmet = require('helmet');
 const { rateLimit } = require('express-rate-limit');
 const { createPaymentAdapter } = require('./payment-adapter');
 const { isAssistantModelReady, requestShopAssistantAnswer } = require('./shop-assistant');
-const { decryptKycDocument, detectKycDocumentMime, encryptKycDocument, getKycEncryptionKey } = require('./kyc-storage');
+const { decryptKycDocument, detectKycDocumentMime, encryptKycDocument, getKycEncryptionKey, isKycStorageConfigured } = require('./kyc-storage');
 const app = express();
 const kycStorageDirectory = process.env.KYC_STORAGE_DIR || path.join(__dirname, 'private', 'kyc');
 const trustProxyHops = Number(process.env.TRUST_PROXY_HOPS || 0);
@@ -1721,15 +1721,14 @@ app.get('/api/seller/shop/verification', async (req, res) => {
   if (!user) return res.status(401).json({ error: 'Sign in to manage business verification.' });
   const shop = await Shop.findOne({ ownerId: user._id }).select('name kycStatus kycBusinessName kycDocumentType kycSubmittedAt kycReviewedAt kycReviewNote').lean();
   if (!shop) return res.status(404).json({ error: 'Shop not found.' });
-  let storageConfigured = false;
-  try { getKycEncryptionKey(); storageConfigured = true; } catch {}
   const { name, ...verification } = shop;
-  return res.json({ verification, shopName: name, storageConfigured });
+  return res.json({ verification, shopName: name, storageConfigured: isKycStorageConfigured() });
 });
 
 app.post('/api/seller/shop/verification', kycSubmissionRateLimit, async (req, res, next) => {
   const user = await getSessionUser(req);
   if (!user) return res.status(401).json({ error: 'Sign in to submit business verification.' });
+  if (!isKycStorageConfigured()) return res.status(503).json({ error: 'Business verification uploads are disabled until durable encrypted storage is configured.' });
 
   let encryptionKey;
   try {

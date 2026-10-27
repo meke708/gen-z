@@ -15,6 +15,20 @@ function getKycEncryptionKey(encodedKey = process.env.KYC_ENCRYPTION_KEY) {
   return key;
 }
 
+function isKycStorageConfigured({
+  nodeEnv = process.env.NODE_ENV,
+  durableStorage = process.env.KYC_STORAGE_DURABLE === 'true',
+  encodedKey = process.env.KYC_ENCRYPTION_KEY
+} = {}) {
+  if (nodeEnv === 'production' && !durableStorage) return false;
+  try {
+    getKycEncryptionKey(encodedKey);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function detectKycDocumentMime(buffer) {
   if (!Buffer.isBuffer(buffer)) return null;
   if (buffer.subarray(0, 5).toString('ascii') === '%PDF-') return 'application/pdf';
@@ -46,4 +60,4 @@ function decryptKycDocument(envelope, key = getKycEncryptionKey()) {
   return Buffer.concat([decipher.update(ciphertext), decipher.final()]);
 }
 
-module.exports = { decryptKycDocument, detectKycDocumentMime, encryptKycDocument, getKycEncryptionKey };
+module.exports = { decryptKycDocument, detectKycDocumentMime, encryptKycDocument, getKycEncryptionKey, isKycStorageConfigured };
