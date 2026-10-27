@@ -74,7 +74,8 @@ test('password reset credentials require a valid token and password length', () 
 
 test('production cannot start with the mock payment adapter', () => {
   assert.doesNotThrow(() => assertProductionPaymentConfiguration('development', 'mock'));
-  assert.throws(() => assertProductionPaymentConfiguration('production', 'mock'), /live payment adapter/);
+  assert.throws(() => assertProductionPaymentConfiguration('production', 'mock', true), /MOCK_PAYMENTS_ENABLED=false/);
+  assert.doesNotThrow(() => assertProductionPaymentConfiguration('production', 'mock', false));
   assert.doesNotThrow(() => assertProductionPaymentConfiguration('production', 'live'));
 });
 

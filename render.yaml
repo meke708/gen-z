@@ -1,0 +1,57 @@
+services:
+  - type: web
+    name: z-namibia
+    runtime: node
+    plan: starter
+    region: frankfurt
+    buildCommand: npm ci --prefix server
+    startCommand: npm --prefix server start
+    healthCheckPath: /health
+    autoDeploy: true
+    disk:
+      name: z-kyc-documents
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PAYMENT_MODE
+        value: mock
+      - key: MOCK_PAYMENTS_ENABLED
+        value: "false"
+      - key: KYC_STORAGE_DIR
+        value: /var/data/kyc
+      - key: AI_MODEL
+        value: llama3.2:3b
+      - key: MONGODB_URI
+        sync: false
+      - key: KYC_ENCRYPTION_KEY
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_USER_ID
+        sync: false
+      - key: APP_BASE_URL
+        sync: false
+      - key: AI_OLLAMA_URL
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_SECURE
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: CLOUDINARY_UPLOAD_PRESET
+        sync: false

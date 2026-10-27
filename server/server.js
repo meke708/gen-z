@@ -14,6 +14,7 @@ const { createPaymentAdapter } = require('./payment-adapter');
 const { isAssistantModelReady, requestShopAssistantAnswer } = require('./shop-assistant');
 const { decryptKycDocument, detectKycDocumentMime, encryptKycDocument, getKycEncryptionKey } = require('./kyc-storage');
 const app = express();
+const kycStorageDirectory = process.env.KYC_STORAGE_DIR || path.join(__dirname, 'private', 'kyc');
 const trustProxyHops = Number(process.env.TRUST_PROXY_HOPS || 0);
 if (!Number.isInteger(trustProxyHops) || trustProxyHops < 0 || trustProxyHops > 5) {
   throw new Error('TRUST_PROXY_HOPS must be an integer between 0 and 5.');
@@ -430,9 +431,13 @@ function normalizePasswordResetInput(input = {}) {
   return { token, password };
 }
 
-function assertProductionPaymentConfiguration(nodeEnv = process.env.NODE_ENV, paymentMode = paymentAdapter.mode) {
-  if (nodeEnv === 'production' && paymentMode === 'mock') {
-    throw new Error('Production startup blocked: configure and verify a live payment adapter before accepting real orders.');
+function assertProductionPaymentConfiguration(
+  nodeEnv = process.env.NODE_ENV,
+  paymentMode = paymentAdapter.mode,
+  mockPaymentsEnabled = process.env.MOCK_PAYMENTS_ENABLED !== 'false'
+) {
+  if (nodeEnv === 'production' && paymentMode === 'mock' && mockPaymentsEnabled) {
+    throw new Error('Production startup blocked: configure live payments or set MOCK_PAYMENTS_ENABLED=false to disable checkout.');
   }
 }
 
@@ -1351,7 +1356,7 @@ app.get('/api/admin/kyc/:shopId/document', async (req, res) => {
 
   let document;
   try {
-    const encryptedDocument = await fsPromises.readFile(path.join(__dirname, 'private', 'kyc', `${shop.kycDocumentId}.enc`));
+    const encryptedDocument = await fsPromises.readFile(path.join(kycStorageDirectory, `${shop.kycDocumentId}.enc`));
     document = decryptKycDocument(encryptedDocument, getKycEncryptionKey());
   } catch (error) {
     if (error.code === 'ENOENT') return res.status(404).json({ error: 'Verification document not found.' });
@@ -1391,7 +1396,7 @@ app.patch('/api/admin/kyc/:shopId', async (req, res) => {
   shop.kycDocumentMime = '';
   await shop.save();
   if (documentId && /^[a-f0-9-]{36}$/.test(documentId)) {
-    await fsPromises.unlink(path.join(__dirname, 'private', 'kyc', `${documentId}.enc`)).catch(() => {});
+    await fsPromises.unlink(path.join(kycStorageDirectory, `${documentId}.enc`)).catch(() => {});
   }
   return res.json({ ok: true, status: shop.kycStatus, reviewedAt: shop.kycReviewedAt });
 });
@@ -1753,10 +1758,9 @@ app.post('/api/seller/shop/verification', kycSubmissionRateLimit, async (req, re
     }
 
     const documentId = randomUUID();
-    const privateDirectory = path.join(__dirname, 'private', 'kyc');
-    const documentPath = path.join(privateDirectory, `${documentId}.enc`);
+    const documentPath = path.join(kycStorageDirectory, `${documentId}.enc`);
     try {
-      await fsPromises.mkdir(privateDirectory, { recursive: true, mode: 0o700 });
+      await fsPromises.mkdir(kycStorageDirectory, { recursive: true, mode: 0o700 });
       await fsPromises.writeFile(documentPath, encryptKycDocument(req.file.buffer, encryptionKey), { flag: 'wx', mode: 0o600 });
       const previousDocumentId = shop.kycDocumentId;
       shop.kycStatus = 'pending';
@@ -1770,7 +1774,7 @@ app.post('/api/seller/shop/verification', kycSubmissionRateLimit, async (req, re
       shop.kycReviewNote = '';
       await shop.save();
       if (previousDocumentId && /^[a-f0-9-]{36}$/.test(previousDocumentId)) {
-        await fsPromises.unlink(path.join(privateDirectory, `${previousDocumentId}.enc`)).catch(() => {});
+        await fsPromises.unlink(path.join(kycStorageDirectory, `${previousDocumentId}.enc`)).catch(() => {});
       }
       return res.status(202).json({
         verification: {

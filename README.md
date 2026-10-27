@@ -47,9 +47,10 @@ Keep this key in a secret manager or password manager, separately from any encry
 
 ## Deployment notes
 
-- Deploy the Node server with a managed MongoDB database.
-- The shop assistant needs a reachable Ollama service and the configured model. Set `AI_OLLAMA_URL` to that service; avoid exposing the Ollama port publicly.
-- Use persistent private storage for `server/private/kyc/` if pending KYC submissions must survive restarts or redeployments. Back up encrypted files separately from `KYC_ENCRYPTION_KEY`.
-- Configure image uploads and email only when needed using the `CLOUDINARY_*` and `SMTP_*` settings.
-- Checkout currently uses mock payments. Configure a real payment adapter before accepting real payments or deploying checkout as a production service.
+- A Render Blueprint is provided in `render.yaml`. Create the service from the private GitHub repository and supply the prompted secret environment variables in Render.
+- Create a MongoDB database separately and set `MONGODB_URI`. The app also requires `ADMIN_EMAIL` and the matching MongoDB user ID in `ADMIN_USER_ID` before production startup.
+- The Blueprint uses a paid Render web service and mounts a persistent disk at `/var/data`; KYC files are stored under `/var/data/kyc`. Keep `KYC_ENCRYPTION_KEY` backed up separately from this disk.
+- The shop assistant needs a reachable Ollama service with the configured model. Set `AI_OLLAMA_URL` to a private, reachable endpoint; do not expose the Ollama port publicly. Until configured, assistants remain unavailable.
+- Configure image uploads and password reset email using the `CLOUDINARY_*` and `SMTP_*` settings. Set `APP_BASE_URL` to the final HTTPS Render URL.
+- The Blueprint disables mock checkout in production. Configure a real payment adapter before accepting live payments; this repository currently has no live payment adapter.
 - The Terms page is a draft and still requires legal review, operator contact details, and a separate Privacy Policy before launch.
