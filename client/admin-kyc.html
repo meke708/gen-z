@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f4f1e8">
+    <title>Business verification review | Z Operations</title>
+    <style>
+        :root { color-scheme: light; --ink: #17231e; --muted: #68736d; --paper: #f4f1e8; --white: #fffefa; --lime: #d8f36a; --forest: #18382e; --line: #d9d9cf; --warning: #8b3b2f; }
+        * { box-sizing: border-box; }
+        body { min-width: 320px; margin: 0; color: var(--ink); background: var(--paper); font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
+        button, textarea { font: inherit; }
+        a { color: inherit; }
+        .site-header { display: flex; min-height: 72px; align-items: center; justify-content: space-between; gap: 16px; padding: 12px max(24px, calc((100vw - 1120px) / 2)); border-bottom: 1px solid var(--line); }
+        .header-left { display: inline-flex; align-items: center; gap: 12px; }
+        .back-button { display: inline-grid; width: 28px; height: 28px; place-items: center; border: 1px solid var(--ink); border-radius: 50%; text-decoration: none; font-size: 18px; }
+        .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+        .brand-mark { display: grid; width: 36px; aspect-ratio: 1; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; font-family: Georgia, serif; font-size: 22px; }
+        nav { display: flex; flex-wrap: wrap; gap: 14px; font-size: 10px; font-weight: 700; }
+        nav a { text-decoration: none; }
+        main { width: min(1120px, calc(100% - 48px)); margin: 0 auto; padding: 40px 0 70px; }
+        .eyebrow { margin: 0 0 10px; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
+        h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 38px; font-weight: 400; }
+        .intro { max-width: 740px; margin: 10px 0 24px; color: var(--muted); font-size: 12px; line-height: 1.65; }
+        .queue-heading { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 1px solid var(--ink); color: var(--muted); font-size: 10px; }
+        .submission { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 300px); gap: 24px; padding: 18px 0; border-top: 1px solid var(--line); }
+        .submission h2 { margin: 0; font-size: 14px; }
+        .metadata { margin: 7px 0; color: var(--muted); font-size: 11px; line-height: 1.65; overflow-wrap: anywhere; }
+        .document-link { display: inline-flex; min-height: 36px; align-items: center; margin-top: 5px; padding: 0 10px; border: 1px solid var(--forest); border-radius: 3px; color: var(--forest); font-size: 10px; font-weight: 700; text-decoration: none; }
+        .document-link:hover { background: #e8ebdd; }
+        .review-form { display: grid; gap: 9px; align-content: start; }
+        .review-form label { font-size: 10px; font-weight: 700; }
+        .review-form textarea { width: 100%; min-height: 64px; padding: 9px; border: 1px solid var(--line); border-radius: 2px; background: var(--white); font-size: 11px; resize: vertical; }
+        .actions { display: flex; gap: 8px; }
+        .actions button { min-height: 36px; flex: 1; padding: 0 9px; border: 1px solid var(--ink); border-radius: 3px; color: var(--white); background: var(--forest); cursor: pointer; font-size: 10px; font-weight: 700; }
+        .actions .reject { border-color: var(--warning); background: var(--warning); }
+        .actions button:disabled { opacity: 0.6; cursor: wait; }
+        .queue-status { min-height: 18px; margin: 12px 0; color: var(--muted); font-size: 11px; }
+        .empty { padding: 24px 0; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+        .privacy-note { margin-top: 22px; padding: 12px; border-left: 3px solid var(--lime); background: #e9edda; color: var(--muted); font-size: 10px; line-height: 1.6; }
+        [hidden] { display: none !important; }
+        @media (max-width: 700px) { .site-header { padding: 12px 18px; } nav { gap: 9px; } main { width: calc(100% - 36px); padding-top: 30px; } .submission { grid-template-columns: 1fr; gap: 14px; } }
+    </style>
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-left"><a class="back-button" href="/marketplace" aria-label="Go to marketplace">←</a><a class="brand" href="/marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Operations</span></a></div>
+        <nav aria-label="Admin navigation"><a href="/admin/moderation">Moderation</a><a href="/admin/payouts">Payouts</a><a href="/admin/support">Support</a></nav>
+    </header>
+    <main>
+        <p class="eyebrow">Trust and safety</p>
+        <h1>Business verification</h1>
+        <p class="intro">Review business documents and approve the public verified-business badge only when the submitted details are supported by the document.</p>
+        <div class="queue-heading"><span>Pending submissions</span><span id="submission-count">Loading...</span></div>
+        <div id="submission-list" aria-live="polite"></div>
+        <p class="queue-status" id="queue-status" role="status" aria-live="polite"></p>
+        <p class="privacy-note">KYC documents are confidential. Download only when needed for review. Documents are encrypted at rest and deleted after an approve/reject decision; status and review notes remain on the shop record.</p>
+    </main>
+    <script>
+        const submissionList = document.querySelector("#submission-list");
+        const submissionCount = document.querySelector("#submission-count");
+        const queueStatus = document.querySelector("#queue-status");
+
+        async function requestJson(url, options = {}) {
+            const response = await fetch(url, options);
+            let result;
+            try { result = await response.json(); } catch { throw new Error("The server returned an invalid response."); }
+            if (!response.ok) throw new Error(result.error || "Verification request failed.");
+            return result;
+        }
+
+        function createSubmissionCard(submission) {
+            const card = document.createElement("article");
+            card.className = "submission";
+            const details = document.createElement("div");
+            const title = document.createElement("h2");
+            title.textContent = `${submission.shopName} · ${submission.town}`;
+            details.append(title);
+            const metadata = document.createElement("p");
+            metadata.className = "metadata";
+            metadata.textContent = `Registered business: ${submission.businessName} · Document: ${submission.documentType.replaceAll("_", " ")} · Submitted ${new Date(submission.submittedAt).toLocaleString()} · Account: ${submission.owner?.name || "Unknown"} (${submission.owner?.email || "no email"})`;
+            details.append(metadata);
+            const documentLink = document.createElement("a");
+            documentLink.className = "document-link";
+            documentLink.href = `/api/admin/kyc/${encodeURIComponent(submission.id)}/document`;
+            documentLink.textContent = "Download business document";
+            documentLink.setAttribute("download", "business-verification-document");
+            details.append(documentLink);
+
+            const form = document.createElement("form");
+            form.className = "review-form";
+            const noteLabel = document.createElement("label");
+            noteLabel.textContent = "Review note (required when rejecting)";
+            const note = document.createElement("textarea");
+            note.maxLength = 500;
+            noteLabel.append(note);
+            form.append(noteLabel);
+            const actions = document.createElement("div");
+            actions.className = "actions";
+            for (const [decision, label] of [["verified", "Approve"], ["rejected", "Reject"]]) {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.dataset.decision = decision;
+                button.textContent = label;
+                if (decision === "rejected") button.className = "reject";
+                actions.append(button);
+            }
+            form.append(actions);
+            form.addEventListener("click", async (event) => {
+                const button = event.target.closest("button[data-decision]");
+                if (!button) return;
+                if (button.dataset.decision === "rejected" && note.value.trim().length < 5) {
+                    queueStatus.textContent = "Add a short reason before rejecting a submission.";
+                    note.focus();
+                    return;
+                }
+                actions.querySelectorAll("button").forEach((item) => { item.disabled = true; });
+                queueStatus.textContent = "Saving review...";
+                try {
+                    await requestJson(`/api/admin/kyc/${encodeURIComponent(submission.id)}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ status: button.dataset.decision, reviewNote: note.value })
+                    });
+                    card.remove();
+                    submissionCount.textContent = `${submissionList.querySelectorAll(".submission").length} pending`;
+                    queueStatus.textContent = `Submission ${button.dataset.decision}. Its document was deleted.`;
+                    if (!submissionList.querySelector(".submission")) submissionList.innerHTML = '<p class="empty">No business submissions are waiting for review.</p>';
+                } catch (error) {
+                    queueStatus.textContent = error.message;
+                    actions.querySelectorAll("button").forEach((item) => { item.disabled = false; });
+                }
+            });
+            card.append(details, form);
+            return card;
+        }
+
+        async function loadSubmissions() {
+            try {
+                const result = await requestJson("/api/admin/kyc");
+                submissionCount.textContent = `${result.submissions.length} pending`;
+                submissionList.replaceChildren();
+                if (!result.submissions.length) {
+                    submissionList.innerHTML = '<p class="empty">No business submissions are waiting for review.</p>';
+                    return;
+                }
+                result.submissions.forEach((submission) => submissionList.append(createSubmissionCard(submission)));
+            } catch (error) {
+                submissionCount.textContent = "Unavailable";
+                queueStatus.textContent = error.message;
+            }
+        }
+
+        loadSubmissions();
+    </script>
+</body>
+</html>

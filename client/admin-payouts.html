@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f4f1e8">
+    <title>Payout Activity | Z Operations</title>
+    <style>
+        :root { color-scheme: light; --ink: #17231e; --muted: #68736d; --paper: #f4f1e8; --white: #fffefa; --lime: #d8f36a; --forest: #18382e; --line: #d9d9cf; }
+        * { box-sizing: border-box; }
+        body { min-width: 320px; margin: 0; color: var(--ink); background: var(--paper); font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
+        button, input { font: inherit; }
+        a { color: inherit; }
+        .site-header { display: flex; min-height: 72px; align-items: center; justify-content: space-between; padding: 12px max(24px, calc((100vw - 1120px) / 2)); border-bottom: 1px solid var(--line); }
+        .header-left { display: inline-flex; align-items: center; gap: 12px; }
+        .back-button { display: inline-grid; width: 28px; height: 28px; padding: 0; place-items: center; border: 1px solid var(--ink); border-radius: 999px; color: var(--ink); background: transparent; cursor: pointer; font-size: 18px; line-height: 1; text-decoration: none; }
+        .back-button:hover { color: var(--white); background: var(--forest); }
+        .back-button:focus-visible { outline: 2px solid #397d54; outline-offset: 3px; }
+        .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+        .brand-mark { display: grid; width: 36px; aspect-ratio: 1; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; font-family: Georgia, serif; font-size: 22px; letter-spacing: 0; }
+        .site-header nav { display: flex; gap: 18px; font-size: 12px; font-weight: 700; }
+        .site-header nav a { text-decoration: none; }
+        main { width: min(1120px, calc(100% - 48px)); margin: 0 auto; padding: 43px 0 72px; }
+        .eyebrow { margin: 0 0 10px; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
+        h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 42px; font-weight: 400; letter-spacing: 0; }
+        .intro { max-width: 680px; margin: 10px 0 26px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+        .report-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 15px; }
+        .report-total { font-family: Georgia, serif; font-size: 22px; }
+        .report-total span { color: var(--muted); font-family: "Trebuchet MS", sans-serif; font-size: 10px; }
+        .held-total { color: var(--muted); font-size: 10px; }
+        .paid-total { color: var(--forest); font-size: 10px; font-weight: 700; }
+        .export-button { min-height: 40px; padding: 0 12px; border: 1px solid var(--ink); border-radius: 3px; color: var(--ink); background: transparent; cursor: pointer; font-size: 11px; font-weight: 700; }
+        .export-button:hover { background: var(--lime); }
+        .table-wrap { overflow-x: auto; border-top: 1px solid var(--ink); }
+        table { width: 100%; min-width: 880px; border-collapse: collapse; text-align: left; }
+        th { padding: 11px 9px; color: var(--muted); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; }
+        td { padding: 12px 9px; border-top: 1px solid var(--line); vertical-align: top; font-size: 11px; }
+        .amount { white-space: nowrap; font-family: Georgia, serif; font-size: 14px; }
+        .seller-name { font-weight: 700; }
+        .shop-name { color: #d9772f; font-weight: 800; }
+        .seller-email, .date-note { display: block; margin-top: 4px; color: var(--muted); font-size: 9px; }
+        .payout-status { display: inline-block; padding: 5px 7px; border: 1px solid var(--line); border-radius: 999px; color: #76552f; background: #f6eddb; font-size: 9px; font-weight: 700; white-space: nowrap; }
+        .payout-status.eligible { color: var(--forest); background: #edf0df; }
+        .payout-status.paid, .payout-status.simulated { color: #285b3a; background: #e8f2e9; }
+        .payout-waiting { display: block; max-width: 135px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+        .payout-form { display: flex; min-width: 215px; gap: 6px; }
+        .payout-form input { width: 120px; min-width: 0; height: 34px; padding: 0 7px; border: 1px solid var(--line); border-radius: 3px; background: var(--white); font-size: 10px; }
+        .payout-form button { height: 34px; padding: 0 8px; border: 1px solid var(--ink); border-radius: 3px; color: var(--white); background: var(--ink); cursor: pointer; font-size: 9px; font-weight: 700; }
+        .payout-form button:disabled { opacity: 0.55; cursor: wait; }
+        .empty-state { padding: 35px 8px; color: var(--muted); font-size: 12px; }
+        .status { min-height: 20px; margin: 14px 0 0; color: #8b3b2f; font-size: 11px; }
+        .status.success { color: #397d54; }
+        .note { margin-top: 20px; padding: 13px; border-left: 3px solid var(--lime); color: var(--muted); background: #e9edda; font-size: 10px; line-height: 1.7; }
+        @media (max-width: 680px) {
+            .site-header { padding: 12px 18px; }
+            .site-header nav { gap: 10px; font-size: 10px; }
+            main { width: calc(100% - 36px); padding-top: 33px; }
+            h1 { font-size: 35px; }
+            .report-toolbar { align-items: start; flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-left">
+            <a class="back-button" href="/dashboard" aria-label="Go to account">←</a>
+            <a class="brand" href="/marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Operations</span></a>
+        </div>
+        <nav><a href="/dashboard">Account</a><a href="/admin/moderation">Moderation</a><a href="/admin/support">Support</a><a href="/marketplace">Marketplace</a></nav>
+    </header>
+    <main>
+        <p class="eyebrow">Operations · Payout activity</p>
+        <h1>Payout activity</h1>
+        <p class="intro" id="payout-intro">Buyer-confirmed deliveries move through the configured payout stages.</p>
+        <div class="report-toolbar">
+            <strong class="report-total" id="report-total">N$ 0.00 <span>eligible total</span></strong>
+            <span class="held-total" id="held-total">0 on hold</span>
+            <span class="paid-total" id="paid-total">0 paid</span>
+            <button class="export-button" id="export-report" type="button">Export CSV</button>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Seller</th><th>Shop / order</th><th>Products</th><th>Shipping</th><th>Z fee</th><th>Status</th><th>Payment</th></tr></thead>
+                <tbody id="payout-rows"></tbody>
+            </table>
+            <p class="empty-state" id="empty-state" hidden>No buyer-confirmed deliveries are awaiting payout.</p>
+        </div>
+        <p class="status" id="status" role="status" aria-live="polite"></p>
+        <p class="note" id="payout-note">Payout records are activity tracking. They do not prove that a bank transfer occurred.</p>
+    </main>
+    <script>
+        const rows = document.querySelector("#payout-rows");
+        const status = document.querySelector("#status");
+        const emptyState = document.querySelector("#empty-state");
+        const heldTotal = document.querySelector("#held-total");
+        const paidTotal = document.querySelector("#paid-total");
+        const payoutIntro = document.querySelector("#payout-intro");
+        const payoutNote = document.querySelector("#payout-note");
+        const money = new Intl.NumberFormat("en-NA", { style: "currency", currency: "NAD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        let entries = [];
+        let payoutRefreshTimer = null;
+        let payoutReportRequestInFlight = false;
+
+        function appendCell(row, text, className = "") {
+            const cell = document.createElement("td");
+            if (className) cell.className = className;
+            cell.textContent = text;
+            row.append(cell);
+            return cell;
+        }
+
+        async function loadReport() {
+            if (payoutReportRequestInFlight || document.hidden) return;
+            payoutReportRequestInFlight = true;
+            try {
+                const response = await fetch("/api/admin/payout-report");
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || "Payout report is unavailable.");
+                entries = result.entries;
+                const isSimulated = result.mode === "simulated";
+                if (isSimulated && !payoutRefreshTimer) payoutRefreshTimer = window.setInterval(loadReport, 2000);
+                payoutIntro.textContent = isSimulated
+                    ? "In mock mode, deliveries become ready for payout after the hold, then automatically advance to a simulated paid state after the second delay. No money moves."
+                    : "Buyer-confirmed deliveries become ready for manual payout after the configured hold. Transfer funds through your bank, then record the EFT reference here.";
+                payoutNote.textContent = isSimulated
+                    ? "Simulation only. A simulated paid status and SIM reference do not represent a bank transfer."
+                    : "Manual ledger only. This screen records a bank reference after a human completes the transfer; it does not initiate or verify the payment.";
+                rows.replaceChildren();
+                emptyState.hidden = entries.length > 0;
+                const eligibleEntries = entries.filter((entry) => entry.payoutStatus === "eligible");
+                const heldEntries = entries.filter((entry) => entry.payoutStatus === "held");
+                const paidEntries = entries.filter((entry) => entry.payoutStatus === "paid");
+                document.querySelector("#report-total").firstChild.textContent = money.format(eligibleEntries.reduce((total, entry) => total + entry.payoutNAD, 0)) + " ";
+                heldTotal.textContent = `${heldEntries.length} on hold`;
+                paidTotal.textContent = `${paidEntries.length} ${isSimulated ? "simulated paid" : "paid"}`;
+
+                entries.forEach((entry) => {
+                    const row = document.createElement("tr");
+                    const sellerCell = document.createElement("td");
+                    const sellerName = document.createElement("span");
+                    sellerName.className = "seller-name";
+                    sellerName.textContent = entry.sellerName;
+                    sellerCell.append(sellerName);
+                    const email = document.createElement("span");
+                    email.className = "seller-email";
+                    email.textContent = entry.sellerEmail;
+                    sellerCell.append(email);
+                    row.append(sellerCell);
+                    const shopCell = document.createElement("td");
+                    const shopName = document.createElement("span");
+                    shopName.className = "shop-name";
+                    shopName.textContent = entry.shopName;
+                    shopCell.append(shopName, document.createTextNode(` · ${entry.orderNumber}`));
+                    row.append(shopCell);
+                    appendCell(row, money.format(entry.productsSubtotalNAD), "amount");
+                    appendCell(row, money.format(entry.shippingNAD), "amount");
+                    appendCell(row, money.format(entry.commissionNAD), "amount");
+                    const payoutStatusCell = document.createElement("td");
+                    const payoutStatus = document.createElement("span");
+                    payoutStatus.className = `payout-status${entry.payoutStatus === "eligible" ? " eligible" : entry.payoutStatus === "paid" ? entry.simulated ? " simulated" : " paid" : ""}`;
+                    payoutStatus.textContent = entry.payoutStatus === "eligible" ? "Ready for payout" : entry.payoutStatus === "paid" ? entry.simulated ? "Simulated paid" : "Paid" : "On hold";
+                    payoutStatusCell.append(payoutStatus);
+                    row.append(payoutStatusCell);
+                    const actionCell = document.createElement("td");
+                    if (entry.payoutStatus === "paid") {
+                        const paid = document.createElement("span");
+                        paid.className = "payout-waiting";
+                        paid.textContent = `${entry.simulated ? "No real transfer" : "Transfer recorded"}${entry.payoutMarkedAt ? ` · ${new Date(entry.payoutMarkedAt).toLocaleString()}` : ""}${entry.payoutReference ? ` · ${entry.payoutReference}` : ""}`;
+                        actionCell.append(paid);
+                    } else if (isSimulated) {
+                        const waiting = document.createElement("span");
+                        waiting.className = "payout-waiting";
+                        waiting.textContent = entry.payoutStatus === "eligible"
+                            ? `Simulated payout at ${entry.payoutProcessingAt ? new Date(entry.payoutProcessingAt).toLocaleString() : "next processing window"}`
+                            : `Ready at ${entry.payoutEligibleAt ? new Date(entry.payoutEligibleAt).toLocaleString() : "pending"}`;
+                        actionCell.append(waiting);
+                    } else if (entry.payoutStatus !== "eligible") {
+                        const waiting = document.createElement("span");
+                        waiting.className = "payout-waiting";
+                        waiting.textContent = entry.payoutEligibleAt
+                            ? `Ready ${new Date(entry.payoutEligibleAt).toLocaleString()}`
+                            : "Waiting for eligibility date";
+                        actionCell.append(waiting);
+                    } else {
+                        const form = document.createElement("form");
+                        form.className = "payout-form";
+                        const reference = document.createElement("input");
+                        reference.required = true;
+                        reference.minLength = 2;
+                        reference.maxLength = 100;
+                        reference.placeholder = "Bank EFT reference";
+                        reference.setAttribute("aria-label", `EFT reference for ${entry.orderNumber}`);
+                        form.append(reference);
+                        const button = document.createElement("button");
+                        button.type = "submit";
+                        button.textContent = `Record ${money.format(entry.payoutNAD)}`;
+                        form.append(button);
+                        form.addEventListener("submit", async (event) => {
+                            event.preventDefault();
+                            button.disabled = true;
+                            try {
+                                const response = await fetch(`/api/admin/payout-report/${encodeURIComponent(entry.orderNumber)}/${encodeURIComponent(entry.sellerOrderId)}/mark-paid`, {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ reference: reference.value })
+                                });
+                                const result = await response.json();
+                                if (!response.ok) throw new Error(result.error || "Could not record payout.");
+                                status.classList.add("success");
+                                status.textContent = `Manual EFT reference recorded for ${entry.orderNumber}. No transfer was initiated.`;
+                                await loadReport();
+                            } catch (error) {
+                                status.classList.remove("success");
+                                status.textContent = error.message;
+                                button.disabled = false;
+                            }
+                        });
+                        actionCell.append(form);
+                    }
+                    row.append(actionCell);
+                    rows.append(row);
+                });
+            } catch (error) {
+                status.textContent = error.message;
+            } finally {
+                payoutReportRequestInFlight = false;
+            }
+        }
+
+        document.querySelector("#export-report").addEventListener("click", () => {
+            const csvRows = [
+                ['Seller', 'Email', 'Shop', 'Order', 'Products NAD', 'Shipping NAD', 'Commission NAD', 'Payout NAD', 'Status', 'Ready at', 'Payout reference'],
+                ...entries.map((entry) => [entry.sellerName, entry.sellerEmail, entry.shopName, entry.orderNumber, entry.productsSubtotalNAD, entry.shippingNAD, entry.commissionNAD, entry.payoutNAD, entry.payoutStatus, entry.payoutEligibleAt, entry.payoutReference])
+            ];
+            const csv = csvRows.map((row) => row.map((value) => `"${String(value ?? '').replaceAll('"', '""')}"`).join(',')).join('\r\n');
+            const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'z-manual-payout-report.csv';
+            link.click();
+            URL.revokeObjectURL(url);
+        });
+
+        loadReport();
+    </script>
+</body>
+</html>

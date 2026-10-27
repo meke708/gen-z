@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f4f1e8">
+    <title>Listing Review | Z Operations</title>
+    <style>
+        :root { color-scheme: light; --ink: #17231e; --muted: #68736d; --paper: #f4f1e8; --white: #fffefa; --lime: #d8f36a; --forest: #18382e; --line: #d9d9cf; }
+        * { box-sizing: border-box; }
+        body { min-width: 320px; margin: 0; color: var(--ink); background: var(--paper); font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
+        button { font: inherit; }
+        a { color: inherit; }
+        .site-header { display: flex; min-height: 72px; align-items: center; justify-content: space-between; gap: 16px; padding: 12px max(24px, calc((100vw - 1120px) / 2)); border-bottom: 1px solid var(--line); }
+        .header-left { display: inline-flex; align-items: center; gap: 12px; }
+        .back-button { display: inline-grid; width: 28px; height: 28px; padding: 0; place-items: center; border: 1px solid var(--ink); border-radius: 999px; color: var(--ink); background: transparent; cursor: pointer; font-size: 18px; line-height: 1; text-decoration: none; }
+        .back-button:hover { color: var(--white); background: var(--forest); }
+        .back-button:focus-visible { outline: 2px solid #397d54; outline-offset: 3px; }
+        .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+        .brand-mark { display: grid; width: 36px; aspect-ratio: 1; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; font-family: Georgia, serif; font-size: 22px; letter-spacing: 0; }
+        nav { display: flex; gap: 16px; font-size: 11px; font-weight: 700; }
+        nav a { text-decoration: none; }
+        main { width: min(1120px, calc(100% - 48px)); margin: 0 auto; padding: 42px 0 72px; }
+        .eyebrow { margin: 0 0 10px; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
+        h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 40px; font-weight: 400; letter-spacing: 0; }
+        .intro { max-width: 680px; margin: 10px 0 25px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+        .queue-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 1px solid var(--ink); color: var(--muted); font-size: 10px; }
+        .report { display: grid; grid-template-columns: 94px minmax(0, 1fr) auto; gap: 15px; padding: 17px 0; border-top: 1px solid var(--line); }
+        .report-image { display: grid; width: 94px; aspect-ratio: 1; overflow: hidden; place-items: center; color: var(--forest); background: #e4ecc9; font-family: Georgia, serif; font-size: 38px; }
+        .report-image img { width: 100%; height: 100%; object-fit: cover; }
+        .report-content { min-width: 0; }
+        .report-product { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; }
+        .report-product h2 { margin: 0; font-size: 14px; }
+        .moderation-state { color: var(--muted); font-size: 9px; font-weight: 700; text-transform: uppercase; }
+        .report-meta { margin: 5px 0 9px; color: var(--muted); font-size: 10px; line-height: 1.6; }
+        .report-meta .shop-name { color: #d9772f; font-weight: 800; }
+        .report-reason { margin: 0; font-size: 11px; font-weight: 700; }
+        .report-details { margin: 5px 0 0; color: var(--muted); font-size: 11px; line-height: 1.6; white-space: pre-line; }
+        .report-actions { display: flex; flex-direction: column; align-items: stretch; gap: 7px; min-width: 132px; }
+        .report-actions button { min-height: 36px; padding: 0 9px; border: 1px solid var(--ink); border-radius: 3px; color: var(--white); background: var(--ink); cursor: pointer; font-size: 10px; font-weight: 700; }
+        .report-actions button:hover { color: var(--ink); background: var(--lime); }
+        .report-actions .dismiss { border-color: var(--line); color: var(--ink); background: transparent; }
+        .report-actions .dismiss:hover { border-color: var(--ink); background: #edf0df; }
+        .report-actions button:disabled { opacity: 0.55; cursor: wait; }
+        .queue-status { min-height: 20px; margin: 12px 0 0; color: #8b3b2f; font-size: 11px; }
+        .empty { padding: 35px 0; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+        .note { margin-top: 22px; padding: 13px; border-left: 3px solid var(--lime); color: var(--muted); background: #e9edda; font-size: 10px; line-height: 1.7; }
+        @media (max-width: 650px) {
+            .site-header { padding: 12px 18px; }
+            nav { gap: 9px; font-size: 10px; }
+            main { width: calc(100% - 36px); padding-top: 32px; }
+            h1 { font-size: 34px; }
+            .report { grid-template-columns: 62px minmax(0, 1fr); gap: 10px; }
+            .report-image { width: 62px; }
+            .report-actions { grid-column: 2; flex-direction: row; flex-wrap: wrap; }
+            .report-actions button { flex: 1; }
+        }
+    </style>
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-left">
+            <a class="back-button" href="/dashboard" aria-label="Go to account">←</a>
+            <a class="brand" href="/marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Operations</span></a>
+        </div>
+        <nav><a href="/admin/payouts">Payouts</a><a href="/admin/kyc">Business verification</a><a href="/admin/support">Support</a><a href="/marketplace">Marketplace</a></nav>
+    </header>
+    <main>
+        <p class="eyebrow">Marketplace safety</p>
+        <h1>Listing review</h1>
+        <p class="intro">Three unique pending reports automatically hide a listing. Review the context below, then keep it hidden, restore it, or dismiss an individual report.</p>
+        <div class="queue-heading"><span>Pending reports</span><span id="report-count">Loading...</span></div>
+        <div id="report-list"></div>
+        <p class="queue-status" id="queue-status" role="status" aria-live="polite"></p>
+        <p class="note">This queue is restricted to the account configured by ADMIN_EMAIL in server/.env. Hiding removes a listing from browse and checkout; it does not delete seller data.</p>
+    </main>
+    <script>
+        const reportList = document.querySelector("#report-list");
+        const reportCount = document.querySelector("#report-count");
+        const queueStatus = document.querySelector("#queue-status");
+
+        async function requestJson(url, options) {
+            const response = await fetch(url, options);
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || "Moderation request failed.");
+            return result;
+        }
+
+        function createReportCard(report) {
+            const card = document.createElement("article");
+            card.className = "report";
+            const imageWrap = document.createElement("div");
+            imageWrap.className = "report-image";
+            if (report.product?.imageUrl) {
+                const image = document.createElement("img");
+                image.src = report.product.imageUrl;
+                image.alt = report.product.title;
+                image.addEventListener("error", () => { image.remove(); imageWrap.textContent = "Z"; }, { once: true });
+                imageWrap.append(image);
+            } else {
+                imageWrap.textContent = "Z";
+            }
+            card.append(imageWrap);
+
+            const content = document.createElement("div");
+            content.className = "report-content";
+            const productLine = document.createElement("div");
+            productLine.className = "report-product";
+            const title = document.createElement("h2");
+            title.textContent = report.product?.title || "Listing unavailable";
+            productLine.append(title);
+            const visibility = document.createElement("span");
+            visibility.className = "moderation-state";
+            visibility.textContent = report.product?.moderationStatus === "hidden" ? "Hidden" : "Visible";
+            productLine.append(visibility);
+            content.append(productLine);
+            const metadata = document.createElement("p");
+            metadata.className = "report-meta";
+            const shopName = document.createElement("span");
+            shopName.className = "shop-name";
+            shopName.textContent = report.product?.shopName || "Unknown shop";
+            const reportMetaText = report.isHiddenProduct
+                ? `Hidden listing · ${new Date(report.createdAt).toLocaleString()}`
+                : `· ${report.reportCount} pending ${report.reportCount === 1 ? "report" : "reports"} · Reported by ${report.reporter?.name || "Unknown account"} · ${new Date(report.createdAt).toLocaleString()}`;
+            metadata.append(shopName, document.createTextNode(reportMetaText));
+            content.append(metadata);
+            const reason = document.createElement("p");
+            reason.className = "report-reason";
+            reason.textContent = report.reason.replaceAll("_", " ");
+            content.append(reason);
+            if (report.details) {
+                const details = document.createElement("p");
+                details.className = "report-details";
+                details.textContent = report.details;
+                content.append(details);
+            }
+            card.append(content);
+
+            const actions = document.createElement("div");
+            actions.className = "report-actions";
+            const decision = report.product?.moderationStatus === "hidden" ? "restore" : "hide";
+            const decisionButton = document.createElement("button");
+            decisionButton.type = "button";
+            decisionButton.textContent = decision === "hide" ? "Hide listing" : "Restore listing";
+            decisionButton.addEventListener("click", () => resolveReport(report, decision, decisionButton));
+            actions.append(decisionButton);
+            if (!report.isHiddenProduct) {
+                const dismissButton = document.createElement("button");
+                dismissButton.className = "dismiss";
+                dismissButton.type = "button";
+                dismissButton.textContent = "Dismiss report";
+                dismissButton.addEventListener("click", () => resolveReport(report, "dismiss", dismissButton));
+                actions.append(dismissButton);
+            }
+            card.append(actions);
+            return card;
+        }
+
+        async function resolveReport(report, decision, button) {
+            button.disabled = true;
+            try {
+                const endpoint = report.isHiddenProduct
+                    ? `/api/admin/products/${encodeURIComponent(report.product.id)}/moderation`
+                    : `/api/admin/reports/${encodeURIComponent(report.id)}`;
+                const payload = report.isHiddenProduct ? { decision } : { decision };
+                await requestJson(endpoint, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                queueStatus.textContent = report.isHiddenProduct
+                    ? (decision === "restore" ? "Listing restored to the marketplace." : "Listing hidden from the marketplace.")
+                    : (decision === "dismiss" ? "Report dismissed." : decision === "hide" ? "Listing hidden from the marketplace." : "Listing restored to the marketplace.");
+                await loadReports();
+            } catch (error) {
+                queueStatus.textContent = error.message;
+                button.disabled = false;
+            }
+        }
+
+        async function loadReports() {
+            try {
+                const { reports } = await requestJson("/api/admin/reports");
+                reportCount.textContent = String(reports.length);
+                reportList.replaceChildren();
+                if (!reports.length) {
+                    const empty = document.createElement("p");
+                    empty.className = "empty";
+                    empty.textContent = "No reports or hidden listings need review.";
+                    reportList.append(empty);
+                    return;
+                }
+                reports.forEach((report) => reportList.append(createReportCard(report)));
+            } catch (error) {
+                reportCount.textContent = "Unavailable";
+                queueStatus.textContent = error.message;
+            }
+        }
+
+        loadReports();
+    </script>
+</body>
+</html>

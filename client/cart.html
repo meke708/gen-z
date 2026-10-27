@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f4f1e8">
+    <title>Your Cart | Z Namibia</title>
+    <style>
+        :root { color-scheme: light; --ink: #17231e; --muted: #68736d; --paper: #f4f1e8; --white: #fffefa; --lime: #d8f36a; --forest: #18382e; --line: #d9d9cf; }
+        * { box-sizing: border-box; }
+        body { min-width: 320px; margin: 0; color: var(--ink); background: var(--paper); font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
+        button, input { font: inherit; }
+        a { color: inherit; }
+        .site-header { display: flex; min-height: 72px; align-items: center; justify-content: space-between; gap: 18px; padding: 12px max(24px, calc((100vw - 1060px) / 2)); border-bottom: 1px solid var(--line); }
+        .header-left { display: inline-flex; align-items: center; gap: 12px; }
+        .back-button {
+            display: inline-grid;
+            place-items: center;
+            width: 28px;
+            height: 28px;
+            padding: 0;
+            border: 1px solid var(--ink);
+            border-radius: 999px;
+            background: transparent;
+            color: var(--ink);
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+            text-decoration: none;
+        }
+        .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+        .brand-mark { display: grid; width: 36px; aspect-ratio: 1; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; font-family: Georgia, serif; font-size: 22px; letter-spacing: 0; }
+        .header-nav { display: flex; gap: 20px; font-size: 12px; font-weight: 700; }
+        .header-nav a { text-decoration: none; }
+        .header-nav a:hover { text-decoration: underline; text-underline-offset: 4px; }
+        main { width: min(1060px, calc(100% - 48px)); margin: 0 auto; padding: 42px 0 72px; }
+        .eyebrow { margin: 0 0 10px; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
+        h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 43px; font-weight: 400; letter-spacing: 0; }
+        .intro { margin: 9px 0 30px; color: var(--muted); font-size: 12px; }
+        .cart-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 54px; }
+        .cart-heading { display: grid; grid-template-columns: 1fr 110px 90px; padding: 0 0 10px; border-bottom: 1px solid var(--ink); color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; }
+        .cart-heading span:nth-child(2), .cart-heading span:nth-child(3) { text-align: right; }
+        .cart-item { display: grid; grid-template-columns: minmax(0, 1fr) 110px 90px; align-items: center; gap: 10px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+        .item-info { display: grid; grid-template-columns: 68px minmax(0, 1fr); align-items: center; gap: 13px; min-width: 0; }
+        .item-image { display: grid; width: 68px; aspect-ratio: 1; overflow: hidden; place-items: center; background: #e4ecc9; color: var(--forest); font-family: Georgia, serif; font-size: 30px; }
+        .item-image img { width: 100%; height: 100%; object-fit: cover; }
+        .item-name { display: inline-block; overflow-wrap: anywhere; font-size: 12px; font-weight: 700; line-height: 1.45; text-decoration: none; }
+        .item-name:hover { text-decoration: underline; text-underline-offset: 3px; }
+        .item-shop { margin: 5px 0 0; color: #d9772f; font-size: 10px; font-weight: 700; }
+        .item-actions { display: flex; align-items: center; gap: 10px; margin-top: 7px; }
+        .quantity { width: 62px; height: 31px; padding: 0 6px; border: 1px solid var(--line); border-radius: 3px; background: var(--white); font-size: 11px; }
+        .remove { padding: 4px 0; border: 0; color: var(--muted); background: transparent; cursor: pointer; font-size: 10px; text-decoration: underline; text-underline-offset: 3px; }
+        .item-unit, .item-total { font-family: Georgia, serif; font-size: 14px; text-align: right; white-space: nowrap; }
+        .cart-summary { align-self: start; padding-top: 17px; border-top: 1px solid var(--ink); }
+        .cart-summary h2 { margin: 0 0 20px; font-family: Georgia, serif; font-size: 24px; font-weight: 400; letter-spacing: 0; }
+        .summary-row { display: flex; justify-content: space-between; gap: 12px; margin: 11px 0; color: var(--muted); font-size: 11px; }
+        .summary-total { display: flex; justify-content: space-between; gap: 12px; margin: 18px 0 0; padding-top: 14px; border-top: 1px solid var(--line); font-size: 13px; font-weight: 700; }
+        .summary-total strong { font-family: Georgia, serif; font-size: 20px; font-weight: 400; }
+        .checkout-note { margin: 17px 0 0; padding: 13px; border-left: 3px solid var(--lime); color: var(--muted); background: #e9edda; font-size: 10px; line-height: 1.7; }
+        .empty-state { padding: 46px 12px; border-bottom: 1px solid var(--line); text-align: center; }
+        .empty-state h2 { margin: 0; font-family: Georgia, serif; font-size: 26px; font-weight: 400; }
+        .empty-state p { margin: 10px 0 20px; color: var(--muted); font-size: 12px; }
+        .primary-link { display: inline-flex; min-height: 44px; align-items: center; gap: 20px; padding: 0 14px; border: 1px solid var(--ink); border-radius: 3px; color: var(--white); background: var(--ink); font-size: 11px; font-weight: 700; text-decoration: none; }
+        .primary-link:hover { color: var(--ink); background: var(--lime); }
+        .cart-message { margin: 12px 0 0; color: #8b3b2f; font-size: 11px; }
+        footer { padding: 20px max(24px, calc((100vw - 1060px) / 2)); border-top: 1px solid var(--line); color: var(--muted); font-size: 10px; }
+        [hidden] { display: none !important; }
+
+        @media (max-width: 760px) {
+            .site-header { padding: 12px 18px; }
+            .header-nav { gap: 12px; font-size: 11px; }
+            main { width: calc(100% - 36px); padding-top: 34px; }
+            h1 { font-size: 37px; }
+            .cart-layout { grid-template-columns: 1fr; gap: 32px; }
+            .cart-summary { max-width: 420px; width: 100%; }
+        }
+
+        @media (max-width: 480px) {
+            .cart-heading { grid-template-columns: 1fr 72px; }
+            .cart-heading span:nth-child(2) { display: none; }
+            .cart-heading span:nth-child(3) { grid-column: 2; }
+            .cart-item { grid-template-columns: minmax(0, 1fr) 72px; gap: 6px; }
+            .item-info { grid-row: span 2; grid-template-columns: 58px minmax(0, 1fr); gap: 9px; }
+            .item-image { width: 58px; }
+            .item-unit { display: none; }
+            .item-total { align-self: end; }
+            .item-actions { flex-wrap: wrap; }
+            .header-nav { gap: 8px; font-size: 10px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } }
+    </style>
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-left">
+            <a class="back-button" href="/marketplace" aria-label="Back to marketplace">←</a>
+            <a class="brand" href="/marketplace" aria-label="Z Namibia marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Namibia</span></a>
+        </div>
+        <nav class="header-nav" aria-label="Shopping navigation"><a href="/marketplace">Continue shopping</a><a href="/dashboard">My account</a></nav>
+    </header>
+    <main>
+        <p class="eyebrow">Your picks</p>
+        <h1>Your cart</h1>
+        <p class="intro">Your cart stays on this device until you check out.</p>
+        <div class="cart-layout" id="cart-layout" hidden>
+            <section aria-label="Cart items">
+                <div class="cart-heading"><span>Product</span><span>Price</span><span>Total</span></div>
+                <div id="cart-items"></div>
+                <p class="cart-message" id="cart-message" role="status" aria-live="polite"></p>
+            </section>
+            <aside class="cart-summary" aria-labelledby="summary-title">
+                <h2 id="summary-title">Summary</h2>
+                <div class="summary-row"><span>Items</span><span id="item-count">0</span></div>
+                <div class="summary-row"><span>Delivery</span><span>Calculated later</span></div>
+                <div class="summary-total"><span>Subtotal</span><strong id="subtotal">N$ 0.00</strong></div>
+                <a class="primary-link" href="/checkout"><span>Continue to checkout</span><span aria-hidden="true">&#8594;</span></a>
+                <p class="checkout-note">Prototype checkout uses a clearly labeled test payment. No money is charged.</p>
+            </aside>
+        </div>
+        <section class="empty-state" id="empty-state" hidden>
+            <h2>Your cart is taking a breather.</h2>
+            <p>Browse local shops and add something you love.</p>
+            <a class="primary-link" href="/marketplace"><span>Explore the marketplace</span><span aria-hidden="true">&#8594;</span></a>
+        </section>
+    </main>
+    <footer>Z Namibia · Prices shown in Namibian dollars (N$)</footer>
+
+    <script>
+        const cartKey = "z_cart";
+        const priceFormat = new Intl.NumberFormat("en-NA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const cartItems = document.querySelector("#cart-items");
+        const cartMessage = document.querySelector("#cart-message");
+        const cartLayout = document.querySelector("#cart-layout");
+        const emptyState = document.querySelector("#empty-state");
+        let productsInCart = [];
+
+        function readCart() {
+            try {
+                const cart = JSON.parse(localStorage.getItem(cartKey) || "[]");
+                return Array.isArray(cart) ? cart.filter((item) => typeof item.id === "string" && Number.isInteger(item.quantity) && item.quantity > 0 && item.quantity <= 99) : [];
+            } catch {
+                return [];
+            }
+        }
+
+        function writeCart(cart) {
+            localStorage.setItem(cartKey, JSON.stringify(cart));
+        }
+
+        function updateTotals(cart) {
+            const count = cart.reduce((sum, item) => sum + item.quantity, 0);
+            const subtotal = cart.reduce((sum, item) => {
+                const product = productsInCart.find((entry) => entry.id === item.id)?.product;
+                return product ? sum + product.priceNAD * item.quantity : sum;
+            }, 0);
+            document.querySelector("#item-count").textContent = String(count);
+            document.querySelector("#subtotal").textContent = `N$ ${priceFormat.format(subtotal)}`;
+        }
+
+        function renderItem(item) {
+            const row = document.createElement("article");
+            row.className = "cart-item";
+            const info = document.createElement("div");
+            info.className = "item-info";
+            const imageWrap = document.createElement("div");
+            imageWrap.className = "item-image";
+            if (item.product.imageUrl) {
+                const image = document.createElement("img");
+                image.src = item.product.imageUrl;
+                image.alt = item.product.title;
+                image.addEventListener("error", () => { image.remove(); imageWrap.textContent = "Z"; }, { once: true });
+                imageWrap.append(image);
+            } else {
+                imageWrap.textContent = "Z";
+            }
+            info.append(imageWrap);
+            const details = document.createElement("div");
+            const title = document.createElement("a");
+            title.className = "item-name";
+            title.href = `/product/${item.product.id}`;
+            title.textContent = item.product.title;
+            details.append(title);
+            const shop = document.createElement("p");
+            shop.className = "item-shop";
+            shop.textContent = item.product.shop.name;
+            details.append(shop);
+            const actions = document.createElement("div");
+            actions.className = "item-actions";
+            const quantity = document.createElement("input");
+            quantity.className = "quantity";
+            quantity.type = "number";
+            quantity.min = "1";
+            quantity.max = String(Number.isInteger(item.product.stock) ? Math.min(item.product.stock, 99) : 99);
+            quantity.value = String(item.quantity);
+            quantity.setAttribute("aria-label", `Quantity for ${item.product.title}`);
+            quantity.addEventListener("change", () => {
+                const nextQuantity = Number(quantity.value);
+                if (!Number.isInteger(nextQuantity) || nextQuantity < 1 || nextQuantity > 99 || (Number.isInteger(item.product.stock) && nextQuantity > item.product.stock)) {
+                    quantity.value = String(item.quantity);
+                    return;
+                }
+                const cart = readCart();
+                const entry = cart.find((cartItem) => cartItem.id === item.product.id);
+                if (entry) entry.quantity = nextQuantity;
+                writeCart(cart);
+                renderCart();
+            });
+            actions.append(quantity);
+            const remove = document.createElement("button");
+            remove.className = "remove";
+            remove.type = "button";
+            remove.textContent = "Remove";
+            remove.addEventListener("click", () => {
+                writeCart(readCart().filter((cartItem) => cartItem.id !== item.product.id));
+                renderCart();
+            });
+            actions.append(remove);
+            details.append(actions);
+            info.append(details);
+            row.append(info);
+            const unit = document.createElement("span");
+            unit.className = "item-unit";
+            unit.textContent = `N$ ${priceFormat.format(item.product.priceNAD)}`;
+            row.append(unit);
+            const total = document.createElement("strong");
+            total.className = "item-total";
+            total.textContent = `N$ ${priceFormat.format(item.product.priceNAD * item.quantity)}`;
+            row.append(total);
+            return row;
+        }
+
+        function renderCart() {
+            const cart = readCart();
+            cartItems.replaceChildren();
+            const activeItems = cart.filter((item) => productsInCart.some((entry) => entry.id === item.id && entry.product));
+            productsInCart.filter((entry) => entry.product && activeItems.some((item) => item.id === entry.id)).forEach((entry) => {
+                const cartItem = activeItems.find((item) => item.id === entry.id);
+                cartItems.append(renderItem({ ...entry, quantity: cartItem.quantity }));
+            });
+            const activeIds = new Set(activeItems.map((item) => item.id));
+            if (activeItems.length !== cart.length) {
+                writeCart(cart.filter((item) => activeIds.has(item.id)));
+                cartMessage.textContent = "Unavailable products were removed from your cart.";
+            } else {
+                cartMessage.textContent = "";
+            }
+            cartLayout.hidden = activeItems.length === 0;
+            emptyState.hidden = activeItems.length > 0;
+            updateTotals(activeItems);
+        }
+
+        async function loadCart() {
+            const cart = readCart();
+            productsInCart = await Promise.all(cart.map(async (item) => {
+                try {
+                    const response = await fetch(`/api/products/${encodeURIComponent(item.id)}`);
+                    if (!response.ok) return { id: item.id, product: null };
+                    const result = await response.json();
+                    return { id: item.id, product: result.product };
+                } catch {
+                    return { id: item.id, product: null };
+                }
+            }));
+            renderCart();
+        }
+
+        window.addEventListener("storage", (event) => {
+            if (event.key === cartKey) loadCart();
+        });
+
+        loadCart();
+    </script>
+</body>
+</html>

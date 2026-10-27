@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f4f1e8">
+    <title>Shop AI assistant | Z Namibia</title>
+    <style>
+        :root { color-scheme: light; --ink: #17231e; --muted: #68736d; --paper: #f4f1e8; --white: #fffefa; --lime: #d8f36a; --forest: #18382e; --line: #d9d9cf; }
+        * { box-sizing: border-box; }
+        body { min-width: 320px; margin: 0; color: var(--ink); background: var(--paper); font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
+        a { color: inherit; }
+        button, textarea { font: inherit; }
+        .site-header { display: flex; min-height: 72px; align-items: center; justify-content: space-between; gap: 18px; padding: 12px max(24px, calc((100vw - 1040px) / 2)); border-bottom: 1px solid var(--line); }
+        .header-left, .header-links { display: flex; align-items: center; gap: 14px; }
+        .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+        .brand-mark { display: grid; width: 36px; aspect-ratio: 1; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; font-family: Georgia, serif; font-size: 22px; }
+        .header-links { gap: 18px; font-size: 11px; font-weight: 700; }
+        .header-links a { text-decoration: none; }
+        .header-links a:hover { text-decoration: underline; text-underline-offset: 4px; }
+        .back-link { display: inline-grid; width: 28px; height: 28px; place-items: center; border: 1px solid var(--ink); border-radius: 50%; text-decoration: none; font-size: 18px; }
+        main { width: min(680px, calc(100% - 40px)); margin: 0 auto; padding: 42px 0 70px; }
+        .eyebrow { margin: 0 0 10px; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
+        h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 38px; font-weight: 400; line-height: 1.08; }
+        .intro { margin: 10px 0 30px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+        .assistant-form { padding-top: 20px; border-top: 1px solid var(--ink); }
+        .shop-name { margin: 0 0 18px; font-family: Georgia, serif; font-size: 19px; }
+        .status { margin: 0 0 18px; padding: 12px 14px; border-left: 3px solid var(--forest); background: #e8ebdd; color: var(--ink); font-size: 11px; line-height: 1.5; }
+        .data-heading { margin: 22px 0 10px; font-family: Georgia, serif; font-size: 19px; font-weight: 400; }
+        .data-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 0 24px; padding: 0; list-style: none; }
+        .data-list li { padding: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; line-height: 1.5; }
+        .activation { display: flex; align-items: flex-start; gap: 9px; margin: 20px 0; font-size: 11px; line-height: 1.5; }
+        .activation input { width: 16px; height: 16px; flex: 0 0 auto; margin: 0; accent-color: var(--forest); }
+        .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+        .purchase-button, .save-button { min-height: 42px; padding: 0 14px; border: 1px solid var(--ink); border-radius: 3px; color: var(--white); background: var(--ink); cursor: pointer; font-size: 11px; font-weight: 700; }
+        .purchase-button:disabled { opacity: 0.6; cursor: not-allowed; }
+        .save-button:hover { color: var(--ink); background: var(--lime); }
+        .save-button:disabled { opacity: 0.6; cursor: wait; }
+        .feedback { min-height: 18px; margin: 12px 0 0; color: var(--forest); font-size: 11px; }
+        .feedback.error { color: #8b3b2f; }
+        .loading { color: var(--muted); font-size: 12px; }
+        [hidden] { display: none !important; }
+        @media (max-width: 540px) {
+            .site-header { min-height: 64px; padding: 10px 18px; }
+            .header-links { gap: 12px; font-size: 10px; }
+            main { width: calc(100% - 36px); padding-top: 32px; }
+            h1 { font-size: 33px; }
+        }
+    </style>
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-left">
+            <a class="back-link" href="/sell/dashboard" aria-label="Back to seller dashboard">←</a>
+            <a class="brand" href="/marketplace" aria-label="Z Namibia marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Namibia</span></a>
+        </div>
+        <nav class="header-links" aria-label="Seller navigation"><a href="/sell/profile">Seller profile</a><a href="/sell/dashboard">Seller dashboard</a><a href="/dashboard">Buyer profile</a></nav>
+    </header>
+    <main>
+        <p class="eyebrow">Seller tools</p>
+        <h1>Shop AI assistant</h1>
+        <p class="intro">Your assistant uses your shop information automatically. No prompts, FAQs, or model training to manage.</p>
+        <p class="loading" id="assistant-loading" role="status">Loading shop settings...</p>
+        <form class="assistant-form" id="assistant-form" hidden>
+            <h2 class="shop-name" id="assistant-shop-name"></h2>
+            <p class="status" id="assistant-status" role="status" aria-live="polite"></p>
+            <h2 class="data-heading">What the assistant knows</h2>
+            <ul class="data-list">
+                <li>Your shop name, description, and town</li>
+                <li>Your delivery rates</li>
+                <li>Active product descriptions and prices</li>
+                <li>Current stock availability</li>
+            </ul>
+            <label class="activation" for="assistant-enabled">
+                <input id="assistant-enabled" type="checkbox" disabled>
+                <span>Show the assistant on my public shop</span>
+            </label>
+            <div class="actions">
+                <button class="purchase-button" id="assistant-purchase" type="button" disabled>Purchase assistant</button>
+                <button class="save-button" id="assistant-save" type="submit" hidden>Save settings</button>
+                <a href="/sell/dashboard">Return to my shop</a>
+            </div>
+            <p class="feedback" id="assistant-message" role="status" aria-live="polite"></p>
+        </form>
+        <p class="feedback error" id="assistant-error" role="alert" hidden></p>
+    </main>
+    <script>
+        const assistantForm = document.querySelector("#assistant-form");
+        const assistantLoading = document.querySelector("#assistant-loading");
+        const assistantShopName = document.querySelector("#assistant-shop-name");
+        const assistantStatus = document.querySelector("#assistant-status");
+        const assistantEnabled = document.querySelector("#assistant-enabled");
+        const assistantPurchase = document.querySelector("#assistant-purchase");
+        const assistantSave = document.querySelector("#assistant-save");
+        const assistantMessage = document.querySelector("#assistant-message");
+        const assistantError = document.querySelector("#assistant-error");
+
+        async function requestJson(url, options = {}) {
+            const response = await fetch(url, options);
+            let result;
+            try {
+                result = await response.json();
+            } catch {
+                throw new Error("The server returned an invalid response.");
+            }
+            if (!response.ok) throw new Error(result.error || "Could not load assistant settings.");
+            return result;
+        }
+
+        function updateAssistantStatus(shop, serviceConfigured, simulationAvailable) {
+            if (!shop.assistantPlanActive) {
+                assistantStatus.textContent = simulationAvailable
+                    ? "Development test mode: simulate a purchase to activate this add-on. No payment will be taken."
+                    : "Paid add-on not active. Seller billing is not connected yet, so customers cannot use the assistant.";
+                assistantPurchase.hidden = false;
+                assistantPurchase.disabled = !simulationAvailable;
+                assistantPurchase.textContent = simulationAvailable ? "Simulate purchase" : "Purchase assistant";
+                assistantSave.hidden = true;
+            } else if (!serviceConfigured) {
+                assistantStatus.textContent = "Add-on active, but the local model is not installed or Ollama is not running on this server.";
+                assistantPurchase.hidden = true;
+                assistantSave.hidden = false;
+            } else if (shop.assistantEnabled) {
+                assistantStatus.textContent = "Assistant is live on your public shop.";
+                assistantPurchase.hidden = true;
+                assistantSave.hidden = false;
+            } else {
+                assistantStatus.textContent = "Add-on active. Turn on the assistant when your setup is ready.";
+                assistantPurchase.hidden = true;
+                assistantSave.hidden = false;
+            }
+            assistantEnabled.checked = Boolean(shop.assistantEnabled);
+            assistantEnabled.disabled = !shop.assistantPlanActive || !serviceConfigured;
+        }
+
+        async function loadAssistant() {
+            try {
+                const result = await requestJson("/api/seller/shop");
+                if (!result.shop) throw new Error("Create your shop before setting up its assistant.");
+                assistantShopName.textContent = result.shop.name;
+                updateAssistantStatus(result.shop, result.assistantServiceConfigured, result.assistantPurchaseSimulationAvailable);
+                assistantForm.hidden = false;
+            } catch (error) {
+                if (error.message.includes("Sign in")) {
+                    window.location.replace("/login");
+                    return;
+                }
+                assistantError.textContent = error.message;
+                assistantError.hidden = false;
+            } finally {
+                assistantLoading.hidden = true;
+            }
+        }
+
+        assistantForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            assistantSave.disabled = true;
+            assistantMessage.classList.remove("error");
+            assistantMessage.textContent = "Saving...";
+            try {
+                const result = await requestJson("/api/seller/shop/assistant", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ assistantEnabled: assistantEnabled.checked })
+                });
+                updateAssistantStatus(result, result.assistantServiceConfigured);
+                assistantMessage.textContent = "Assistant setup saved.";
+            } catch (error) {
+                assistantMessage.classList.add("error");
+                assistantMessage.textContent = error.message;
+            } finally {
+                assistantSave.disabled = false;
+            }
+        });
+
+        assistantPurchase.addEventListener("click", async () => {
+            assistantPurchase.disabled = true;
+            assistantPurchase.textContent = "Simulating purchase...";
+            assistantMessage.classList.remove("error");
+            assistantMessage.textContent = "Recording test purchase. No payment will be taken.";
+            try {
+                const result = await requestJson("/api/seller/shop/assistant/simulate-purchase", { method: "POST" });
+                updateAssistantStatus(result.shop, result.assistantServiceConfigured, false);
+                assistantMessage.textContent = "Test purchase complete. No payment was taken.";
+            } catch (error) {
+                assistantPurchase.disabled = false;
+                assistantPurchase.textContent = "Simulate purchase";
+                assistantMessage.classList.add("error");
+                assistantMessage.textContent = error.message;
+            }
+        });
+
+        loadAssistant();
+    </script>
+</body>
+</html>

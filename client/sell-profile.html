@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f4f1e8">
+    <title>Seller profile | Z Namibia</title>
+    <style>
+        :root { color-scheme: light; --ink: #17231e; --muted: #68736d; --paper: #f4f1e8; --white: #fffefa; --lime: #d8f36a; --forest: #18382e; --line: #d9d9cf; --warning: #8b3b2f; }
+        * { box-sizing: border-box; }
+        body { min-width: 320px; margin: 0; color: var(--ink); background: var(--paper); font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
+        a { color: inherit; }
+        .site-header { display: flex; min-height: 72px; align-items: center; justify-content: space-between; gap: 18px; padding: 12px max(24px, calc((100vw - 1040px) / 2)); border-bottom: 1px solid var(--line); }
+        .header-left, .header-links { display: flex; align-items: center; gap: 14px; }
+        .back-link { display: inline-grid; width: 28px; height: 28px; place-items: center; border: 1px solid var(--ink); border-radius: 50%; text-decoration: none; font-size: 18px; }
+        .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+        .brand-mark { display: grid; width: 36px; aspect-ratio: 1; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; font-family: Georgia, serif; font-size: 22px; }
+        .header-links { gap: 18px; font-size: 11px; font-weight: 700; }
+        .header-links a { text-decoration: none; }
+        main { width: min(760px, calc(100% - 40px)); margin: 0 auto; padding: 46px 0 72px; }
+        .eyebrow { margin: 0 0 10px; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
+        h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 40px; font-weight: 400; }
+        .intro { margin: 9px 0 28px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+        .profile { padding-top: 20px; border-top: 1px solid var(--ink); }
+        .profile-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; }
+        .shop-name { margin: 0; font-family: Georgia, serif; font-size: 25px; font-weight: 400; overflow-wrap: anywhere; }
+        .verified-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 9px; border: 1px solid #8da78f; border-radius: 2px; color: #285b3a; background: #e8efdf; font-size: 10px; font-weight: 700; }
+        .verified-badge[hidden] { display: none; }
+        .profile-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; margin: 20px 0 0; }
+        .profile-fields div { min-width: 0; padding: 12px 0; border-top: 1px solid var(--line); }
+        .profile-fields .wide { grid-column: 1 / -1; }
+        dt { color: var(--muted); font-size: 10px; }
+        dd { margin: 5px 0 0; font-size: 12px; line-height: 1.55; overflow-wrap: anywhere; white-space: pre-line; }
+        .verification-status { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 11px; }
+        .verification-status::before { width: 7px; height: 7px; border-radius: 50%; background: #a4aaa5; content: ""; }
+        .verification-status.verified { color: #285b3a; font-weight: 700; }
+        .verification-status.verified::before { background: #39804e; }
+        .verification-status.pending { color: #805a24; }
+        .verification-status.pending::before { background: #d99a1b; }
+        .profile-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+        .profile-actions a { display: inline-flex; min-height: 40px; align-items: center; padding: 0 12px; border: 1px solid var(--ink); border-radius: 3px; font-size: 10px; font-weight: 700; text-decoration: none; }
+        .profile-actions a.primary { color: var(--white); background: var(--ink); }
+        .profile-actions a.primary:hover { color: var(--ink); background: var(--lime); }
+        .loading, .error { color: var(--muted); font-size: 12px; }
+        .error { color: var(--warning); }
+        [hidden] { display: none !important; }
+        @media (max-width: 540px) { .site-header { min-height: 64px; padding: 10px 18px; } .header-links { gap: 12px; font-size: 10px; } main { width: calc(100% - 36px); padding-top: 33px; } h1 { font-size: 34px; } .profile-fields { grid-template-columns: 1fr; } .profile-fields .wide { grid-column: auto; } }
+    </style>
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-left"><a class="back-link" href="/sell/dashboard" aria-label="Back to seller dashboard">←</a><a class="brand" href="/marketplace" aria-label="Z Namibia marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Namibia</span></a></div>
+        <nav class="header-links" aria-label="Profile navigation"><a href="/sell/dashboard">Seller dashboard</a><a href="/dashboard">Buyer profile</a></nav>
+    </header>
+    <main>
+        <p class="eyebrow">Seller profile</p>
+        <h1>Business profile</h1>
+        <p class="intro">Your public shop identity and verification status. Private account details and submitted documents are not shown here.</p>
+        <p class="loading" id="loading" role="status">Loading seller profile...</p>
+        <section class="profile" id="profile" hidden aria-labelledby="shop-name">
+            <div class="profile-header">
+                <h2 class="shop-name" id="shop-name"></h2>
+                <span class="verified-badge" id="verified-badge" hidden><span aria-hidden="true">&#10003;</span> Business verified</span>
+            </div>
+            <dl class="profile-fields">
+                <div><dt>Business town</dt><dd id="shop-town"></dd></div>
+                <div><dt>On Z since</dt><dd id="member-since"></dd></div>
+                <div class="wide"><dt>About the shop</dt><dd id="shop-description"></dd></div>
+                <div><dt>Business verification</dt><dd><span class="verification-status" id="verification-status">Not submitted</span></dd></div>
+                <div><dt>Public storefront</dt><dd><a id="public-shop-link" href="/shops">View shop</a></dd></div>
+            </dl>
+            <div class="profile-actions">
+                <a class="primary" href="/sell/dashboard">Manage seller dashboard</a>
+                <a href="/sell/verification">Business verification</a>
+            </div>
+        </section>
+        <p class="error" id="error-message" role="alert" hidden></p>
+    </main>
+    <script>
+        const loading = document.querySelector("#loading");
+        const profile = document.querySelector("#profile");
+        const errorMessage = document.querySelector("#error-message");
+
+        async function requestJson(url) {
+            const response = await fetch(url);
+            let result;
+            try { result = await response.json(); } catch { throw new Error("The server returned an invalid response."); }
+            if (!response.ok) throw new Error(result.error || "Could not load seller profile.");
+            return result;
+        }
+
+        async function loadSellerProfile() {
+            try {
+                const shopResult = await requestJson("/api/seller/shop");
+                if (!shopResult.shop) throw new Error("Create your storefront before viewing your seller profile.");
+                const verificationResult = await requestJson("/api/seller/shop/verification");
+                const shop = shopResult.shop;
+                const verification = verificationResult.verification;
+                document.querySelector("#shop-name").textContent = shop.name;
+                document.querySelector("#shop-town").textContent = `${shop.town}, Namibia`;
+                document.querySelector("#member-since").textContent = shop.createdAt ? new Date(shop.createdAt).getUTCFullYear() : "—";
+                document.querySelector("#shop-description").textContent = shop.description;
+                const publicShopLink = document.querySelector("#public-shop-link");
+                publicShopLink.href = `/shops/${encodeURIComponent(shop.slug)}`;
+                const status = document.querySelector("#verification-status");
+                const labels = {
+                    not_submitted: "Not submitted",
+                    pending: "Under review",
+                    verified: "Business verified",
+                    rejected: "Action needed"
+                };
+                status.textContent = labels[verification.kycStatus] || "Not submitted";
+                status.classList.toggle("verified", verification.kycStatus === "verified");
+                status.classList.toggle("pending", verification.kycStatus === "pending");
+                document.querySelector("#verified-badge").hidden = verification.kycStatus !== "verified";
+                profile.hidden = false;
+            } catch (error) {
+                if (error.message.includes("Sign in")) {
+                    window.location.replace("/login");
+                    return;
+                }
+                if (error.message.includes("Create your storefront")) {
+                    window.location.replace("/sell/setup");
+                    return;
+                }
+                errorMessage.textContent = error.message;
+                errorMessage.hidden = false;
+            } finally {
+                loading.hidden = true;
+            }
+        }
+
+        loadSellerProfile();
+    </script>
+</body>
+</html>

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f4f1e8">
+    <title>Set up your shop | Z Namibia</title>
+    <style>
+        :root { color-scheme: light; --ink: #17231e; --muted: #68736d; --paper: #f4f1e8; --white: #fffefa; --lime: #d8f36a; --forest: #18382e; --line: #d9d9cf; }
+        * { box-sizing: border-box; }
+        body { min-width: 320px; margin: 0; color: var(--ink); background: var(--paper); font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
+        a { color: inherit; }
+        button, input, select, textarea { font: inherit; }
+        .site-header { display: flex; min-height: 72px; align-items: center; justify-content: space-between; gap: 18px; padding: 12px max(24px, calc((100vw - 1040px) / 2)); border-bottom: 1px solid var(--line); }
+        .header-left, .header-links { display: flex; align-items: center; gap: 14px; }
+        .back-link { display: inline-grid; width: 28px; height: 28px; place-items: center; border: 1px solid var(--ink); border-radius: 50%; text-decoration: none; font-size: 18px; }
+        .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+        .brand-mark { display: grid; width: 36px; aspect-ratio: 1; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; font-family: Georgia, serif; font-size: 22px; }
+        .header-links { gap: 18px; font-size: 11px; font-weight: 700; }
+        .header-links a { text-decoration: none; }
+        main { width: min(660px, calc(100% - 40px)); margin: 0 auto; padding: 48px 0 74px; }
+        .eyebrow { margin: 0 0 10px; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
+        h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 40px; font-weight: 400; line-height: 1.08; }
+        .intro { margin: 10px 0 28px; color: var(--muted); font-size: 12px; line-height: 1.65; }
+        .setup-form { padding-top: 21px; border-top: 1px solid var(--ink); }
+        .field { margin-bottom: 17px; }
+        label { display: block; margin-bottom: 7px; font-size: 11px; font-weight: 700; }
+        input, select, textarea { display: block; width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 2px; color: var(--ink); background: var(--white); font-size: 12px; }
+        textarea { min-height: 110px; resize: vertical; line-height: 1.55; }
+        input:focus, select:focus, textarea:focus { outline: 2px solid rgba(24, 56, 46, 0.2); border-color: var(--forest); }
+        .hint { margin: 6px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+        .submit { min-height: 44px; padding: 0 14px; border: 1px solid var(--ink); border-radius: 3px; color: var(--white); background: var(--ink); cursor: pointer; font-size: 11px; font-weight: 700; }
+        .submit:hover { color: var(--ink); background: var(--lime); }
+        .submit:disabled { opacity: 0.6; cursor: wait; }
+        .feedback { min-height: 18px; margin: 11px 0 0; color: #8b3b2f; font-size: 11px; line-height: 1.5; }
+        .feedback.success { color: var(--forest); }
+        [hidden] { display: none !important; }
+        @media (max-width: 540px) { .site-header { min-height: 64px; padding: 10px 18px; } .header-links { gap: 12px; font-size: 10px; } main { width: calc(100% - 36px); padding-top: 34px; } h1 { font-size: 34px; } }
+    </style>
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-left"><a class="back-link" href="/dashboard" aria-label="Back to buyer profile">←</a><a class="brand" href="/marketplace" aria-label="Z Namibia marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Namibia</span></a></div>
+        <nav class="header-links" aria-label="Seller navigation"><a href="/marketplace">Marketplace</a><a href="/dashboard">Buyer profile</a></nav>
+    </header>
+    <main>
+        <p class="eyebrow">Start selling on Z</p>
+        <h1>Set up your storefront</h1>
+        <p class="intro">Create your shop profile first. You can add products, manage orders, and update delivery settings from your seller dashboard.</p>
+        <form class="setup-form" id="shop-form">
+            <div class="field">
+                <label for="shop-name">Public shop name</label>
+                <input id="shop-name" name="name" maxlength="80" autocomplete="organization" placeholder="e.g. Desert Bloom Studio" required>
+            </div>
+            <div class="field">
+                <label for="shop-town">Business town</label>
+                <select id="shop-town" name="town" required>
+                    <option value="">Choose your town</option>
+                    <option>Windhoek</option>
+                    <option>Swakopmund</option>
+                    <option>Walvis Bay</option>
+                    <option>Oshakati</option>
+                    <option>Rundu</option>
+                    <option>Otjiwarongo</option>
+                    <option>Other</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="shop-description">About your shop</label>
+                <textarea id="shop-description" name="description" maxlength="500" placeholder="Tell shoppers what you make or sell." required></textarea>
+                <p class="hint">This description appears on your public storefront.</p>
+            </div>
+            <button class="submit" id="create-shop" type="submit">Create storefront</button>
+            <p class="feedback" id="shop-message" role="status" aria-live="polite"></p>
+        </form>
+    </main>
+    <script>
+        const shopForm = document.querySelector("#shop-form");
+        const shopMessage = document.querySelector("#shop-message");
+        const createShopButton = document.querySelector("#create-shop");
+
+        async function requestJson(url, options = {}) {
+            const response = await fetch(url, options);
+            let result;
+            try { result = await response.json(); } catch { throw new Error("The server returned an invalid response."); }
+            if (!response.ok) throw new Error(result.error || "Could not create your storefront.");
+            return result;
+        }
+
+        async function checkExistingShop() {
+            try {
+                const result = await requestJson("/api/seller/shop");
+                if (result.shop) window.location.replace("/sell/dashboard");
+            } catch (error) {
+                if (error.message.includes("Sign in")) window.location.replace("/login");
+                else shopMessage.textContent = error.message;
+            }
+        }
+
+        shopForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            createShopButton.disabled = true;
+            shopMessage.textContent = "Creating your storefront...";
+            shopMessage.classList.remove("success");
+            try {
+                await requestJson("/api/seller/shop", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        name: document.querySelector("#shop-name").value,
+                        town: document.querySelector("#shop-town").value,
+                        description: document.querySelector("#shop-description").value
+                    })
+                });
+                shopMessage.classList.add("success");
+                shopMessage.textContent = "Your storefront is ready. Opening your seller dashboard...";
+                window.location.assign("/sell/dashboard");
+            } catch (error) {
+                shopMessage.textContent = error.message;
+                createShopButton.disabled = false;
+            }
+        });
+
+        checkExistingShop();
+    </script>
+</body>
+</html>

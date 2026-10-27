@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f4f1e8">
+    <title>Checkout | Z Namibia</title>
+    <style>
+        :root { color-scheme: light; --ink: #17231e; --muted: #68736d; --paper: #f4f1e8; --white: #fffefa; --lime: #d8f36a; --forest: #18382e; --line: #d9d9cf; }
+        * { box-sizing: border-box; }
+        body { min-width: 320px; margin: 0; color: var(--ink); background: var(--paper); font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
+        button, input, select { font: inherit; }
+        a { color: inherit; }
+        .site-header { display: flex; min-height: 72px; align-items: center; justify-content: space-between; gap: 18px; padding: 12px max(24px, calc((100vw - 1040px) / 2)); border-bottom: 1px solid var(--line); }
+        .header-left { display: inline-flex; align-items: center; gap: 12px; }
+        .back-button {
+            display: inline-grid;
+            place-items: center;
+            width: 28px;
+            height: 28px;
+            padding: 0;
+            border: 1px solid var(--ink);
+            border-radius: 999px;
+            background: transparent;
+            color: var(--ink);
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+            text-decoration: none;
+        }
+        .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+        .brand-mark { display: grid; width: 36px; aspect-ratio: 1; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; font-family: Georgia, serif; font-size: 22px; letter-spacing: 0; }
+        .site-header nav { display: flex; gap: 18px; font-size: 12px; font-weight: 700; }
+        .site-header nav a { text-decoration: none; }
+        main { width: min(1040px, calc(100% - 48px)); margin: 0 auto; padding: 44px 0 70px; }
+        .eyebrow { margin: 0 0 10px; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
+        h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 43px; font-weight: 400; letter-spacing: 0; }
+        .intro { margin: 9px 0 28px; color: var(--muted); font-size: 12px; }
+        .checkout-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 55px; align-items: start; }
+        .section-heading { margin: 0 0 15px; padding-bottom: 10px; border-bottom: 1px solid var(--ink); font-family: Georgia, serif; font-size: 23px; font-weight: 400; letter-spacing: 0; }
+        .town-field { max-width: 420px; margin: 0 0 22px; }
+        label { display: block; margin-bottom: 7px; font-size: 11px; font-weight: 700; }
+        select { width: 100%; height: 45px; padding: 0 12px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: var(--white); font-size: 12px; }
+        .help { max-width: 480px; margin: 0 0 24px; color: var(--muted); font-size: 10px; line-height: 1.7; }
+        .line-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+        .line-item strong { font-size: 11px; }
+        .line-item p { margin: 4px 0 0; color: var(--muted); font-size: 10px; }
+        .line-item .seller-name, .seller-breakdown h3 { color: #d9772f; font-weight: 800; }
+        .money { white-space: nowrap; font-family: Georgia, serif; font-size: 14px; }
+        .summary { position: sticky; top: 18px; padding-top: 15px; border-top: 1px solid var(--ink); }
+        .summary h2 { margin: 0 0 14px; font-family: Georgia, serif; font-size: 22px; font-weight: 400; letter-spacing: 0; }
+        .seller-breakdown { margin-bottom: 16px; }
+        .seller-breakdown article { padding: 10px 0; border-bottom: 1px solid var(--line); }
+        .seller-breakdown h3 { margin: 0 0 7px; font-size: 11px; }
+        .summary-row { display: flex; justify-content: space-between; gap: 10px; margin: 10px 0; color: var(--muted); font-size: 11px; }
+        .summary-total { display: flex; justify-content: space-between; gap: 12px; margin: 18px 0 0; padding-top: 13px; border-top: 1px solid var(--line); font-size: 12px; font-weight: 700; }
+        .summary-total strong { font-family: Georgia, serif; font-size: 21px; font-weight: 400; }
+        .demo-note { margin: 17px 0 0; padding: 12px; border-left: 3px solid var(--lime); color: var(--muted); background: #e9edda; font-size: 10px; line-height: 1.7; }
+        .primary-button { display: flex; width: 100%; min-height: 46px; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding: 0 13px; border: 1px solid var(--ink); border-radius: 3px; color: var(--white); background: var(--ink); cursor: pointer; font-size: 11px; font-weight: 700; }
+        .primary-button:hover:not(:disabled) { color: var(--ink); background: var(--lime); }
+        .primary-button:disabled { opacity: 0.55; cursor: not-allowed; }
+        .secondary-button { display: block; width: 100%; min-height: 44px; margin-top: 10px; border: 1px solid var(--forest); border-radius: 3px; color: var(--forest); background: transparent; cursor: pointer; font-size: 11px; font-weight: 700; }
+        .secondary-button:hover { background: #edf0df; }
+        .message { min-height: 20px; margin: 12px 0 0; color: #8b3b2f; font-size: 11px; line-height: 1.5; }
+        .message.success { color: #397d54; }
+        .empty { padding: 28px 0; color: var(--muted); font-size: 12px; line-height: 1.7; }
+        [hidden] { display: none !important; }
+        @media (max-width: 760px) {
+            .site-header { padding: 12px 18px; }
+            main { width: calc(100% - 36px); padding-top: 34px; }
+            h1 { font-size: 36px; }
+            .checkout-grid { grid-template-columns: 1fr; gap: 32px; }
+            .summary { position: static; }
+        }
+    </style>
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-left">
+            <a class="back-button" href="/cart" aria-label="Back to cart">←</a>
+            <a class="brand" href="/marketplace" aria-label="Z Namibia marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Namibia</span></a>
+        </div>
+        <nav><a href="/cart">Back to cart</a><a href="/dashboard">My account</a></nav>
+    </header>
+    <main>
+        <p class="eyebrow">One order, separate local sellers</p>
+        <h1>Review your order</h1>
+        <p class="intro">Shipping is calculated separately for each seller.</p>
+        <div class="checkout-grid" id="checkout-grid" hidden>
+            <section aria-labelledby="delivery-heading">
+                <h2 class="section-heading" id="delivery-heading">Delivery area</h2>
+                <div class="town-field">
+                    <label for="delivery-town">Deliver to town</label>
+                    <select id="delivery-town">
+                        <option value="">Choose a town</option>
+                        <option>Windhoek</option>
+                        <option>Swakopmund</option>
+                        <option>Walvis Bay</option>
+                        <option>Oshakati</option>
+                        <option>Rundu</option>
+                        <option>Otjiwarongo</option>
+                        <option>Other</option>
+                    </select>
+                </div>
+                <p class="help">Each seller sets flat local, main-hub, and remote delivery rates. Free-shipping thresholds apply to that seller’s product subtotal only.</p>
+                <h2 class="section-heading">Items</h2>
+                <div id="checkout-items"></div>
+                <p class="message" id="checkout-message" role="status" aria-live="polite"></p>
+            </section>
+            <aside class="summary" aria-labelledby="summary-heading">
+                <h2 id="summary-heading">Order summary</h2>
+                <div class="seller-breakdown" id="seller-breakdown"></div>
+                <div class="summary-row"><span>Products</span><span id="products-subtotal">N$ 0.00</span></div>
+                <div class="summary-row"><span>Delivery</span><span id="shipping-total">N$ 0.00</span></div>
+                <div class="summary-total"><span>Total</span><strong id="order-total">N$ 0.00</strong></div>
+                <p class="demo-note">Prototype only: this creates a test order and simulates payment. It does not charge a card or move money. Seller balances remain ledger records for manual review.</p>
+                <button class="primary-button" id="create-order" type="button" disabled><span>Create test order</span><span aria-hidden="true">&#8594;</span></button>
+                <button class="secondary-button" id="confirm-payment" type="button" hidden>Simulate test payment (no charge)</button>
+                <p class="message" id="payment-message" role="status" aria-live="polite"></p>
+            </aside>
+        </div>
+        <section class="empty" id="empty-state" hidden>
+            Your cart is empty or its products are no longer available. <a href="/marketplace">Return to the marketplace.</a>
+        </section>
+    </main>
+    <script>
+        const cartKey = "z_cart";
+        const priceFormat = new Intl.NumberFormat("en-NA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const checkoutGrid = document.querySelector("#checkout-grid");
+        const checkoutItems = document.querySelector("#checkout-items");
+        const checkoutMessage = document.querySelector("#checkout-message");
+        const paymentMessage = document.querySelector("#payment-message");
+        const createOrderButton = document.querySelector("#create-order");
+        const confirmPaymentButton = document.querySelector("#confirm-payment");
+        let cart = [];
+        let quote = null;
+        let activeOrder = null;
+        let quoteRequest = 0;
+
+        function readCart() {
+            try {
+                const items = JSON.parse(localStorage.getItem(cartKey) || "[]");
+                return Array.isArray(items) ? items.filter((item) => typeof item.id === "string" && Number.isInteger(item.quantity) && item.quantity > 0 && item.quantity <= 99) : [];
+            } catch {
+                return [];
+            }
+        }
+
+        function money(amount) {
+            return `N$ ${priceFormat.format(amount)}`;
+        }
+
+        async function requestJson(url, options) {
+            const response = await fetch(url, options);
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || "Checkout request failed.");
+            return result;
+        }
+
+        async function loadCart() {
+            cart = readCart();
+            if (!cart.length) {
+                document.querySelector("#empty-state").hidden = false;
+                checkoutGrid.hidden = true;
+                return;
+            }
+
+            const products = await Promise.all(cart.map(async (item) => {
+                try {
+                    const result = await requestJson(`/api/products/${encodeURIComponent(item.id)}`);
+                    return { ...item, product: result.product };
+                } catch {
+                    return null;
+                }
+            }));
+            const available = products.filter(Boolean);
+            if (available.length !== cart.length) {
+                cart = available.map(({ id, quantity }) => ({ id, quantity }));
+                localStorage.setItem(cartKey, JSON.stringify(cart));
+                checkoutMessage.textContent = "Unavailable items were removed from your cart. Review the updated cart before continuing.";
+            }
+            if (!cart.length) {
+                document.querySelector("#empty-state").hidden = false;
+                checkoutGrid.hidden = true;
+                return;
+            }
+
+            checkoutItems.replaceChildren();
+            available.forEach((item) => {
+                const row = document.createElement("div");
+                row.className = "line-item";
+                const detail = document.createElement("div");
+                const title = document.createElement("strong");
+                title.textContent = item.product.title;
+                detail.append(title);
+                const seller = document.createElement("p");
+                const sellerName = document.createElement("span");
+                sellerName.className = "seller-name";
+                sellerName.textContent = item.product.shop.name;
+                seller.append(sellerName, document.createTextNode(` · Qty ${item.quantity}`));
+                detail.append(seller);
+                row.append(detail);
+                const total = document.createElement("span");
+                total.className = "money";
+                total.textContent = money(item.product.priceNAD * item.quantity);
+                row.append(total);
+                checkoutItems.append(row);
+                if (item.product.stock !== null && item.quantity > item.product.stock) {
+                    checkoutMessage.textContent = `${item.product.title} only has ${item.product.stock} in stock. Update your cart to continue.`;
+                }
+            });
+            checkoutGrid.hidden = false;
+            await refreshQuote();
+        }
+
+        async function refreshQuote() {
+            const requestId = ++quoteRequest;
+            const deliveryTown = document.querySelector("#delivery-town").value;
+            quote = null;
+            createOrderButton.disabled = true;
+            document.querySelector("#seller-breakdown").replaceChildren();
+            if (!deliveryTown) {
+                document.querySelector("#shipping-total").textContent = "Choose a town";
+                document.querySelector("#order-total").textContent = "N$ --";
+                return;
+            }
+
+            try {
+                const result = await requestJson("/api/orders/quote", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ items: cart, deliveryTown })
+                });
+                if (requestId !== quoteRequest) return;
+                quote = result;
+                const breakdown = document.querySelector("#seller-breakdown");
+                result.sellerOrders.forEach((sellerOrder) => {
+                    const section = document.createElement("article");
+                    const name = document.createElement("h3");
+                    name.textContent = sellerOrder.shopName;
+                    section.append(name);
+                    const products = document.createElement("div");
+                    products.className = "summary-row";
+                    products.textContent = `Products · ${sellerOrder.sellerTown}`;
+                    const productsAmount = document.createElement("span");
+                    productsAmount.textContent = money(sellerOrder.productsSubtotalNAD);
+                    products.append(productsAmount);
+                    section.append(products);
+                    const shipping = document.createElement("div");
+                    shipping.className = "summary-row";
+                    shipping.textContent = `Delivery · ${sellerOrder.shippingZone}`;
+                    const shippingAmount = document.createElement("span");
+                    shippingAmount.textContent = money(sellerOrder.shippingNAD);
+                    shipping.append(shippingAmount);
+                    section.append(shipping);
+                    breakdown.append(section);
+                });
+                document.querySelector("#products-subtotal").textContent = money(result.productsSubtotalNAD);
+                document.querySelector("#shipping-total").textContent = money(result.shippingNAD);
+                document.querySelector("#order-total").textContent = money(result.totalNAD);
+                createOrderButton.disabled = false;
+                checkoutMessage.textContent = "";
+            } catch (error) {
+                if (requestId !== quoteRequest) return;
+                checkoutMessage.textContent = error.message;
+                document.querySelector("#shipping-total").textContent = "N$ --";
+                document.querySelector("#order-total").textContent = "N$ --";
+            }
+        }
+
+        document.querySelector("#delivery-town").addEventListener("change", refreshQuote);
+        createOrderButton.addEventListener("click", async () => {
+            if (!quote || activeOrder) return;
+            createOrderButton.disabled = true;
+            try {
+                const order = await requestJson("/api/orders", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ items: cart, deliveryTown: document.querySelector("#delivery-town").value })
+                });
+                activeOrder = order;
+                paymentMessage.textContent = `Test order ${order.orderNumber} created. Stock is reserved until ${new Date(order.reservationExpiresAt).toLocaleTimeString()}. No money has been charged.`;
+                paymentMessage.classList.add("success");
+                confirmPaymentButton.hidden = false;
+                createOrderButton.querySelector("span").textContent = "Test order created";
+            } catch (error) {
+                paymentMessage.textContent = error.message;
+                createOrderButton.disabled = false;
+            }
+        });
+
+        confirmPaymentButton.addEventListener("click", async () => {
+            if (!activeOrder) return;
+            confirmPaymentButton.disabled = true;
+            try {
+                const result = await requestJson(`/api/orders/${encodeURIComponent(activeOrder.orderNumber)}/mock-payment`, { method: "POST" });
+                localStorage.removeItem(cartKey);
+                confirmPaymentButton.hidden = true;
+                paymentMessage.textContent = `${result.message} Your order is recorded for demonstration only.`;
+                paymentMessage.classList.add("success");
+                document.querySelector("#checkout-items").replaceChildren();
+                document.querySelector("#seller-breakdown").replaceChildren();
+                createOrderButton.hidden = true;
+            } catch (error) {
+                paymentMessage.textContent = error.message;
+                confirmPaymentButton.disabled = false;
+            }
+        });
+
+        loadCart().catch((error) => {
+            document.querySelector("#empty-state").hidden = false;
+            checkoutMessage.textContent = error.message;
+        });
+    </script>
+</body>
+</html>

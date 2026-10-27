@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f4f1e8">
+    <title>Shop Local | Z Namibia</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --ink: #17231e;
+            --muted: #68736d;
+            --paper: #f4f1e8;
+            --white: #fffefa;
+            --lime: #d8f36a;
+            --forest: #18382e;
+            --line: #d9d9cf;
+        }
+
+        * { box-sizing: border-box; }
+        body { min-width: 320px; margin: 0; color: var(--ink); background: var(--paper); font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
+        button, input, select { font: inherit; }
+        a { color: inherit; }
+
+        .site-header { display: flex; min-height: 74px; align-items: center; justify-content: space-between; gap: 24px; padding: 12px max(24px, calc((100vw - 1180px) / 2)); border-bottom: 1px solid var(--line); background: var(--paper); }
+        .brand { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 10px; text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+        .brand-mark { display: grid; width: 36px; aspect-ratio: 1; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; font-family: Georgia, serif; font-size: 22px; letter-spacing: 0; }
+        .header-search { display: flex; width: min(440px, 42vw); }
+        .header-search input { width: 100%; min-width: 0; height: 42px; padding: 0 13px; border: 1px solid var(--line); border-right: 0; border-radius: 3px 0 0 3px; outline: none; background: var(--white); font-size: 12px; }
+        .header-search input:focus { border-color: var(--ink); }
+        .header-search button { min-width: 74px; border: 1px solid var(--ink); border-radius: 0 3px 3px 0; color: var(--white); background: var(--ink); cursor: pointer; font-size: 12px; font-weight: 700; }
+        .header-links { display: flex; flex: 0 0 auto; align-items: center; gap: 18px; font-size: 12px; font-weight: 700; }
+        .header-links a { text-decoration: none; }
+        .header-links a:hover { text-decoration: underline; text-underline-offset: 4px; }
+        .sell-link { padding: 10px 13px; border: 1px solid var(--ink); border-radius: 3px; }
+        .cart-count { display: inline-grid; min-width: 18px; height: 18px; margin-left: 3px; padding: 0 4px; place-items: center; border-radius: 50%; background: var(--lime); font-size: 10px; }
+
+        main { width: min(1180px, calc(100% - 48px)); margin: 0 auto; }
+        .hero { display: grid; min-height: 305px; grid-template-columns: 1.2fr 0.8fr; margin: 30px 0 45px; color: var(--white); background: var(--forest); }
+        .hero-copy { align-self: center; padding: 40px 52px; }
+        .hero-copy > .eyebrow { animation: hero-slide-in 480ms ease-out 70ms both; }
+        .hero-copy h1 { animation: hero-slide-in 580ms ease-out 150ms both; }
+        .hero-copy > p:last-child { animation: hero-slide-in 580ms ease-out 240ms both; }
+        @keyframes hero-slide-in {
+            from { opacity: 0; transform: translateX(-18px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .eyebrow { margin: 0 0 14px; color: var(--lime); font-size: 10px; font-weight: 700; letter-spacing: 0.17em; text-transform: uppercase; }
+        .hero h1 { max-width: 620px; margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 56px; font-weight: 400; letter-spacing: 0; line-height: 0.99; }
+        .hero h1 span { color: var(--lime); font-style: italic; }
+        .hero-copy > p:last-child { max-width: 450px; margin: 18px 0 0; color: #dbe5dd; font-size: 14px; line-height: 1.7; }
+        .hero-art { position: relative; display: grid; min-height: 305px; overflow: hidden; place-items: center; color: var(--ink); background-color: var(--lime); background-image: radial-gradient(rgba(23, 35, 30, 0.52) 0.7px, transparent 0.7px); background-position: 8px 8px; background-size: 18px 18px; }
+        .hero-art::before { position: absolute; inset: 0; background: linear-gradient(120deg, rgba(216, 243, 106, 0.98), rgba(216, 243, 106, 0.7)); content: ""; }
+        .art-letter { position: relative; z-index: 1; display: grid; width: 188px; aspect-ratio: 1; place-items: center; border: 1px solid rgba(23, 35, 30, 0.36); border-radius: 50%; font-family: Georgia, serif; font-size: 140px; line-height: 1; }
+        .art-note { position: absolute; z-index: 1; right: 20px; bottom: 18px; left: 20px; display: flex; justify-content: space-between; gap: 10px; font-size: 9px; font-weight: 700; letter-spacing: 0.13em; text-transform: uppercase; }
+
+        .shop-heading { display: flex; align-items: end; justify-content: space-between; gap: 18px; margin-bottom: 19px; }
+        .shop-heading h2 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 34px; font-weight: 400; letter-spacing: 0; }
+        .shop-heading p { margin: 7px 0 0; color: var(--muted); font-size: 12px; }
+        .location-label { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+        .filters { display: grid; grid-template-columns: minmax(200px, 1fr) 190px 190px auto; gap: 10px; padding: 15px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+        .filters input, .filters select { width: 100%; min-width: 0; height: 42px; padding: 0 12px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: var(--white); font-size: 12px; }
+        .filters button { height: 42px; padding: 0 15px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: transparent; cursor: pointer; font-size: 12px; font-weight: 700; }
+        .filters button:hover { border-color: var(--ink); }
+
+        .market-layout { display: block; }
+        .results-line { display: flex; min-height: 44px; align-items: center; justify-content: space-between; color: var(--muted); font-size: 11px; }
+        .products { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px 15px; padding-bottom: 56px; }
+        .product {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            height: 100%;
+            border: 1px solid var(--line);
+            background: var(--white);
+        }
+        .product-link { display: block; height: 100%; color: inherit; text-decoration: none; }
+        .product-link:focus-visible { outline: 2px solid #397d54; outline-offset: 3px; }
+        .product-media { position: relative; display: grid; aspect-ratio: 4 / 3; overflow: hidden; place-items: center; background: #e5ecc9; }
+        .product-media img { width: 100%; height: 100%; object-fit: cover; }
+        .product-fallback { color: var(--forest); font-family: Georgia, serif; font-size: 62px; }
+        .product-category { position: absolute; top: 10px; left: 10px; padding: 6px 8px; color: var(--ink); background: var(--lime); font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+        .product-info {
+            display: flex;
+            flex: 1 1 auto;
+            flex-direction: column;
+            padding: 14px;
+        }
+        .product-info h3 { margin: 0; overflow-wrap: anywhere; font-size: 14px; font-weight: 700; line-height: 1.4; }
+        .product-shop { display: inline-block; margin: 7px 0 0; color: #d9772f; font-size: 11px; font-weight: 700; text-decoration: none; }
+        .product-shop:hover { text-decoration: underline; text-underline-offset: 3px; }
+        .product-description { display: -webkit-box; min-height: 36px; margin: 9px 0 12px; overflow: hidden; color: var(--muted); font-size: 11px; line-height: 1.6; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+        .product-bottom {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-top: auto;
+            padding-top: 10px;
+            border-top: 1px solid var(--line);
+        }
+        .product-price { font-family: Georgia, serif; font-size: 18px; }
+        .product-town { color: var(--muted); font-size: 10px; }
+        .empty-state { grid-column: 1 / -1; padding: 42px 20px; border: 1px dashed #a8b19e; text-align: center; }
+        .empty-state h3 { margin: 0; font-family: Georgia, serif; font-size: 24px; font-weight: 400; }
+        .empty-state p { max-width: 420px; margin: 10px auto 0; color: var(--muted); font-size: 12px; line-height: 1.7; }
+        .error-message { grid-column: 1 / -1; color: #8b3b2f; font-size: 13px; }
+        .cart-preview { position: fixed; z-index: 20; top: 50%; right: 16px; width: 286px; max-height: calc(100vh - 32px); transform: translateY(-50%); border: 1px solid var(--line); background: var(--white); box-shadow: 0 12px 36px rgba(23, 35, 30, 0.18); }
+        .cart-preview details[open] { padding-bottom: 15px; }
+        .cart-preview summary { display: flex; min-height: 58px; align-items: center; justify-content: space-between; gap: 10px; padding: 0 15px; border-bottom: 1px solid var(--line); cursor: pointer; font-size: 13px; font-weight: 700; list-style: none; }
+        .cart-preview summary::-webkit-details-marker { display: none; }
+        .preview-summary-meta { color: var(--muted); font-size: 10px; font-weight: 400; }
+        .preview-items { max-height: 300px; overflow-y: auto; padding: 0 15px; }
+        .preview-item { display: grid; grid-template-columns: 42px minmax(0, 1fr); gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+        .preview-image { display: grid; width: 42px; aspect-ratio: 1; overflow: hidden; place-items: center; color: var(--forest); background: #e5ecc9; font-family: Georgia, serif; font-size: 21px; }
+        .preview-image img { width: 100%; height: 100%; object-fit: cover; }
+        .preview-name { display: block; overflow: hidden; color: var(--ink); font-size: 11px; font-weight: 700; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
+        .preview-name:hover { text-decoration: underline; text-underline-offset: 3px; }
+        .preview-item-meta { display: flex; justify-content: space-between; gap: 8px; margin-top: 5px; color: var(--muted); font-size: 10px; }
+        .preview-empty { padding: 17px 15px; color: var(--muted); font-size: 11px; line-height: 1.6; }
+        .preview-total { display: flex; justify-content: space-between; gap: 12px; margin: 0 15px; padding: 14px 0; border-top: 1px solid var(--ink); font-size: 11px; font-weight: 700; }
+        .preview-total strong { font-family: Georgia, serif; font-size: 17px; font-weight: 400; white-space: nowrap; }
+        .preview-link { display: flex; min-height: 42px; align-items: center; justify-content: space-between; margin: 0 15px; padding: 0 12px; border: 1px solid var(--ink); border-radius: 3px; color: var(--white); background: var(--ink); font-size: 11px; font-weight: 700; text-decoration: none; }
+        .preview-link:hover { color: var(--ink); background: var(--lime); }
+        .preview-note { margin: 10px 15px 0; color: var(--muted); font-size: 9px; line-height: 1.5; }
+        footer { display: flex; justify-content: space-between; gap: 20px; padding: 22px max(24px, calc((100vw - 1180px) / 2)); border-top: 1px solid var(--line); color: var(--muted); font-size: 10px; }
+
+        @media (max-width: 880px) {
+            .site-header { flex-wrap: wrap; }
+            .header-search { order: 3; width: 100%; }
+            .hero h1 { font-size: 48px; }
+            .filters { grid-template-columns: 1fr 1fr; }
+            .products { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        }
+
+        @media (max-width: 620px) {
+            .site-header { gap: 12px; padding: 12px 18px; }
+            .header-links { gap: 10px; font-size: 11px; }
+            .sell-link { padding: 8px 9px; }
+            main { width: calc(100% - 36px); }
+            .cart-preview { top: auto; right: 12px; bottom: 12px; width: min(320px, calc(100vw - 24px)); max-height: calc(100vh - 24px); transform: none; }
+            .cart-preview:not([open]) { width: min(250px, calc(100vw - 24px)); }
+            .preview-items { max-height: 28vh; }
+            .hero { grid-template-columns: 1fr; margin: 20px 0 35px; }
+            .hero-copy { padding: 32px 25px; }
+            .hero h1 { font-size: 43px; }
+            .hero-art { min-height: 205px; }
+            .art-letter { width: 135px; font-size: 100px; }
+            .shop-heading { align-items: start; flex-direction: column; }
+            .shop-heading h2 { font-size: 30px; }
+            .filters { grid-template-columns: 1fr 1fr; gap: 8px; }
+            .products { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 9px; }
+            .product-info { padding: 11px; }
+            .product-info h3 { font-size: 12px; }
+            .product-price { font-size: 16px; }
+            footer { padding: 18px; }
+        }
+
+        @media (max-width: 380px) {
+            .brand { font-size: 10px; }
+            .header-links { gap: 7px; font-size: 10px; }
+            .sell-link { padding: 7px; }
+            .filters { grid-template-columns: 1fr; }
+            .products { grid-template-columns: 1fr; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+        }
+    </style>
+</head>
+<body>
+    <header class="site-header">
+        <a class="brand" href="/marketplace" aria-label="Z Namibia marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Namibia</span></a>
+        <form class="header-search" id="search-form" role="search">
+            <input id="search-input" type="search" placeholder="Search products or shops" aria-label="Search products or shops">
+            <button type="submit">Search</button>
+        </form>
+        <nav class="header-links" aria-label="Main navigation">
+            <a href="/login" id="account-link">Sign in</a>
+            <a href="/shops">Shops</a>
+            <a href="/cart">Cart <span class="cart-count" id="cart-count">0</span></a>
+            <a class="sell-link" href="/sell">Sell on Z</a>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero" aria-labelledby="hero-title">
+            <div class="hero-copy">
+                <p class="eyebrow">Namibia, made and sold</p>
+                <h1 id="hero-title">Good things, <span>closer to home.</span></h1>
+                <p>Discover independent Namibian shops and products made, found, and sold across the country.</p>
+            </div>
+            <div class="hero-art" aria-label="Z marketplace brand artwork">
+                <span class="art-letter" aria-hidden="true">Z</span>
+                <div class="art-note"><span>Shop local</span><span>Namibia / NAD</span></div>
+            </div>
+        </section>
+
+        <section aria-labelledby="shop-title">
+            <div class="shop-heading">
+                <div>
+                    <h2 id="shop-title">Find your next good thing</h2>
+                    <p>Browse independent sellers from around Namibia.</p>
+                </div>
+                <span class="location-label">Prices in Namibian dollars</span>
+            </div>
+            <form class="filters" id="filter-form">
+                <input id="filter-query" type="search" placeholder="What are you looking for?" aria-label="Search listings">
+                <select id="filter-category" aria-label="Filter by category">
+                    <option value="">All categories</option>
+                    <option>Art &amp; Crafts</option>
+                    <option>Beauty</option>
+                    <option>Electronics</option>
+                    <option>Fashion</option>
+                    <option>Food</option>
+                    <option>Home</option>
+                </select>
+                <select id="filter-town" aria-label="Filter by town">
+                    <option value="">All towns</option>
+                    <option>Windhoek</option>
+                    <option>Swakopmund</option>
+                    <option>Walvis Bay</option>
+                    <option>Oshakati</option>
+                    <option>Rundu</option>
+                    <option>Otjiwarongo</option>
+                    <option>Other</option>
+                </select>
+                <button type="button" id="clear-filters">Clear</button>
+            </form>
+            <div class="market-layout">
+                <section class="catalog-column" aria-label="Product listings">
+                    <div class="results-line"><span id="result-count" aria-live="polite">Loading listings...</span><span>Supporting local sellers</span></div>
+                    <div class="products" id="products" aria-live="polite"></div>
+                </section>
+                <aside class="cart-preview" aria-label="Cart preview">
+                    <details id="cart-preview-details">
+                        <summary><span>Your cart</span><span class="preview-summary-meta" id="preview-summary-meta">0 items · N$ 0.00</span></summary>
+                        <div class="preview-items" id="preview-items"><p class="preview-empty">Your cart is empty. Add a product to see it here.</p></div>
+                        <div class="preview-total"><span>Subtotal</span><strong id="preview-subtotal">N$ 0.00</strong></div>
+                        <a class="preview-link" href="/cart"><span>View full cart</span><span aria-hidden="true">&#8594;</span></a>
+                        <p class="preview-note">Checkout is not available yet.</p>
+                    </details>
+                </aside>
+            </div>
+        </section>
+    </main>
+
+    <footer><span>Z Namibia</span><span>Independent shops. Right here at home.</span></footer>
+
+    <script>
+        const productGrid = document.querySelector("#products");
+        const resultCount = document.querySelector("#result-count");
+        const queryInput = document.querySelector("#filter-query");
+        const categorySelect = document.querySelector("#filter-category");
+        const townSelect = document.querySelector("#filter-town");
+        const accountLink = document.querySelector("#account-link");
+        const sellLink = document.querySelector(".sell-link");
+        const searchInput = document.querySelector("#search-input");
+        const cartCount = document.querySelector("#cart-count");
+        const previewItems = document.querySelector("#preview-items");
+        const previewMeta = document.querySelector("#preview-summary-meta");
+        const previewSubtotal = document.querySelector("#preview-subtotal");
+        const previewDetails = document.querySelector("#cart-preview-details");
+        const mobileCartQuery = window.matchMedia("(max-width: 620px)");
+        const priceFormat = new Intl.NumberFormat("en-NA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const cartKey = "z_cart";
+        let previewRequest = 0;
+        let currentUserHasSellerShop = false;
+
+        previewDetails.open = !mobileCartQuery.matches;
+        mobileCartQuery.addEventListener("change", (event) => {
+            previewDetails.open = !event.matches;
+        });
+
+        function addText(parent, tagName, className, text) {
+            const element = document.createElement(tagName);
+            if (className) element.className = className;
+            element.textContent = text;
+            parent.append(element);
+            return element;
+        }
+
+        function renderProduct(product) {
+            const card = document.createElement("article");
+            card.className = "product";
+            const imageLink = document.createElement("a");
+            imageLink.className = "product-link";
+            imageLink.href = `/product/${encodeURIComponent(product.id)}`;
+            const media = document.createElement("div");
+            media.className = "product-media";
+            if (product.imageUrl) {
+                const image = document.createElement("img");
+                image.src = product.imageUrl;
+                image.alt = product.title;
+                image.loading = "lazy";
+                image.addEventListener("error", () => {
+                    image.remove();
+                    addText(media, "span", "product-fallback", "Z");
+                }, { once: true });
+                media.append(image);
+            } else {
+                addText(media, "span", "product-fallback", "Z");
+            }
+            addText(media, "span", "product-category", product.category);
+            imageLink.append(media);
+            card.append(imageLink);
+
+            const info = document.createElement("div");
+            info.className = "product-info";
+            const titleLink = document.createElement("a");
+            titleLink.className = "product-link";
+            titleLink.href = `/product/${encodeURIComponent(product.id)}`;
+            addText(titleLink, "h3", "", product.title);
+            info.append(titleLink);
+            const shopLink = document.createElement("a");
+            shopLink.className = "product-shop";
+            shopLink.href = `/shops/${encodeURIComponent(product.shopSlug)}`;
+            shopLink.textContent = product.shopName;
+            info.append(shopLink);
+            addText(info, "p", "product-description", product.description);
+            const bottom = document.createElement("div");
+            bottom.className = "product-bottom";
+            addText(bottom, "span", "product-price", `N$ ${priceFormat.format(product.priceNAD)}`);
+            addText(bottom, "span", "product-town", product.town);
+            info.append(bottom);
+            card.append(info);
+            return card;
+        }
+
+        function readCart() {
+            try {
+                const cart = JSON.parse(localStorage.getItem(cartKey) || "[]");
+                return Array.isArray(cart)
+                    ? cart.filter((item) => typeof item.id === "string" && Number.isInteger(item.quantity) && item.quantity > 0 && item.quantity <= 99).slice(0, 100)
+                    : [];
+            } catch {
+                return [];
+            }
+        }
+
+        function renderPreviewItem(item) {
+            const row = document.createElement("div");
+            row.className = "preview-item";
+            const imageWrap = document.createElement("div");
+            imageWrap.className = "preview-image";
+            if (item.product.imageUrl) {
+                const image = document.createElement("img");
+                image.src = item.product.imageUrl;
+                image.alt = "";
+                image.loading = "lazy";
+                image.addEventListener("error", () => { image.remove(); imageWrap.textContent = "Z"; }, { once: true });
+                imageWrap.append(image);
+            } else {
+                imageWrap.textContent = "Z";
+            }
+            row.append(imageWrap);
+            const detail = document.createElement("div");
+            const link = document.createElement("a");
+            link.className = "preview-name";
+            link.href = `/product/${encodeURIComponent(item.product.id)}`;
+            link.textContent = item.product.title;
+            detail.append(link);
+            const meta = document.createElement("div");
+            meta.className = "preview-item-meta";
+            addText(meta, "span", "", `Qty ${item.quantity}`);
+            addText(meta, "span", "", `N$ ${priceFormat.format(item.product.priceNAD * item.quantity)}`);
+            detail.append(meta);
+            row.append(detail);
+            return row;
+        }
+
+        async function updateCartPreview() {
+            const requestId = ++previewRequest;
+            const cart = readCart();
+            cartCount.textContent = String(cart.reduce((sum, item) => sum + item.quantity, 0));
+            if (!cart.length) {
+                previewItems.replaceChildren();
+                addText(previewItems, "p", "preview-empty", "Your cart is empty. Add a product to see it here.");
+                previewMeta.textContent = "0 items · N$ 0.00";
+                previewSubtotal.textContent = "N$ 0.00";
+                return;
+            }
+
+            try {
+                const resolved = await Promise.all(cart.map(async (item) => {
+                    try {
+                        const response = await fetch(`/api/products/${encodeURIComponent(item.id)}`);
+                        if (!response.ok) return null;
+                        const result = await response.json();
+                        return { quantity: item.quantity, product: result.product };
+                    } catch {
+                        return null;
+                    }
+                }));
+                if (requestId !== previewRequest) return;
+
+                const available = resolved.filter(Boolean);
+                const itemCount = available.reduce((sum, item) => sum + item.quantity, 0);
+                const subtotal = available.reduce((sum, item) => sum + item.product.priceNAD * item.quantity, 0);
+                previewItems.replaceChildren();
+                if (!available.length) {
+                    addText(previewItems, "p", "preview-empty", "Your cart is empty. Add a product to see it here.");
+                } else {
+                    available.slice(0, 3).forEach((item) => previewItems.append(renderPreviewItem(item)));
+                    if (available.length > 3) addText(previewItems, "p", "preview-empty", `Plus ${available.length - 3} more products in your cart.`);
+                }
+                previewMeta.textContent = `${itemCount} ${itemCount === 1 ? "item" : "items"} · N$ ${priceFormat.format(subtotal)}`;
+                previewSubtotal.textContent = `N$ ${priceFormat.format(subtotal)}`;
+            } catch {
+                if (requestId !== previewRequest) return;
+                previewItems.replaceChildren();
+                addText(previewItems, "p", "preview-empty", "Cart preview is unavailable right now.");
+                previewMeta.textContent = "Cart unavailable";
+                previewSubtotal.textContent = "N$ --";
+            }
+        }
+
+        async function updateSellerStatus() {
+            try {
+                const authResponse = await fetch("/api/auth/status");
+                const authResult = await authResponse.json();
+                if (!authResult.user) {
+                    if (sellLink) {
+                        sellLink.textContent = "Sell on Z";
+                        sellLink.href = "/sell";
+                    }
+                    return;
+                }
+
+                accountLink.href = "/dashboard";
+                accountLink.textContent = "My account";
+
+                const sellerResponse = await fetch("/api/seller/shop");
+                if (!sellerResponse.ok) {
+                    currentUserHasSellerShop = false;
+                    if (sellLink) {
+                        sellLink.textContent = "Sell on Z";
+                        sellLink.href = "/sell";
+                    }
+                    return;
+                }
+
+                const sellerResult = await sellerResponse.json();
+                currentUserHasSellerShop = Boolean(sellerResult.shop);
+                if (sellLink) {
+                    sellLink.textContent = currentUserHasSellerShop ? "My shop" : "Sell on Z";
+                    sellLink.href = "/sell";
+                }
+            } catch {
+                currentUserHasSellerShop = false;
+                if (sellLink) {
+                    sellLink.textContent = "Sell on Z";
+                    sellLink.href = "/sell";
+                }
+            }
+        }
+
+        async function loadProducts() {
+            const params = new URLSearchParams();
+            if (queryInput.value.trim()) params.set("q", queryInput.value.trim());
+            if (categorySelect.value) params.set("category", categorySelect.value);
+            if (townSelect.value) params.set("town", townSelect.value);
+            resultCount.textContent = "Loading listings...";
+            productGrid.replaceChildren();
+
+            try {
+                const response = await fetch(`/api/products?${params.toString()}`);
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || "Could not load listings.");
+                resultCount.textContent = `${result.products.length} ${result.products.length === 1 ? "listing" : "listings"}`;
+                if (!result.products.length) {
+                    const empty = document.createElement("div");
+                    empty.className = "empty-state";
+                    if (currentUserHasSellerShop) {
+                        addText(empty, "h3", "", "No listings match right now.");
+                        addText(empty, "p", "", "Your shop is live. Check back soon for fresh listings from across the marketplace.");
+                    } else {
+                        addText(empty, "h3", "", "Be among the first to sell on Z.");
+                        addText(empty, "p", "", "No listings match right now. Start a shop, add your first product, and put Namibian small business on the map.");
+                    }
+                    productGrid.append(empty);
+                    return;
+                }
+                result.products.forEach((product) => productGrid.append(renderProduct(product)));
+            } catch (error) {
+                resultCount.textContent = "Listings unavailable";
+                addText(productGrid, "p", "error-message", error.message || "Could not reach the marketplace.");
+            }
+        }
+
+        document.querySelector("#filter-form").addEventListener("submit", (event) => {
+            event.preventDefault();
+            loadProducts();
+        });
+        document.querySelector("#search-form").addEventListener("submit", (event) => {
+            event.preventDefault();
+            queryInput.value = searchInput.value;
+            loadProducts();
+        });
+        categorySelect.addEventListener("change", loadProducts);
+        townSelect.addEventListener("change", loadProducts);
+        document.querySelector("#clear-filters").addEventListener("click", () => {
+            queryInput.value = "";
+            searchInput.value = "";
+            categorySelect.value = "";
+            townSelect.value = "";
+            loadProducts();
+        });
+
+        async function initMarketplace() {
+            await updateSellerStatus();
+            updateCartPreview();
+            loadProducts();
+        }
+
+        window.addEventListener("storage", (event) => {
+            if (event.key === cartKey) updateCartPreview();
+        });
+        window.addEventListener("focus", updateCartPreview);
+        initMarketplace();
+    </script>
+</body>
+</html>

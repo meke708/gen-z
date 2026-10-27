@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Support Inbox | Z Operations</title>
+    <style>
+        :root { color-scheme: light; --ink: #17231e; --forest: #28523b; --muted: #6b756d; --line: #d9ded5; --paper: #f7f8f2; --white: #fff; --lime: #d8f36a; --orange: #d9772f; }
+        * { box-sizing: border-box; }
+        body { margin: 0; color: var(--ink); background: var(--paper); font-family: "Segoe UI", Arial, sans-serif; }
+        .site-header { display: flex; min-height: 68px; align-items: center; justify-content: space-between; gap: 20px; padding: 12px max(24px, calc((100% - 1120px) / 2)); border-bottom: 1px solid var(--line); background: var(--white); }
+        .brand { display: flex; align-items: center; gap: 10px; color: var(--ink); font-family: Georgia, "Times New Roman", serif; font-size: 19px; text-decoration: none; }
+        .brand-mark { display: grid; width: 34px; aspect-ratio: 1; place-items: center; border: 1px solid var(--ink); border-radius: 50%; font-size: 20px; }
+        nav { display: flex; flex-wrap: wrap; gap: 18px; }
+        nav a { color: var(--forest); font-size: 12px; font-weight: 700; text-decoration: none; }
+        nav a:hover { text-decoration: underline; }
+        main { width: min(100% - 48px, 960px); margin: 0 auto; padding: 42px 0 72px; }
+        .eyebrow { margin: 0 0 10px; color: var(--orange); font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+        h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 38px; font-weight: 400; }
+        .intro { max-width: 650px; margin: 12px 0 28px; color: var(--muted); font-size: 13px; line-height: 1.65; }
+        .queue-tools { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--line); }
+        .queue-tools label { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 11px; }
+        .queue-tools select, .queue-tools button { min-height: 36px; padding: 0 10px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: var(--white); font: inherit; font-size: 11px; }
+        .queue-tools button { border-color: var(--ink); cursor: pointer; font-weight: 700; }
+        .request { display: grid; grid-template-columns: minmax(0, 1fr) 230px; gap: 22px; padding: 20px 0; border-bottom: 1px solid var(--line); }
+        .request-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+        .request h2 { margin: 0; font-size: 14px; }
+        .request-meta { margin: 7px 0 14px; color: var(--muted); font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
+        .request-message { margin: 0; font-size: 12px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .request-response { margin-top: 12px; padding: 10px; border-left: 2px solid var(--orange); background: var(--white); font-size: 11px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .status-pill { flex: 0 0 auto; padding: 5px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--forest); background: #edf0df; font-size: 9px; font-weight: 800; text-transform: uppercase; }
+        .request-form { display: grid; align-content: start; gap: 8px; }
+        .request-form label { display: grid; gap: 4px; color: var(--muted); font-size: 10px; }
+        .request-form select, .request-form textarea { width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: var(--white); font: inherit; font-size: 11px; }
+        .request-form textarea { min-height: 96px; resize: vertical; }
+        .request-form button { min-height: 36px; border: 1px solid var(--ink); border-radius: 3px; color: var(--white); background: var(--ink); cursor: pointer; font-size: 11px; font-weight: 700; }
+        .request-form button:disabled { opacity: .6; cursor: wait; }
+        .empty, .queue-status { color: var(--muted); font-size: 12px; line-height: 1.6; }
+        .queue-status { min-height: 18px; color: var(--forest); }
+        @media (max-width: 680px) {
+            .site-header { align-items: flex-start; padding: 12px 18px; }
+            nav { justify-content: flex-end; gap: 10px; font-size: 10px; }
+            main { width: calc(100% - 36px); padding-top: 32px; }
+            h1 { font-size: 32px; }
+            .request { grid-template-columns: 1fr; gap: 14px; }
+            .request-form { grid-template-columns: 1fr 1fr; }
+            .request-form label:nth-child(2) { grid-column: 1 / -1; }
+            .request-form button { grid-column: 1 / -1; }
+        }
+    </style>
+</head>
+<body>
+    <header class="site-header">
+        <a class="brand" href="/marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Operations</span></a>
+        <nav aria-label="Admin navigation">
+            <a href="/admin/moderation">Moderation</a>
+            <a href="/admin/payouts">Payouts</a>
+            <a href="/marketplace">Marketplace</a>
+        </nav>
+    </header>
+    <main>
+        <p class="eyebrow">Customer care</p>
+        <h1>Support inbox</h1>
+        <p class="intro">Review buyer requests tied to their orders. Update the case status and leave a response the buyer can see in their dashboard.</p>
+        <div class="queue-tools">
+            <label for="status-filter">Show
+                <select id="status-filter">
+                    <option value="all">All requests</option>
+                    <option value="open">Open</option>
+                    <option value="in_review">In review</option>
+                    <option value="resolved">Resolved</option>
+                </select>
+            </label>
+            <button id="reload-requests" type="button">Refresh</button>
+        </div>
+        <div id="support-list" aria-live="polite"><p class="empty">Loading requests...</p></div>
+        <p class="queue-status" id="queue-status" role="status" aria-live="polite"></p>
+    </main>
+    <script>
+        const supportList = document.querySelector("#support-list");
+        const queueStatus = document.querySelector("#queue-status");
+        const statusFilter = document.querySelector("#status-filter");
+        const requestsById = new Map();
+
+        async function requestJson(url, options) {
+            const response = await fetch(url, options);
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || "Support request failed.");
+            return result;
+        }
+
+        function createRequestCard(request) {
+            const card = document.createElement("article");
+            card.className = "request";
+            const content = document.createElement("div");
+            const heading = document.createElement("div");
+            heading.className = "request-heading";
+            const title = document.createElement("h2");
+            title.textContent = `Order ${request.orderNumber} · ${request.topic.replaceAll("_", " ")}`;
+            const status = document.createElement("span");
+            status.className = "status-pill";
+            status.textContent = request.status.replaceAll("_", " ");
+            heading.append(title, status);
+            const metadata = document.createElement("p");
+            metadata.className = "request-meta";
+            metadata.textContent = `${request.buyer?.name || "Buyer account unavailable"} · ${request.buyer?.email || "No email"} · ${new Date(request.createdAt).toLocaleString()}`;
+            const message = document.createElement("p");
+            message.className = "request-message";
+            message.textContent = request.message;
+            content.append(heading, metadata, message);
+            if (request.adminResponse) {
+                const response = document.createElement("div");
+                response.className = "request-response";
+                response.textContent = `Previous response: ${request.adminResponse}`;
+                content.append(response);
+            }
+
+            const form = document.createElement("form");
+            form.className = "request-form";
+            const statusLabel = document.createElement("label");
+            statusLabel.textContent = "Case status";
+            const select = document.createElement("select");
+            select.name = "status";
+            [["open", "Open"], ["in_review", "In review"], ["resolved", "Resolved"]].forEach(([value, label]) => {
+                const option = document.createElement("option");
+                option.value = value;
+                option.textContent = label;
+                option.selected = value === request.status;
+                select.append(option);
+            });
+            statusLabel.append(select);
+            const responseLabel = document.createElement("label");
+            responseLabel.textContent = "Response to buyer";
+            const responseInput = document.createElement("textarea");
+            responseInput.name = "adminResponse";
+            responseInput.maxLength = 1000;
+            responseInput.value = request.adminResponse || "";
+            responseInput.placeholder = "Write an update or resolution...";
+            responseLabel.append(responseInput);
+            const save = document.createElement("button");
+            save.type = "submit";
+            save.textContent = "Save update";
+            form.append(statusLabel, responseLabel, save);
+            form.addEventListener("submit", async (event) => {
+                event.preventDefault();
+                save.disabled = true;
+                queueStatus.textContent = "Saving support update...";
+                try {
+                    await requestJson(`/api/admin/support-requests/${encodeURIComponent(request.id)}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ status: select.value, adminResponse: responseInput.value })
+                    });
+                    queueStatus.textContent = "Support request updated.";
+                    await loadRequests();
+                } catch (error) {
+                    queueStatus.textContent = error.message;
+                    save.disabled = false;
+                }
+            });
+            card.append(content, form);
+            return card;
+        }
+
+        async function loadRequests() {
+            try {
+                const { requests } = await requestJson("/api/admin/support-requests");
+                requestsById.clear();
+                requests.forEach((request) => requestsById.set(request.id, request));
+                const visibleRequests = statusFilter.value === "all"
+                    ? requests
+                    : requests.filter((request) => request.status === statusFilter.value);
+                supportList.replaceChildren();
+                if (!visibleRequests.length) {
+                    const empty = document.createElement("p");
+                    empty.className = "empty";
+                    empty.textContent = statusFilter.value === "all" ? "No support requests yet." : "No requests in this status.";
+                    supportList.append(empty);
+                    return;
+                }
+                visibleRequests.forEach((request) => supportList.append(createRequestCard(request)));
+            } catch (error) {
+                supportList.textContent = error.message;
+            }
+        }
+
+        statusFilter.addEventListener("change", loadRequests);
+        document.querySelector("#reload-requests").addEventListener("click", loadRequests);
+        loadRequests();
+    </script>
+</body>
+</html>

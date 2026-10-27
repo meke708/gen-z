@@ -1,0 +1,1497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f4f1e8">
+    <title>Seller dashboard | Z Namibia</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --ink: #17231e;
+            --muted: #68736d;
+            --paper: #f4f1e8;
+            --white: #fffefa;
+            --lime: #d8f36a;
+            --forest: #18382e;
+            --line: #d9d9cf;
+        }
+
+        * { box-sizing: border-box; }
+        body { min-width: 320px; margin: 0; color: var(--ink); background: var(--paper); font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
+        button, input, select, textarea { font: inherit; }
+        a { color: inherit; }
+        .site-header { display: flex; min-height: 72px; align-items: center; justify-content: space-between; gap: 20px; padding: 12px max(24px, calc((100vw - 1040px) / 2)); border-bottom: 1px solid var(--line); }
+        .header-left { display: inline-flex; align-items: center; gap: 12px; }
+        .back-button {
+            display: inline-grid;
+            place-items: center;
+            width: 28px;
+            height: 28px;
+            padding: 0;
+            border: 1px solid var(--ink);
+            border-radius: 999px;
+            background: transparent;
+            color: var(--ink);
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+            text-decoration: none;
+        }
+        .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+        .brand-mark { display: grid; width: 36px; aspect-ratio: 1; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; font-family: Georgia, serif; font-size: 22px; letter-spacing: 0; }
+        .header-links { display: flex; align-items: center; gap: 18px; font-size: 12px; font-weight: 700; }
+        .header-links a { text-decoration: none; }
+        .seller-shop-menu { position: relative; }
+        .seller-shop-link { display: inline-flex; max-width: 240px; align-items: center; gap: 7px; padding: 7px 10px; border-radius: 3px; color: var(--lime); background: var(--forest); cursor: pointer; font-weight: 800; list-style: none; white-space: nowrap; }
+        .seller-shop-link:hover { background: #244b3e; }
+        .seller-shop-name { max-width: 150px; overflow: hidden; color: var(--lime); text-overflow: ellipsis; }
+        .seller-store-word { color: var(--lime); font-size: inherit; font-weight: inherit; letter-spacing: inherit; }
+        .seller-shop-link::-webkit-details-marker { display: none; }
+        .seller-shop-link::after { width: 7px; height: 7px; flex: 0 0 auto; margin: -4px 2px 0 1px; border-right: 1.5px solid var(--lime); border-bottom: 1.5px solid var(--lime); content: ""; transform: rotate(45deg); transition: transform 0.18s ease, margin 0.18s ease; }
+        .seller-shop-link:focus-visible { outline: 2px solid #397d54; outline-offset: 4px; }
+        .seller-shop-menu[open] .seller-shop-link { text-decoration: underline; text-underline-offset: 4px; }
+        .seller-shop-menu[open] .seller-shop-link::after { margin-top: 4px; transform: rotate(225deg); }
+        .seller-shop-menu-panel { position: absolute; z-index: 30; top: calc(100% + 10px); right: 0; display: grid; min-width: 190px; gap: 2px; padding: 5px; border: 1px solid var(--line); background: var(--white); box-shadow: 0 8px 20px rgba(23, 35, 30, 0.14); }
+        .seller-shop-menu-panel a, .seller-shop-menu-panel button { display: block; padding: 10px; border: 0; color: var(--ink); background: transparent; cursor: pointer; font-size: 11px; font-weight: 700; text-align: left; text-decoration: none; }
+        .seller-shop-menu-panel a:hover, .seller-shop-menu-panel button:hover, .seller-shop-menu-panel a:focus-visible, .seller-shop-menu-panel button:focus-visible { color: var(--forest); background: #edf0df; outline: none; }
+        main { width: min(1040px, calc(100% - 48px)); margin: 0 auto; }
+        .page-intro { display: grid; grid-template-columns: minmax(0, 1fr) minmax(270px, 380px); align-items: center; gap: 40px; padding: 48px 0 26px; }
+        .page-intro-copy { min-width: 0; }
+        .page-intro-cover { display: block; width: 100%; aspect-ratio: 16 / 10; border: 1px solid var(--line); object-fit: cover; background: #e4ecc9; }
+        .eyebrow { margin: 0 0 12px; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: 0.17em; text-transform: uppercase; }
+        h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 46px; font-weight: 400; letter-spacing: 0; line-height: 1.05; }
+        .page-intro > p:last-child { max-width: 560px; margin: 13px 0 0; color: var(--muted); font-size: 13px; line-height: 1.7; }
+        .seller-layout { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 52px; padding: 20px 0 70px; }
+        .section-heading { margin: 0 0 17px; padding-bottom: 12px; border-bottom: 1px solid var(--ink); font-family: Georgia, "Times New Roman", serif; font-size: 25px; font-weight: 400; letter-spacing: 0; }
+        .field { margin-bottom: 16px; }
+        label { display: block; margin-bottom: 7px; font-size: 11px; font-weight: 700; }
+        input, select, textarea { width: 100%; min-height: 45px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 3px; outline: none; color: var(--ink); background: var(--white); font-size: 12px; }
+        textarea { min-height: 108px; resize: vertical; line-height: 1.55; }
+        input:focus, select:focus, textarea:focus { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(23, 35, 30, 0.08); }
+        .hint { margin: 6px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+        .primary-button { display: inline-flex; min-height: 46px; align-items: center; justify-content: space-between; gap: 25px; padding: 0 15px; border: 1px solid var(--ink); border-radius: 3px; color: var(--white); background: var(--ink); cursor: pointer; font-size: 12px; font-weight: 700; }
+        .primary-button:hover { color: var(--ink); background: var(--lime); }
+        .primary-button:disabled { opacity: 0.65; cursor: wait; }
+        .message { min-height: 19px; margin: 11px 0 0; color: #8b3b2f; font-size: 11px; line-height: 1.5; }
+        .message.success { color: #397d54; }
+        .cover-file-input { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+        .cover-upload-button {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 8px;
+            padding: 12px 14px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: linear-gradient(180deg, #ffffff 0%, #f5f7ef 100%);
+            cursor: pointer;
+            transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+        }
+        .cover-upload-button:hover {
+            border-color: #b9c7ab;
+            box-shadow: 0 4px 12px rgba(24, 56, 46, 0.05);
+            transform: translateY(-1px);
+        }
+        .cover-upload-button:focus-within {
+            border-color: var(--forest);
+            box-shadow: 0 0 0 3px rgba(24, 56, 46, 0.08);
+        }
+        .cover-upload-icon {
+            display: grid;
+            width: 42px;
+            height: 42px;
+            place-items: center;
+            border-radius: 10px;
+            background: var(--forest);
+            color: var(--lime);
+            overflow: hidden;
+            flex: 0 0 auto;
+        }
+        .cover-upload-thumb {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        #product-upload-placeholder {
+            font-size: 18px;
+            font-weight: 700;
+            line-height: 1;
+        }
+        .cover-upload-copy {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 0;
+        }
+        .cover-upload-copy strong {
+            color: var(--ink);
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .cover-upload-copy span {
+            color: var(--muted);
+            font-size: 10px;
+            line-height: 1.5;
+        }
+        .cover-file-name {
+            margin: 8px 0 0;
+            color: var(--muted);
+            font-size: 10px;
+            line-height: 1.5;
+        }
+        .cover-feedback { margin: 7px 0 0; color: #8b3b2f; font-size: 10px; line-height: 1.5; }
+        .cover-feedback.success { color: #397d54; }
+        .cover-feedback:empty { display: none; }
+        .shipping-settings { margin: 22px 0 28px; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
+        .shipping-settings h3 { margin: 0 0 12px; font-family: Georgia, serif; font-size: 19px; font-weight: 400; }
+        .shipping-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+        .seller-layout.has-shop { display: block; }
+        .seller-layout.has-shop #product-section { width: min(1040px, calc(100vw - 760px)); margin: 0 auto; }
+        .product-disclosure { width: min(100%, 620px); margin: 48px auto 34px; border-bottom: 1px solid var(--line); }
+        .product-disclosure summary { display: flex; min-height: 52px; align-items: center; justify-content: space-between; gap: 12px; padding: 0 12px; border: 1px solid var(--line); background: var(--white); cursor: pointer; font-size: 12px; font-weight: 700; list-style: none; }
+        .product-disclosure summary::-webkit-details-marker { display: none; }
+        .product-disclosure summary:hover { border-color: var(--ink); background: #f1f5df; }
+        .product-disclosure summary:focus-visible { outline: 2px solid #397d54; outline-offset: 3px; }
+        .product-disclosure-indicator { display: grid; width: 25px; height: 25px; flex: 0 0 auto; place-items: center; border: 1px solid var(--line); border-radius: 50%; font-size: 17px; font-weight: 400; }
+        .product-disclosure[open] .product-disclosure-indicator { transform: rotate(45deg); }
+        .product-disclosure-content { padding-top: 18px; }
+        .seller-stats { position: fixed; z-index: 14; top: 50%; left: 16px; width: min(280px, calc(100vw - 960px)); max-height: calc(100vh - 36px); overflow-y: auto; transform: translateY(-50%); padding: 16px; border: 1px solid var(--line); background: var(--white); box-shadow: 0 12px 36px rgba(23, 35, 30, 0.14); }
+        .seller-stats-header { padding-bottom: 11px; border-bottom: 1px solid var(--ink); }
+        .seller-stats-header .eyebrow { margin-bottom: 5px; }
+        .seller-stats-title { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 21px; font-weight: 400; }
+        .seller-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px 10px; margin: 14px 0 0; }
+        .seller-stats-grid div { min-width: 0; padding-top: 9px; border-top: 1px solid var(--line); }
+        .seller-stats-grid dt { color: var(--muted); font-size: 9px; line-height: 1.35; }
+        .seller-stats-grid dd { margin: 5px 0 0; color: var(--ink); font-family: Georgia, serif; font-size: 17px; overflow-wrap: anywhere; }
+        .seller-stats-grid .sales-stat dd { color: #d9772f; }
+        .seller-stats-grid .payout-held dd { color: #805a24; }
+        .seller-stats-grid .payout-ready dd { color: var(--forest); }
+        .seller-stats-grid .payout-paid dd { color: #285b3a; }
+        .seller-stats .shipping-settings { margin: 17px 0 0; padding: 14px 0 0; border-top: 1px solid var(--line); border-bottom: 0; }
+        .seller-stats .shipping-settings h3 { font-size: 17px; }
+        .seller-listings { position: fixed; z-index: 15; top: 50%; right: 16px; width: min(340px, calc(100vw - 32px)); max-height: calc(100vh - 36px); transform: translateY(-50%); overflow: hidden; padding: 15px; border: 1px solid var(--line); background: var(--white); box-shadow: 0 12px 36px rgba(23, 35, 30, 0.18); }
+        .listing-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 11px; border-bottom: 1px solid var(--ink); }
+        .listing-panel-header .eyebrow { margin-bottom: 5px; }
+        .listing-panel-title { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 21px; font-weight: 400; letter-spacing: 0; }
+        .listing-count { flex: 0 0 auto; color: var(--muted); font-size: 10px; }
+        .listing-panel-toggle { display: none; padding: 5px 7px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: transparent; cursor: pointer; font-size: 10px; font-weight: 700; }
+        .inventory-add-product { display: flex; width: 100%; min-height: 36px; align-items: center; justify-content: center; gap: 7px; margin: 11px 0; border: 1px solid var(--forest); border-radius: 3px; color: var(--white); background: var(--forest); cursor: pointer; font-size: 10px; font-weight: 700; }
+        .inventory-add-product::before { content: "+"; color: var(--lime); font-size: 17px; font-weight: 400; line-height: 1; }
+        .inventory-add-product:hover { color: var(--ink); background: var(--lime); }
+        .inventory-add-product:hover::before { color: var(--ink); }
+        .inventory-add-product:focus-visible { outline: 2px solid #397d54; outline-offset: 3px; }
+        #listing-list { max-height: calc(100vh - 180px); overflow-y: auto; overscroll-behavior: contain; }
+        .listing { display: grid; grid-template-columns: 50px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+        .listing-image { display: grid; width: 50px; aspect-ratio: 1; overflow: hidden; place-items: center; color: var(--forest); background: #e4ecc9; font-family: Georgia, serif; font-size: 25px; }
+        .listing-image img { width: 100%; height: 100%; object-fit: cover; }
+        .listing h3 { margin: 0; font-size: 12px; line-height: 1.4; }
+        .listing p { margin: 4px 0 0; color: var(--muted); font-size: 10px; }
+        .listing-status { display: inline-block; margin-top: 7px; padding: 4px 6px; color: var(--forest); background: #e9edda; font-size: 9px; font-weight: 700; text-transform: uppercase; }
+        .listing-status.archived { color: #6b5140; background: #eee6db; }
+        .listing-status.hidden { color: #7a1d1d; background: #f7d9d9; }
+        .listing-controls { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+        .listing-price { white-space: nowrap; font-family: Georgia, serif; font-size: 14px; }
+        .listing-options { position: relative; }
+        .listing-options summary { padding: 6px 8px; border: 1px solid var(--line); border-radius: 3px; cursor: pointer; font-size: 10px; font-weight: 700; list-style: none; white-space: nowrap; }
+        .listing-options summary::-webkit-details-marker { display: none; }
+        .listing-options summary:hover { border-color: var(--ink); }
+        .options-menu { position: absolute; z-index: 2; top: calc(100% + 4px); right: 0; display: grid; min-width: 142px; gap: 2px; padding: 5px; border: 1px solid var(--line); background: var(--white); box-shadow: 0 8px 20px rgba(23, 35, 30, 0.12); }
+        .options-menu button { padding: 8px; border: 0; color: var(--ink); background: transparent; cursor: pointer; font-size: 10px; text-align: left; }
+        .options-menu button:hover { background: #edf0df; }
+        .options-menu .delete-listing { color: #8b3b2f; }
+        .secondary-button { min-height: 42px; margin-left: 8px; padding: 0 12px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: transparent; cursor: pointer; font-size: 11px; font-weight: 700; }
+        .secondary-button:hover { border-color: var(--ink); }
+        .secondary-button:disabled { opacity: 0.7; cursor: wait; }
+        .shipping-save { display: flex; width: 100%; min-height: 44px; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; padding: 0 13px; border: 1px solid var(--forest); border-radius: 3px; color: var(--white); background: var(--forest); cursor: pointer; font-size: 11px; font-weight: 700; transition: color 0.16s ease, background 0.16s ease; }
+        .shipping-save:hover { color: var(--ink); background: var(--lime); }
+        .shipping-save:focus-visible { outline: 2px solid #397d54; outline-offset: 3px; }
+        .shipping-save:disabled { opacity: 0.65; cursor: wait; }
+        .shipping-save-feedback { margin: 8px 0 0; }
+        .cover-spinner { display: inline-block; width: 13px; height: 13px; margin-right: 7px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; vertical-align: -2px; animation: cover-spin 0.75s linear infinite; }
+        @keyframes cover-spin { to { transform: rotate(360deg); } }
+        .empty-listings { color: var(--muted); font-size: 12px; line-height: 1.7; }
+        .seller-operations { margin-top: 64px; }
+        .seller-order-row { margin-top: 10px; padding: 0 12px; border: 1px solid var(--line); border-radius: 4px; background: var(--white); }
+        .seller-order-row:first-child { margin-top: 0; }
+        .payout-row { display: grid; gap: 7px; margin-top: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--white); }
+        .payout-row:first-child { margin-top: 0; }
+        .payout-row-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+        .payout-row-order { color: var(--ink); font-size: 10px; font-weight: 700; overflow-wrap: anywhere; }
+        .payout-row-shop { margin-top: 3px; color: var(--muted); font-size: 9px; }
+        .payout-row-amount { color: var(--ink); font-family: Georgia, serif; font-size: 16px; font-weight: 400; white-space: nowrap; }
+        .payout-row .seller-status-badge { justify-self: start; }
+        .payout-row p { margin: 0; color: var(--muted); font-size: 9px; line-height: 1.5; overflow-wrap: anywhere; }
+        .seller-operations > h2:first-of-type { margin-bottom: 18px; padding-bottom: 0; border-bottom: 0; text-align: center; }
+        .seller-operations > h2:nth-of-type(2) { margin-top: 40px; padding: 18px 0 0; border-top: 1px solid var(--ink); border-bottom: 0; }
+        .seller-order-search { display: block; width: min(100%, 440px); min-height: 40px; margin: 0 auto 16px; border-top: 0; }
+        #seller-order-list { margin-bottom: 30px; }
+        #payout-ledger { margin-bottom: 18px; }
+        .seller-operations > .hint { margin-top: 14px; }
+        .seller-order-disclosure > summary { display: grid; min-height: 78px; grid-template-columns: 48px minmax(0, 1fr) auto 18px; align-items: center; gap: 12px; cursor: pointer; list-style: none; }
+        .seller-order-disclosure > summary::-webkit-details-marker { display: none; }
+        .seller-order-disclosure > summary:focus-visible { outline: 2px solid #397d54; outline-offset: 3px; }
+        .seller-order-image-carousel, .seller-order-carousel-image, .seller-order-image-placeholder { position: relative; display: grid; width: 48px; height: 48px; place-items: center; overflow: hidden; border: 1px solid var(--line); border-radius: 3px; color: var(--forest); background: #e4ecc9; }
+        .seller-order-carousel-image { object-fit: cover; }
+        .seller-order-image-placeholder { font-family: Georgia, serif; font-size: 19px; }
+        .seller-order-image-control { position: absolute; top: 50%; display: grid; width: 14px; height: 20px; place-items: center; padding: 0; transform: translateY(-50%); border: 0; border-radius: 2px; color: var(--white); background: rgba(23, 35, 30, 0.78); cursor: pointer; font-size: 14px; line-height: 1; }
+        .seller-order-image-control.previous { left: 1px; }
+        .seller-order-image-control.next { right: 1px; }
+        .seller-order-image-control:focus-visible { outline: 2px solid var(--lime); outline-offset: 1px; }
+        .seller-order-image-count { position: absolute; right: 2px; bottom: 2px; padding: 1px 3px; border-radius: 2px; color: var(--white); background: rgba(23, 35, 30, 0.78); font-size: 7px; line-height: 1; }
+        @media (prefers-reduced-motion: reduce) { .seller-order-carousel-image { transition: none; } }
+        .seller-order-summary-main { display: grid; min-width: 0; gap: 7px; }
+        .seller-order-heading { display: flex; min-width: 0; align-items: center; gap: 10px; }
+        .seller-order-row h3 { margin: 0; color: var(--ink); font-size: 13px; font-weight: 700; overflow-wrap: anywhere; }
+        .seller-order-summary-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--muted); font-size: 10px; line-height: 1.4; }
+        .seller-order-summary-meta span { margin: 0; color: inherit; font-size: inherit; }
+        .seller-order-summary-side { display: grid; justify-items: end; gap: 7px; }
+        .seller-order-summary-side > strong { color: var(--ink); font-family: Georgia, serif; font-size: 14px; font-weight: 400; white-space: nowrap; }
+        .seller-order-summary-cue { color: var(--muted); font-size: 17px; line-height: 1; transition: transform 0.15s ease; }
+        .seller-order-disclosure[open] .seller-order-summary-cue { transform: rotate(45deg); }
+        .seller-order-content { padding: 0 0 16px; }
+        .seller-order-content > p, .payout-row p { margin: 7px 0 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
+        .order-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 10px 0 16px; }
+        .order-detail { min-width: 0; padding-top: 8px; border-top: 1px solid var(--line); }
+        .order-detail dt { color: var(--muted); font-size: 9px; }
+        .order-detail dd { margin: 4px 0 0; color: var(--ink); font-size: 10px; font-weight: 700; overflow-wrap: anywhere; }
+        .order-items-list { border-top: 1px solid var(--ink); }
+        .order-product { display: grid; grid-template-columns: 58px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+        .order-product-image { display: grid; width: 58px; aspect-ratio: 1; overflow: hidden; place-items: center; color: var(--forest); background: #e4ecc9; font-family: Georgia, serif; font-size: 25px; }
+        .order-product-image img { width: 100%; height: 100%; object-fit: cover; }
+        .order-product-name { margin: 0; font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; }
+        .order-product-meta { margin: 4px 0 0; color: var(--muted); font-size: 10px; }
+        .order-product-total { white-space: nowrap; font-family: Georgia, serif; font-size: 13px; }
+        .order-totals { display: grid; gap: 6px; max-width: 320px; margin: 11px 0 0 auto; }
+        .order-total-line { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 10px; }
+        .order-total-line.final { padding-top: 8px; border-top: 1px solid var(--line); color: var(--ink); font-weight: 700; }
+        .seller-order-row form { display: flex; max-width: 440px; gap: 8px; margin-top: 12px; }
+        .approval-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+        .approval-actions .accept-button,
+        .approval-actions .reject-button {
+            flex: 0 0 auto;
+            min-height: 42px;
+            padding: 0 14px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .auto-approval-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 16px;
+            padding: 12px 14px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: linear-gradient(180deg, #ffffff 0%, #f5f7ef 100%);
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: border-color 0.18s ease, box-shadow 0.18s ease;
+        }
+        .auto-approval-toggle:hover {
+            border-color: #b9c7ab;
+            box-shadow: 0 4px 12px rgba(24, 56, 46, 0.05);
+        }
+        .auto-approval-toggle:focus-within {
+            border-color: var(--forest);
+            box-shadow: 0 0 0 3px rgba(24, 56, 46, 0.08);
+        }
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 28px;
+            flex: 0 0 auto;
+        }
+        .toggle-switch input {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 2;
+        }
+        .toggle-slider {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            border-radius: 999px;
+            background: #dfe6d7;
+            transition: background 0.2s ease;
+            box-shadow: inset 0 0 0 1px rgba(23, 35, 30, 0.08);
+        }
+        .toggle-slider::before {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: white;
+            box-shadow: 0 2px 6px rgba(23, 35, 30, 0.14);
+            content: "";
+            transition: transform 0.2s ease;
+        }
+        .toggle-switch input:checked + .toggle-slider {
+            background: linear-gradient(180deg, #254d3c 0%, #18382e 100%);
+        }
+        .toggle-switch input:checked + .toggle-slider::before {
+            transform: translateX(20px);
+        }
+        .toggle-switch input:focus-visible + .toggle-slider {
+            outline: 2px solid rgba(24, 56, 46, 0.6);
+            outline-offset: 2px;
+        }
+        .approval-actions .accept-button {
+            border: 1px solid #285b3a;
+            color: var(--white);
+            background: #285b3a;
+        }
+        .approval-actions .accept-button:hover { background: #1e442f; }
+        .approval-actions .reject-button {
+            border: 1px solid #8b3b2f;
+            color: #8b3b2f;
+            background: #fff5f2;
+        }
+        .approval-actions .reject-button:hover { background: #ffe7e2; }
+        .seller-order-row input { min-width: 0; min-height: 38px; }
+        .seller-order-row .secondary-button { flex: 0 0 auto; min-height: 38px; margin: 0; }
+        .payout-row { display: flex; justify-content: space-between; gap: 12px; }
+        .payout-row strong { white-space: nowrap; font-family: Georgia, serif; font-size: 15px; font-weight: 400; }
+        .seller-status-badge { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 6px; padding: 5px 8px; border: 1px solid transparent; border-radius: 999px; font-size: 9px; font-weight: 700; line-height: 1.2; white-space: nowrap; }
+        .seller-status-badge::before { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.75); content: ""; }
+                .incoming-processing { border-color: #c8dce9; color: #28536c; background: #e7f1f7; }
+        .incoming-accepted { border-color: #c8dfcf; color: #285b3a; background: #e8f2e9; }
+        .incoming-rejected { border-color: #e4c1ba; color: #8b3b2f; background: #f8e9e5; }
+        .incoming-shipped { border-color: #ead7aa; color: #77531a; background: #fbf1d9; }
+        .incoming-delivered { border-color: #c8dfcf; color: #285b3a; background: #e8f2e9; }
+        .incoming-disputed { border-color: #e4c1ba; color: #8b3b2f; background: #f8e9e5; }
+        .payout-held { border-color: #edd0b7; color: #8a4c20; background: #fbecdf; }
+        .payout-eligible { border-color: #c8dce9; color: #28536c; background: #e7f1f7; }
+        .payout-paid { border-color: #c8dfcf; color: #285b3a; background: #e8f2e9; }
+        .payout-disputed { border-color: #e4c1ba; color: #8b3b2f; background: #f8e9e5; }
+        .incoming-processing::before, .incoming-shipped::before, .payout-held::before { background: #d99a1b; }
+        .incoming-accepted::before { background: #39804e; }
+        .incoming-rejected::before, .incoming-disputed::before, .payout-disputed::before { background: #c34737; }
+        .incoming-delivered::before, .payout-eligible::before, .payout-paid::before { background: #39804e; }
+        .payout-timing-note { display: flex; align-items: baseline; gap: 7px; }
+        .payout-timing-note::before { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: #d99a1b; content: ""; }
+        @media (max-width: 600px) {
+            .seller-order-disclosure > summary { grid-template-columns: 42px minmax(0, 1fr) 18px; gap: 8px; padding: 10px 0; }
+            .seller-order-image-carousel, .seller-order-carousel-image, .seller-order-image-placeholder { width: 42px; height: 42px; }
+            .seller-order-summary-side { grid-column: 2; grid-row: 2; display: flex; align-items: center; justify-items: start; gap: 10px; }
+            .seller-order-summary-cue { grid-column: 3; grid-row: 1 / span 2; }
+        }
+        [hidden] { display: none !important; }
+
+        @media (max-width: 1199px) {
+            .seller-stats { position: static; width: min(100%, 620px); max-height: none; margin: 16px 0 24px; transform: none; }
+            .seller-layout.has-shop #product-section { width: min(1040px, calc(100vw - 420px)); max-width: none; margin: 0; }
+        }
+
+        @media (max-width: 900px) {
+            .site-header { padding: 12px 19px; }
+            .header-links { gap: 12px; font-size: 11px; }
+            main { width: calc(100% - 36px); }
+            .page-intro { grid-template-columns: 1fr; gap: 20px; padding-top: 37px; }
+            .page-intro-cover { width: min(100%, 520px); }
+            h1 { font-size: 39px; }
+            .seller-layout { grid-template-columns: 1fr; gap: 38px; padding-top: 12px; }
+            .seller-layout.has-shop { display: block; }
+            .seller-layout.has-shop #product-section { width: 100%; max-width: none; }
+            .seller-listings { top: auto; right: 12px; bottom: 12px; width: min(360px, calc(100vw - 24px)); max-height: calc(100vh - 24px); transform: none; }
+            .listing-panel-toggle { display: inline-block; }
+            .seller-listings.is-collapsed #listing-list, .seller-listings.is-collapsed .listing-count { display: none; }
+            .seller-listings.is-collapsed { width: min(270px, calc(100vw - 24px)); padding: 11px 13px; }
+            .seller-listings.is-collapsed .listing-panel-header { padding-bottom: 0; border-bottom: 0; }
+            #listing-list { max-height: 42vh; }
+            .listing { grid-template-columns: 46px minmax(0, 1fr) auto; gap: 7px; }
+            .listing-image { width: 46px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+        }
+    </style>
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-left">
+            <a class="back-button" href="/dashboard" aria-label="Back to buyer profile">←</a>
+            <a class="brand" href="/marketplace" aria-label="Z Namibia marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Namibia</span></a>
+        </div>
+        <nav class="header-links" aria-label="Seller navigation">
+            <a href="/marketplace">Browse marketplace</a>
+            <a href="/sell/profile">Seller profile</a>
+            <a href="/dashboard">Buyer profile</a>
+            <details class="seller-shop-menu" id="seller-shop-menu" hidden>
+                <summary class="seller-shop-link" id="seller-shop-header-link"><span class="seller-shop-name" id="seller-shop-name"></span><span class="seller-store-word">Seller profile</span></summary>
+                <div class="seller-shop-menu-panel">
+                    <a id="seller-shop-public-link" href="/marketplace">View as a buyer</a>
+                    <a href="/sell/profile">Seller profile overview</a>
+                    <a href="/sell/assistant">Shop AI assistant</a>
+                    <a href="/sell/verification">Business verification</a>
+                    <a href="/dashboard">Buyer profile</a>
+                    <button id="change-cover-menu" type="button">Change cover photo</button>
+                    <a href="/dashboard#account-title">Buyer details</a>
+                </div>
+            </details>
+        </nav>
+    </header>
+
+    <main>
+        <section class="page-intro">
+            <div class="page-intro-copy">
+                <p class="eyebrow">Seller profile</p>
+                <h1>Seller dashboard</h1>
+                <p>Manage your storefront, products, orders, and delivery for shoppers across Namibia.</p>
+            </div>
+            <div class="page-intro-media">
+                <img class="page-intro-cover" id="page-intro-cover" src="/z-storefront.png" alt="Z Namibia storefront">
+                <input class="cover-file-input" id="shop-cover-file" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose a replacement storefront cover">
+                <p class="cover-feedback" id="shop-cover-message" role="status" aria-live="polite"></p>
+            </div>
+        </section>
+
+        <div class="seller-layout">
+            <aside class="seller-stats" id="seller-stats" aria-label="Shop statistics" hidden>
+                <div class="seller-stats-header">
+                    <p class="eyebrow">Performance</p>
+                    <h2 class="seller-stats-title">Shop stats</h2>
+                </div>
+                <dl class="seller-stats-grid">
+                    <div class="sales-stat"><dt>Product sales</dt><dd id="seller-stat-sales">N$ 0.00</dd></div>
+                    <div class="payout-held"><dt>On hold</dt><dd id="seller-stat-held">N$ 0.00</dd></div>
+                    <div class="payout-ready"><dt>Ready to pay</dt><dd id="seller-stat-ready">N$ 0.00</dd></div>
+                    <div class="payout-paid"><dt id="seller-stat-paid-label">Paid out</dt><dd id="seller-stat-paid">N$ 0.00</dd></div>
+                    <div><dt>Paid orders</dt><dd id="seller-stat-orders">0</dd></div>
+                    <div><dt>To ship</dt><dd id="seller-stat-to-ship">0</dd></div>
+                </dl>
+                <form class="shipping-settings" id="shipping-form" hidden>
+                    <h3>Delivery and free shipping</h3>
+                    <div class="shipping-grid">
+                        <div class="field"><label for="shipping-local">Same-town fee (N$)</label><input id="shipping-local" type="number" min="0" step="0.01" required></div>
+                        <div class="field"><label for="shipping-hub">Main-hub fee (N$)</label><input id="shipping-hub" type="number" min="0" step="0.01" required></div>
+                        <div class="field"><label for="shipping-remote">Remote-area fee (N$)</label><input id="shipping-remote" type="number" min="0" step="0.01" required></div>
+                        <div class="field"><label for="shipping-threshold">Free above (N$, 0 disables)</label><input id="shipping-threshold" type="number" min="0" step="0.01" required></div>
+                    </div>
+                    <label class="auto-approval-toggle" for="auto-approve-orders">
+                        <span>Auto-approve new orders</span>
+                        <span class="toggle-switch">
+                            <input id="auto-approve-orders" type="checkbox">
+                            <span class="toggle-slider" aria-hidden="true"></span>
+                        </span>
+                    </label>
+                    <button class="shipping-save" type="submit"><span>Save delivery settings</span><span aria-hidden="true">&#8594;</span></button>
+                    <p class="message shipping-save-feedback" id="shipping-message" role="status" aria-live="polite"></p>
+                </form>
+            </aside>
+            <section aria-labelledby="shop-heading">
+                <h2 class="section-heading" id="shop-heading">Your storefront</h2>
+                <p class="message" id="seller-message" role="status" aria-live="polite" hidden></p>
+            </section>
+
+            <section id="product-section" aria-label="Product management" hidden>
+                <details class="product-disclosure" id="product-disclosure">
+                    <summary><span id="product-disclosure-label">Add a product</span><span class="product-disclosure-indicator" aria-hidden="true">+</span></summary>
+                    <div class="product-disclosure-content">
+                        <h2 class="section-heading" id="product-heading">Add a product</h2>
+                        <form id="product-form">
+                    <div class="field">
+                        <label for="product-title">Product name</label>
+                        <input id="product-title" name="title" maxlength="100" placeholder="What are you selling?" required>
+                    </div>
+                    <div class="field">
+                        <label for="product-description">Description</label>
+                        <textarea id="product-description" name="description" maxlength="1500" placeholder="Share useful details shoppers need to know." required></textarea>
+                    </div>
+                    <div class="field">
+                        <label for="product-price">Price (N$)</label>
+                        <input id="product-price" name="priceNAD" type="number" min="0.01" max="10000000" step="0.01" placeholder="0.00" required>
+                    </div>
+                    <div class="field">
+                        <label for="product-stock">Available stock</label>
+                        <input id="product-stock" name="stock" type="number" min="0" max="100000" step="1" placeholder="0" required>
+                    </div>
+                    <div class="field">
+                        <label for="product-category">Category</label>
+                        <select id="product-category" name="category" required>
+                            <option value="">Choose a category</option>
+                            <option>Art &amp; Crafts</option>
+                            <option>Beauty</option>
+                            <option>Electronics</option>
+                            <option>Fashion</option>
+                            <option>Food</option>
+                            <option>Home</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label>Product photos</label>
+                        <input class="cover-file-input" id="product-image-file" name="imageFile" type="file" accept="image/jpeg,image/png,image/webp" multiple>
+                        <label class="cover-upload-button" for="product-image-file">
+                            <span class="cover-upload-icon" aria-hidden="true"><img class="cover-upload-thumb" id="product-upload-thumb" alt="" hidden><span id="product-upload-placeholder">&#8593;</span></span>
+                            <span class="cover-upload-copy"><strong>Choose product photos</strong><span>JPG, PNG, or WebP · up to 5 MB each</span></span>
+                        </label>
+                        <p class="cover-file-name" id="product-image-filename" aria-live="polite">No image selected</p>
+                        <p class="hint">You can upload multiple photos for one product.</p>
+                    </div>
+                    <div class="field">
+                        <label for="product-image">Or use an image URL</label>
+                        <input id="product-image" name="imageUrl" type="url" placeholder="https://example.com/product.jpg">
+                    </div>
+                    <button class="primary-button" type="submit" aria-busy="false"><span class="cover-spinner" id="product-submit-spinner" aria-hidden="true" hidden></span><span id="product-submit-label">Publish listing</span><span id="product-submit-arrow" aria-hidden="true">&#8594;</span></button>
+                    <button class="secondary-button" id="cancel-edit" type="button" hidden>Cancel edit</button>
+                    <p class="message" id="product-message" role="status" aria-live="polite"></p>
+                        </form>
+                    </div>
+                </details>
+                <section class="seller-operations" id="seller-operations" hidden>
+                    <h2 class="section-heading">Incoming orders</h2>
+                    <input class="seller-order-search" id="seller-order-search" type="search" placeholder="Search order, product, status, tracking..." aria-label="Search orders" hidden>
+                    <div id="seller-order-list" aria-live="polite"><p class="empty-listings">Loading orders...</p></div>
+                    <h2 class="section-heading">Payout activity</h2>
+                    <div id="payout-ledger" aria-live="polite"><p class="empty-listings">Loading balances...</p></div>
+                    <p class="hint" id="payout-mode-note">Loading payout mode...</p>
+                </section>
+            </section>
+            <aside class="seller-listings is-collapsed" id="seller-listings" aria-label="Seller inventory" hidden>
+                <div class="listing-panel-header">
+                    <div>
+                        <p class="eyebrow">Inventory</p>
+                        <h2 class="listing-panel-title">Your listings</h2>
+                    </div>
+                    <span class="listing-count" id="listing-count">Loading...</span>
+                    <button class="listing-panel-toggle" id="listing-panel-toggle" type="button" aria-expanded="false" aria-controls="listing-list">Show</button>
+                </div>
+                <button class="inventory-add-product" id="inventory-add-product" type="button">Add a product</button>
+                <div id="listing-list" aria-live="polite"><p class="empty-listings">Loading listings...</p></div>
+            </aside>
+        </div>
+    </main>
+
+    <script>
+        const sellerShopMenu = document.querySelector("#seller-shop-menu");
+        const sellerShopName = document.querySelector("#seller-shop-name");
+        const sellerShopPublicLink = document.querySelector("#seller-shop-public-link");
+        const changeCoverMenu = document.querySelector("#change-cover-menu");
+        const sellerMessage = document.querySelector("#seller-message");
+        const shopCoverMessage = document.querySelector("#shop-cover-message");
+        const shopCoverFile = document.querySelector("#shop-cover-file");
+        const pageIntroCover = document.querySelector("#page-intro-cover");
+        const shippingForm = document.querySelector("#shipping-form");
+        const shippingMessage = document.querySelector("#shipping-message");
+        const sellerLayout = document.querySelector(".seller-layout");
+        const sellerStats = document.querySelector("#seller-stats");
+        const sellerStatSales = document.querySelector("#seller-stat-sales");
+        const sellerStatHeld = document.querySelector("#seller-stat-held");
+        const sellerStatReady = document.querySelector("#seller-stat-ready");
+        const sellerStatPaid = document.querySelector("#seller-stat-paid");
+        const sellerStatPaidLabel = document.querySelector("#seller-stat-paid-label");
+        const sellerStatOrders = document.querySelector("#seller-stat-orders");
+        const sellerStatToShip = document.querySelector("#seller-stat-to-ship");
+        const sellerListings = document.querySelector("#seller-listings");
+        const payoutModeNote = document.querySelector("#payout-mode-note");
+        const listingCount = document.querySelector("#listing-count");
+        const listingPanelToggle = document.querySelector("#listing-panel-toggle");
+        const inventoryAddProduct = document.querySelector("#inventory-add-product");
+        const mobileListingPanel = window.matchMedia("(max-width: 900px)");
+        const productSection = document.querySelector("#product-section");
+        const productDisclosure = document.querySelector("#product-disclosure");
+        const productDisclosureLabel = document.querySelector("#product-disclosure-label");
+        const productForm = document.querySelector("#product-form");
+        const productMessage = document.querySelector("#product-message");
+        const productHeading = document.querySelector("#product-heading");
+        const productSubmitLabel = document.querySelector("#product-submit-label");
+        const productSubmitSpinner = document.querySelector("#product-submit-spinner");
+        const productSubmitArrow = document.querySelector("#product-submit-arrow");
+        const productImageFile = document.querySelector("#product-image-file");
+        const productImageFilename = document.querySelector("#product-image-filename");
+        const productImageThumb = document.querySelector("#product-upload-thumb");
+        const productImagePlaceholder = document.querySelector("#product-upload-placeholder");
+        const cancelEditButton = document.querySelector("#cancel-edit");
+        const listingList = document.querySelector("#listing-list");
+        const sellerOperations = document.querySelector("#seller-operations");
+        const sellerOrderList = document.querySelector("#seller-order-list");
+        const sellerOrderSearch = document.querySelector("#seller-order-search");
+        const payoutLedger = document.querySelector("#payout-ledger");
+        const priceFormat = new Intl.NumberFormat("en-NA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        let productPreviewUrl = "";
+        let sellerOrdersForSearch = [];
+        let payoutLedgerRefreshTimer = null;
+        let payoutLedgerRequestInFlight = false;
+
+        function sellerOrderMatchesQuery(order, query) {
+            if (!query) return true;
+            const itemDetails = (order.items || []).flatMap((item) => [
+                item.title,
+                item.productId,
+                item.quantity,
+                item.unitPriceNAD,
+                priceFormat.format(Number(item.unitPriceNAD || 0)),
+                priceFormat.format(Number(item.quantity || 0) * Number(item.unitPriceNAD || 0))
+            ]);
+            const searchableFields = [
+                order.orderNumber,
+                order._id,
+                order.buyerName,
+                order.shopName,
+                order.fulfillmentStatus,
+                order.paymentStatus,
+                order.payoutStatus,
+                order.deliveryTown,
+                order.sellerTown,
+                order.shippingZone,
+                order.trackingReference,
+                order.orderCreatedAt,
+                order.createdAt,
+                order.paidAt,
+                order.deliveredAt,
+                order.payoutEligibleAt,
+                order.productsSubtotalNAD,
+                order.shippingNAD,
+                order.commissionNAD,
+                order.payoutNAD,
+                ...itemDetails
+            ];
+            return searchableFields
+                .filter((value) => value !== null && value !== undefined)
+                .map((value) => String(value).replaceAll("_", " ").toLocaleLowerCase())
+                .join(" ")
+                .includes(query);
+        }
+
+        function renderSellerOrders() {
+            sellerOrderList.replaceChildren();
+            sellerOrderSearch.hidden = sellerOrdersForSearch.length === 0;
+            if (!sellerOrdersForSearch.length) {
+                const emptyOrders = document.createElement("p");
+                emptyOrders.className = "empty-listings";
+                emptyOrders.textContent = "Paid test orders for your shop will appear here.";
+                sellerOrderList.append(emptyOrders);
+                return;
+            }
+
+            const query = sellerOrderSearch.value.trim().toLocaleLowerCase();
+            const matchingOrders = sellerOrdersForSearch.filter((order) => sellerOrderMatchesQuery(order, query));
+            if (!matchingOrders.length) {
+                const noMatches = document.createElement("p");
+                noMatches.className = "empty-listings";
+                noMatches.textContent = `No orders match “${sellerOrderSearch.value.trim()}”.`;
+                sellerOrderList.append(noMatches);
+                return;
+            }
+            matchingOrders.forEach((order) => sellerOrderList.append(renderSellerOrder(order)));
+        }
+
+        function resetProductUploadPreview() {
+            if (productPreviewUrl) URL.revokeObjectURL(productPreviewUrl);
+            productPreviewUrl = "";
+            productImageThumb.removeAttribute("src");
+            productImageThumb.hidden = true;
+            productImagePlaceholder.hidden = false;
+            productImageFilename.textContent = "No image selected";
+        }
+
+        productImageFile.addEventListener("change", () => {
+            if (productPreviewUrl) URL.revokeObjectURL(productPreviewUrl);
+            const selectedFiles = Array.from(productImageFile.files || []);
+            const selectedFile = selectedFiles[0];
+            productPreviewUrl = selectedFile ? URL.createObjectURL(selectedFile) : "";
+            productImageFilename.textContent = selectedFiles.length
+                ? (selectedFiles.length > 1 ? `${selectedFiles.length} photos selected` : selectedFile.name)
+                : "No image selected";
+            productImageThumb.hidden = !productPreviewUrl;
+            productImagePlaceholder.hidden = Boolean(productPreviewUrl);
+            if (productPreviewUrl) productImageThumb.src = productPreviewUrl;
+        });
+
+        shopCoverFile.addEventListener("change", () => {
+            const selectedFile = shopCoverFile.files[0];
+            if (selectedFile) saveShopCover(selectedFile);
+        });
+
+        changeCoverMenu.addEventListener("click", () => {
+            sellerShopMenu.open = false;
+            shopCoverMessage.textContent = "";
+            shopCoverFile.click();
+        });
+
+        async function requestJson(url, options) {
+            const response = await fetch(url, options);
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || "Request failed. Please try again.");
+            return result;
+        }
+
+        function showMessage(element, text, success = false) {
+            element.textContent = text;
+            element.classList.toggle("success", success);
+        }
+
+        function setListingPanelCollapsed(collapsed) {
+            sellerListings.classList.toggle("is-collapsed", collapsed);
+            listingPanelToggle.setAttribute("aria-expanded", String(!collapsed));
+            listingPanelToggle.textContent = collapsed ? "Show" : "Hide";
+        }
+
+        function renderListing(product) {
+            const row = document.createElement("article");
+            row.className = "listing";
+            const imageWrap = document.createElement("div");
+            imageWrap.className = "listing-image";
+            const previewImage = product.imageUrls?.[0] || product.imageUrl;
+            if (previewImage) {
+                const image = document.createElement("img");
+                image.src = previewImage;
+                image.alt = product.title;
+                image.addEventListener("error", () => {
+                    image.remove();
+                    imageWrap.textContent = "Z";
+                }, { once: true });
+                imageWrap.append(image);
+            } else {
+                imageWrap.textContent = "Z";
+            }
+            row.append(imageWrap);
+            const detail = document.createElement("div");
+            const title = document.createElement("h3");
+            title.textContent = product.title;
+            detail.append(title);
+            const meta = document.createElement("p");
+            const stockLabel = Number.isInteger(product.stock) ? `${product.stock} in stock` : "Stock unset";
+            meta.textContent = `${product.category} · ${product.town} · ${stockLabel}`;
+            detail.append(meta);
+            const status = document.createElement("span");
+            detail.append(status);
+            const isHidden = product.moderationStatus === "hidden";
+            const isArchived = product.status === "archived";
+            const isOutOfStock = product.stock === 0;
+            status.className = `listing-status${isHidden ? " hidden" : isArchived || isOutOfStock ? " archived" : ""}`;
+            status.textContent = isHidden ? "Hidden by admin" : isArchived ? "Archived" : isOutOfStock ? "Out of stock" : "Active";
+            row.append(detail);
+
+            const controls = document.createElement("div");
+            controls.className = "listing-controls";
+            const price = document.createElement("strong");
+            price.className = "listing-price";
+            price.textContent = `N$ ${priceFormat.format(product.priceNAD)}`;
+            controls.append(price);
+
+            const options = document.createElement("details");
+            options.className = "listing-options";
+            const summary = document.createElement("summary");
+            summary.textContent = "Options";
+            options.append(summary);
+            const menu = document.createElement("div");
+            menu.className = "options-menu";
+
+            const editButton = document.createElement("button");
+            editButton.type = "button";
+            editButton.textContent = "Edit listing";
+            editButton.addEventListener("click", () => {
+                options.open = false;
+                beginEdit(product);
+            });
+            menu.append(editButton);
+
+            const archiveButton = document.createElement("button");
+            archiveButton.type = "button";
+            archiveButton.textContent = product.status === "archived" ? "Restore listing" : "Archive listing";
+            archiveButton.addEventListener("click", async () => {
+                options.open = false;
+                await changeListingStatus(product, product.status === "archived" ? "active" : "archived");
+            });
+            menu.append(archiveButton);
+
+            const deleteButton = document.createElement("button");
+            deleteButton.type = "button";
+            deleteButton.className = "delete-listing";
+            deleteButton.textContent = "Delete listing";
+            deleteButton.addEventListener("click", async () => {
+                options.open = false;
+                await deleteListing(product);
+            });
+            menu.append(deleteButton);
+            options.append(menu);
+            controls.append(options);
+            row.append(controls);
+            return row;
+        }
+
+        function beginEdit(product) {
+            productForm.dataset.productId = product.id;
+            document.querySelector("#product-title").value = product.title;
+            document.querySelector("#product-description").value = product.description;
+            document.querySelector("#product-price").value = product.priceNAD;
+            document.querySelector("#product-stock").value = product.stock ?? 0;
+            document.querySelector("#product-category").value = product.category;
+            document.querySelector("#product-image").value = (product.imageUrls && product.imageUrls[0]) || product.imageUrl || "";
+            productImageFile.value = "";
+            resetProductUploadPreview();
+            productDisclosure.open = true;
+            productDisclosureLabel.textContent = "Editing product";
+            productHeading.textContent = "Edit product";
+            productSubmitLabel.textContent = "Save changes";
+            cancelEditButton.hidden = false;
+            showMessage(productMessage, "Update the details, then save your changes.", true);
+            productForm.scrollIntoView({ behavior: "smooth", block: "start" });
+            document.querySelector("#product-title").focus({ preventScroll: true });
+        }
+
+        function cancelEdit() {
+            delete productForm.dataset.productId;
+            productForm.reset();
+            productImageFile.value = "";
+            resetProductUploadPreview();
+            productDisclosureLabel.textContent = "Add a product";
+            productHeading.textContent = "Add a product";
+            productSubmitLabel.textContent = "Publish listing";
+            cancelEditButton.hidden = true;
+            showMessage(productMessage, "");
+        }
+
+        async function changeListingStatus(product, status) {
+            try {
+                await requestJson(`/api/seller/products/${encodeURIComponent(product.id)}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ status })
+                });
+                showMessage(productMessage, status === "archived" ? "Listing archived and hidden from the marketplace." : "Listing restored to the marketplace.", true);
+                await loadListings();
+            } catch (error) {
+                showMessage(productMessage, error.message);
+            }
+        }
+
+        async function deleteListing(product) {
+            if (!window.confirm(`Delete “${product.title}”? This cannot be undone.`)) return;
+            try {
+                await requestJson(`/api/seller/products/${encodeURIComponent(product.id)}`, { method: "DELETE" });
+                showMessage(productMessage, "Listing deleted.", true);
+                await loadListings();
+            } catch (error) {
+                showMessage(productMessage, error.message);
+            }
+        }
+
+        async function loadListings() {
+            try {
+                const { products } = await requestJson("/api/seller/products");
+                listingCount.textContent = `${products.length} ${products.length === 1 ? "listing" : "listings"}`;
+                listingList.replaceChildren();
+                if (!products.length) {
+                    const empty = document.createElement("p");
+                    empty.className = "empty-listings";
+                    empty.textContent = "Your shop is open. Publish a product to see it here and in the marketplace.";
+                    listingList.append(empty);
+                    return;
+                }
+                products.forEach((product) => listingList.append(renderListing(product)));
+            } catch (error) {
+                listingCount.textContent = "Unavailable";
+                listingList.textContent = error.message;
+            }
+        }
+
+        function getSellerDecisionStatus(sellerOrder) {
+            const approvalStatus = sellerOrder?.approvalStatus;
+            const fulfillmentStatus = sellerOrder?.fulfillmentStatus;
+
+            if (approvalStatus === "rejected" || fulfillmentStatus === "disputed") {
+                return { label: "Rejected", key: "rejected" };
+            }
+
+            if (approvalStatus === "accepted") {
+                return { label: "Accepted", key: "accepted" };
+            }
+
+            if (approvalStatus === "pending") {
+                return { label: "Waiting for approval", key: "processing" };
+            }
+
+            return {
+                label: (fulfillmentStatus || "pending").replaceAll("_", " ").replace(/\b\w/g, (character) => character.toUpperCase()),
+                key: (fulfillmentStatus || "pending").replaceAll("_", "-")
+            };
+        }
+
+        function createSellerOrderImageCarousel(items) {
+            const images = (items || []).filter((item) => item?.imageUrl);
+            if (!images.length) {
+                const placeholder = document.createElement("div");
+                placeholder.className = "seller-order-image-placeholder";
+                placeholder.textContent = "Z";
+                return placeholder;
+            }
+            if (images.length === 1) {
+                const image = document.createElement("img");
+                image.className = "seller-order-carousel-image";
+                image.src = images[0].imageUrl;
+                image.alt = `${images[0].title} preview`;
+                return image;
+            }
+
+            const carousel = document.createElement("div");
+            carousel.className = "seller-order-image-carousel";
+            carousel.setAttribute("role", "group");
+            carousel.setAttribute("aria-label", `Order images, ${images.length} products`);
+            const image = document.createElement("img");
+            image.className = "seller-order-carousel-image";
+            const count = document.createElement("span");
+            count.className = "seller-order-image-count";
+            let activeIndex = 0;
+            const showImage = (index) => {
+                activeIndex = (index + images.length) % images.length;
+                image.src = images[activeIndex].imageUrl;
+                image.alt = `${images[activeIndex].title} preview, ${activeIndex + 1} of ${images.length}`;
+                count.textContent = `${activeIndex + 1}/${images.length}`;
+            };
+            showImage(0);
+
+            const createControl = (direction, label, symbol) => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = `seller-order-image-control ${direction}`;
+                button.setAttribute("aria-label", label);
+                button.title = label;
+                button.textContent = symbol;
+                button.addEventListener("click", (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    showImage(activeIndex + (direction === "next" ? 1 : -1));
+                });
+                return button;
+            };
+            carousel.append(image, createControl("previous", "Previous product image", "‹"), createControl("next", "Next product image", "›"), count);
+
+            const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+            let timer = null;
+            const stop = () => {
+                if (timer !== null) window.clearInterval(timer);
+                timer = null;
+            };
+            const start = () => {
+                if (reduceMotion || timer !== null) return;
+                timer = window.setInterval(() => {
+                    if (!carousel.isConnected) return stop();
+                    showImage(activeIndex + 1);
+                }, 3500);
+            };
+            carousel.addEventListener("mouseenter", stop);
+            carousel.addEventListener("mouseleave", start);
+            carousel.addEventListener("focusin", stop);
+            carousel.addEventListener("focusout", (event) => {
+                if (!carousel.contains(event.relatedTarget)) start();
+            });
+            start();
+            return carousel;
+        }
+
+        function renderSellerOrder(sellerOrder) {
+            const row = document.createElement("article");
+            row.className = "seller-order-row";
+            const statusState = getSellerDecisionStatus(sellerOrder);
+            const statusLabel = statusState.label;
+            const statusKey = statusState.key;
+            const disclosure = document.createElement("details");
+            disclosure.className = "seller-order-disclosure";
+            const summary = document.createElement("summary");
+            const orderImageCarousel = createSellerOrderImageCarousel(sellerOrder.items);
+            const summaryMain = document.createElement("div");
+            summaryMain.className = "seller-order-summary-main";
+            const headingRow = document.createElement("div");
+            headingRow.className = "seller-order-heading";
+            const heading = document.createElement("h3");
+            heading.textContent = sellerOrder.orderNumber;
+            headingRow.append(heading);
+            summaryMain.append(headingRow);
+            const summaryMeta = document.createElement("div");
+            summaryMeta.className = "seller-order-summary-meta";
+            const shopName = document.createElement("span");
+            shopName.textContent = sellerOrder.shopName;
+            const buyerName = document.createElement("span");
+            buyerName.textContent = sellerOrder.buyerName || "Customer";
+            const orderDate = sellerOrder.orderCreatedAt || sellerOrder.createdAt;
+            const date = document.createElement("span");
+            date.textContent = orderDate ? new Date(orderDate).toLocaleDateString() : "Date unavailable";
+            const itemCount = (sellerOrder.items || []).reduce((total, item) => total + (Number(item.quantity) || 0), 0);
+            const count = document.createElement("span");
+            count.textContent = `${itemCount} ${itemCount === 1 ? "item" : "items"}`;
+            summaryMeta.append(shopName, buyerName, date, count);
+            summaryMain.append(summaryMeta);
+            const orderStatus = document.createElement("span");
+            orderStatus.className = `seller-status-badge incoming-${statusKey}`;
+            orderStatus.textContent = statusLabel;
+            const summarySide = document.createElement("div");
+            summarySide.className = "seller-order-summary-side";
+            summarySide.append(orderStatus);
+            const payoutAmount = document.createElement("strong");
+            payoutAmount.textContent = `N$ ${priceFormat.format(sellerOrder.payoutNAD)}`;
+            summarySide.append(payoutAmount);
+            summary.append(orderImageCarousel, summaryMain, summarySide);
+            const cue = document.createElement("span");
+            cue.className = "seller-order-summary-cue";
+            cue.setAttribute("aria-hidden", "true");
+            cue.textContent = "+";
+            summary.append(cue);
+            disclosure.append(summary);
+
+            const content = document.createElement("div");
+            content.className = "seller-order-content";
+            const detailGrid = document.createElement("dl");
+            detailGrid.className = "order-detail-grid";
+            const addDetail = (label, value) => {
+                const detail = document.createElement("div");
+                detail.className = "order-detail";
+                const term = document.createElement("dt");
+                term.textContent = label;
+                const description = document.createElement("dd");
+                description.textContent = value;
+                detail.append(term, description);
+                detailGrid.append(detail);
+            };
+            const placedAt = sellerOrder.orderCreatedAt || sellerOrder.createdAt;
+            addDetail("Placed", placedAt ? new Date(placedAt).toLocaleString() : "Date unavailable");
+            addDetail("Customer", sellerOrder.buyerName || "Customer");
+            if (sellerOrder.paidAt) addDetail("Paid", new Date(sellerOrder.paidAt).toLocaleString());
+            addDetail("Approval", getSellerDecisionStatus(sellerOrder).label);
+            addDetail("Delivery town", sellerOrder.deliveryTown);
+            addDetail("Shipping zone", sellerOrder.shippingZone.replaceAll("_", " "));
+            addDetail("Payment", sellerOrder.paymentStatus.replaceAll("_", " ").replace(/\b\w/g, (character) => character.toUpperCase()));
+            addDetail("Payout status", sellerOrder.payoutStatus.replaceAll("_", " ").replace(/\b\w/g, (character) => character.toUpperCase()));
+            if (sellerOrder.deliveredAt) addDetail("Delivery confirmed", new Date(sellerOrder.deliveredAt).toLocaleString());
+            if (sellerOrder.payoutEligibleAt) {
+                addDetail(sellerOrder.payoutMode === "simulated" ? "Ready for payout" : "Payout review opens", new Date(sellerOrder.payoutEligibleAt).toLocaleString());
+            }
+            if (sellerOrder.payoutMode === "simulated" && sellerOrder.payoutProcessingAt) {
+                addDetail("Simulated payout", new Date(sellerOrder.payoutProcessingAt).toLocaleString());
+            }
+            if (sellerOrder.payoutReference) addDetail("Payout reference", sellerOrder.payoutReference);
+            content.append(detailGrid);
+
+            const itemsList = document.createElement("div");
+            itemsList.className = "order-items-list";
+            (sellerOrder.items || []).forEach((item) => {
+                const itemRow = document.createElement("div");
+                itemRow.className = "order-product";
+                const imageWrap = document.createElement("div");
+                imageWrap.className = "order-product-image";
+                if (item.imageUrl) {
+                    const image = document.createElement("img");
+                    image.src = item.imageUrl;
+                    image.alt = item.title;
+                    image.addEventListener("error", () => { image.remove(); imageWrap.textContent = "Z"; }, { once: true });
+                    imageWrap.append(image);
+                } else {
+                    imageWrap.textContent = "Z";
+                }
+                const itemDetails = document.createElement("div");
+                const itemTitle = document.createElement("h4");
+                itemTitle.className = "order-product-name";
+                itemTitle.textContent = item.title;
+                const itemMeta = document.createElement("p");
+                itemMeta.className = "order-product-meta";
+                itemMeta.textContent = `${item.quantity} × N$ ${priceFormat.format(item.unitPriceNAD)} each`;
+                itemDetails.append(itemTitle, itemMeta);
+                const lineTotal = document.createElement("strong");
+                lineTotal.className = "order-product-total";
+                lineTotal.textContent = `N$ ${priceFormat.format(item.quantity * item.unitPriceNAD)}`;
+                itemRow.append(imageWrap, itemDetails, lineTotal);
+                itemsList.append(itemRow);
+            });
+            content.append(itemsList);
+
+            const totals = document.createElement("div");
+            totals.className = "order-totals";
+            const addTotal = (label, value, final = false) => {
+                const line = document.createElement("div");
+                line.className = `order-total-line${final ? " final" : ""}`;
+                const name = document.createElement("span");
+                name.textContent = label;
+                const amount = document.createElement("span");
+                amount.textContent = `N$ ${priceFormat.format(value)}`;
+                line.append(name, amount);
+                totals.append(line);
+            };
+            addTotal("Products", sellerOrder.productsSubtotalNAD);
+            addTotal("Shipping", sellerOrder.shippingNAD);
+            addTotal("Z fee", sellerOrder.commissionNAD);
+            addTotal("Seller payout", sellerOrder.payoutNAD, true);
+            content.append(totals);
+
+            if (sellerOrder.trackingReference) {
+                const tracking = document.createElement("p");
+                tracking.textContent = `Tracking reference: ${sellerOrder.trackingReference}`;
+                content.append(tracking);
+            }
+
+            if (sellerOrder.approvalStatus === "pending") {
+                const decisionActions = document.createElement("div");
+                decisionActions.className = "approval-actions";
+
+                const acceptButton = document.createElement("button");
+                acceptButton.type = "button";
+                acceptButton.className = "accept-button";
+                acceptButton.textContent = "Accept order";
+                acceptButton.addEventListener("click", async () => {
+                    try {
+                        await requestJson(`/api/seller/orders/${encodeURIComponent(sellerOrder.orderNumber)}/${encodeURIComponent(sellerOrder._id)}/decision`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ decision: "accept" })
+                        });
+                        await loadSellerOperations();
+                    } catch (error) {
+                        showMessage(productMessage, error.message);
+                    }
+                });
+
+                const rejectButton = document.createElement("button");
+                rejectButton.type = "button";
+                rejectButton.className = "reject-button";
+                rejectButton.textContent = "Reject order";
+                rejectButton.addEventListener("click", async () => {
+                    try {
+                        await requestJson(`/api/seller/orders/${encodeURIComponent(sellerOrder.orderNumber)}/${encodeURIComponent(sellerOrder._id)}/decision`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ decision: "reject" })
+                        });
+                        await loadSellerOperations();
+                    } catch (error) {
+                        showMessage(productMessage, error.message);
+                    }
+                });
+
+                decisionActions.append(acceptButton, rejectButton);
+                content.append(decisionActions);
+            }
+
+            if (sellerOrder.approvalStatus === "accepted" && sellerOrder.fulfillmentStatus === "processing") {
+                const form = document.createElement("form");
+                const input = document.createElement("input");
+                input.required = true;
+                input.minLength = 2;
+                input.maxLength = 100;
+                input.placeholder = "Courier / tracking reference";
+                input.setAttribute("aria-label", "Courier or tracking reference");
+                form.append(input);
+                const button = document.createElement("button");
+                button.className = "secondary-button";
+                button.type = "submit";
+                button.textContent = "Mark shipped";
+                form.append(button);
+                form.addEventListener("submit", async (event) => {
+                    event.preventDefault();
+                    button.disabled = true;
+                    try {
+                        await requestJson(`/api/seller/orders/${encodeURIComponent(sellerOrder.orderNumber)}/${encodeURIComponent(sellerOrder._id)}/shipping`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ trackingReference: input.value })
+                        });
+                        await loadSellerOperations();
+                    } catch (error) {
+                        showMessage(productMessage, error.message);
+                        button.disabled = false;
+                    }
+                });
+                content.append(form);
+            }
+
+            if (sellerOrder.payoutEligibleAt && sellerOrder.payoutStatus === "held") {
+                const hold = document.createElement("p");
+                hold.className = "payout-timing-note";
+                hold.textContent = sellerOrder.payoutMode === "simulated"
+                    ? `Test payout becomes ready ${new Date(sellerOrder.payoutEligibleAt).toLocaleString()} and is simulated as paid ${sellerOrder.payoutProcessingAt ? `at ${new Date(sellerOrder.payoutProcessingAt).toLocaleString()}` : "after the second delay"}. No money moves.`
+                    : `Delivery confirmed. Manual payout review opens ${new Date(sellerOrder.payoutEligibleAt).toLocaleString()}.`;
+                content.append(hold);
+            }
+            disclosure.append(content);
+            row.append(disclosure);
+            return row;
+        }
+
+        function renderPayoutLedger(ledgerResult) {
+            payoutModeNote.textContent = ledgerResult.mode === "simulated"
+                ? "Mock payout simulation only. No money moves."
+                : "Manual ledger only. Z does not move funds or execute bank transfers.";
+            const sumPayoutsByStatus = (payoutStatus) => ledgerResult.entries
+                .filter((entry) => entry.payoutStatus === payoutStatus)
+                .reduce((total, entry) => total + Number(entry.payoutNAD || 0), 0);
+            sellerStatHeld.textContent = `N$ ${priceFormat.format(sumPayoutsByStatus("held"))}`;
+            sellerStatReady.textContent = `N$ ${priceFormat.format(sumPayoutsByStatus("eligible"))}`;
+            sellerStatPaid.textContent = `N$ ${priceFormat.format(sumPayoutsByStatus("paid"))}`;
+            sellerStatPaidLabel.textContent = ledgerResult.mode === "simulated" ? "Simulated paid" : "Paid out";
+            payoutLedger.replaceChildren();
+            if (!ledgerResult.entries.length) {
+                const emptyLedger = document.createElement("p");
+                emptyLedger.className = "empty-listings";
+                emptyLedger.textContent = "Seller balances will appear here after test orders are confirmed.";
+                payoutLedger.append(emptyLedger);
+                return;
+            }
+
+            ledgerResult.entries.forEach((entry) => {
+                const row = document.createElement("article");
+                row.className = "payout-row";
+                const header = document.createElement("div");
+                header.className = "payout-row-header";
+                const identity = document.createElement("div");
+                const reference = document.createElement("strong");
+                reference.className = "payout-row-order";
+                reference.textContent = entry.orderNumber;
+                const shopName = document.createElement("div");
+                shopName.className = "payout-row-shop";
+                shopName.textContent = entry.shopName;
+                identity.append(reference, shopName);
+                header.append(identity);
+                const amount = document.createElement("strong");
+                amount.className = "payout-row-amount";
+                amount.textContent = `N$ ${Number(entry.payoutNAD).toFixed(2)}`;
+                header.append(amount);
+                row.append(header);
+
+                const statusLabel = entry.payoutStatus.replaceAll("_", " ").replace(/\b\w/g, (character) => character.toUpperCase());
+                const statusBadge = document.createElement("span");
+                statusBadge.className = `seller-status-badge payout-${entry.payoutStatus.replaceAll("_", "-")}`;
+                statusBadge.textContent = statusLabel;
+                row.append(statusBadge);
+                const status = document.createElement("p");
+                if (entry.payoutStatus === "paid") {
+                    const paidLabel = entry.simulated ? "Simulated payout completed" : "Paid out";
+                    status.textContent = `${paidLabel}${entry.payoutMarkedAt ? ` · ${new Date(entry.payoutMarkedAt).toLocaleString()}` : ""}${entry.payoutReference ? ` · Ref ${entry.payoutReference}` : ""}${entry.simulated ? " · No money moved" : ""}`;
+                } else if (entry.payoutStatus === "eligible") {
+                    status.textContent = ledgerResult.mode === "simulated"
+                        ? `Ready for payout · simulated completion ${entry.payoutProcessingAt ? new Date(entry.payoutProcessingAt).toLocaleString() : "soon"}`
+                        : "Ready for manual payout";
+                } else {
+                    status.textContent = entry.payoutEligibleAt
+                        ? `${ledgerResult.mode === "simulated" ? "Ready for payout" : "Review after"} ${new Date(entry.payoutEligibleAt).toLocaleString()}`
+                        : "Awaiting delivery confirmation";
+                }
+                row.append(status);
+                payoutLedger.append(row);
+            });
+        }
+
+        async function refreshSellerPayoutLedger() {
+            if (payoutLedgerRequestInFlight || document.hidden) return;
+            payoutLedgerRequestInFlight = true;
+            try {
+                const ledgerResult = await requestJson("/api/seller/payout-ledger");
+                renderPayoutLedger(ledgerResult);
+            } catch (error) {
+                payoutLedger.textContent = error.message;
+            } finally {
+                payoutLedgerRequestInFlight = false;
+            }
+        }
+
+        async function loadSellerOperations() {
+            try {
+                const [ordersResult, ledgerResult] = await Promise.all([
+                    requestJson("/api/seller/orders"),
+                    requestJson("/api/seller/payout-ledger")
+                ]);
+                const sellerOrders = ordersResult.sellerOrders || [];
+                const productSales = sellerOrders.reduce((total, order) => total + Number(order.productsSubtotalNAD || 0), 0);
+                sellerStatSales.textContent = `N$ ${priceFormat.format(productSales)}`;
+                sellerStatOrders.textContent = String(sellerOrders.length);
+                sellerStatToShip.textContent = String(sellerOrders.filter((order) => order.fulfillmentStatus === "processing").length);
+                sellerOrdersForSearch = sellerOrders;
+                renderSellerOrders();
+
+                renderPayoutLedger(ledgerResult);
+                if (ledgerResult.mode === "simulated" && !payoutLedgerRefreshTimer) {
+                    payoutLedgerRefreshTimer = window.setInterval(refreshSellerPayoutLedger, 2000);
+                }
+            } catch (error) {
+                sellerOrderList.textContent = error.message;
+                payoutLedger.textContent = error.message;
+            }
+        }
+
+        async function loadSeller() {
+            try {
+                const { shop } = await requestJson("/api/seller/shop");
+                if (!shop) {
+                    window.location.replace("/sell/setup");
+                    return;
+                }
+                if (shop) {
+                    sellerShopPublicLink.href = `/shops/${encodeURIComponent(shop.slug)}`;
+                    sellerShopName.textContent = shop.name;
+                    sellerShopMenu.hidden = false;
+                    sellerLayout.classList.add("has-shop");
+                    sellerStats.hidden = false;
+                    if (shop.coverImageUrl) {
+                        pageIntroCover.src = shop.coverImageUrl;
+                    }
+                    sellerListings.hidden = false;
+                    setListingPanelCollapsed(mobileListingPanel.matches);
+                    const rates = shop.shippingRates || {};
+                    document.querySelector("#shipping-local").value = rates.localNAD ?? 30;
+                    document.querySelector("#shipping-hub").value = rates.hubNAD ?? 70;
+                    document.querySelector("#shipping-remote").value = rates.remoteNAD ?? 120;
+                    document.querySelector("#shipping-threshold").value = rates.freeThresholdNAD ?? 800;
+                    document.querySelector("#auto-approve-orders").checked = Boolean(shop.autoApprovalEnabled);
+                    shippingForm.hidden = false;
+                    sellerOperations.append(productDisclosure);
+                    productSection.hidden = false;
+                    sellerOperations.hidden = false;
+                    await loadListings();
+                    await loadSellerOperations();
+                }
+            } catch (error) {
+                if (error.message.includes("Sign in")) {
+                    window.location.replace("/login");
+                    return;
+                }
+                sellerMessage.hidden = false;
+                showMessage(sellerMessage, error.message);
+            }
+        }
+
+        shippingForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const button = shippingForm.querySelector("button[type='submit']");
+            button.disabled = true;
+            try {
+                await requestJson("/api/seller/shop/shipping", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        localNAD: document.querySelector("#shipping-local").value,
+                        hubNAD: document.querySelector("#shipping-hub").value,
+                        remoteNAD: document.querySelector("#shipping-remote").value,
+                        freeThresholdNAD: document.querySelector("#shipping-threshold").value,
+                        autoApprovalEnabled: document.querySelector("#auto-approve-orders").checked
+                    })
+                });
+                showMessage(shippingMessage, "Delivery rates and approval settings saved.", true);
+            } catch (error) {
+                showMessage(shippingMessage, error.message);
+            } finally {
+                button.disabled = false;
+            }
+        });
+
+        async function uploadProductImage(file, kind = "product") {
+            const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+            if (!allowedTypes.includes(file.type) || file.size > 5 * 1024 * 1024) {
+                throw new Error("Choose a JPG, PNG, or WebP image up to 5 MB.");
+            }
+
+            const upload = new FormData();
+            upload.append("file", file);
+            upload.append("kind", kind);
+            const result = await requestJson("/api/seller/products/upload", {
+                method: "POST",
+                body: upload
+            });
+            if (typeof result.imageUrl !== "string" || !result.imageUrl.startsWith("https://")) {
+                throw new Error("Image upload failed. Check Cloudinary configuration and try again.");
+            }
+            return result.imageUrl;
+        }
+
+        async function saveShopCover(imageFile) {
+            changeCoverMenu.disabled = true;
+            changeCoverMenu.textContent = "Uploading cover...";
+            try {
+                const coverImageUrl = await uploadProductImage(imageFile, "shop-cover");
+                await requestJson("/api/seller/shop/cover", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ coverImageUrl })
+                });
+                pageIntroCover.src = coverImageUrl;
+                showMessage(shopCoverMessage, "Storefront photo saved.", true);
+            } catch (error) {
+                showMessage(shopCoverMessage, error.message);
+            } finally {
+                shopCoverFile.value = "";
+                changeCoverMenu.disabled = false;
+                changeCoverMenu.textContent = "Change cover photo";
+            }
+        }
+
+        listingPanelToggle.addEventListener("click", () => {
+            setListingPanelCollapsed(!sellerListings.classList.contains("is-collapsed"));
+        });
+        inventoryAddProduct.addEventListener("click", () => {
+            if (productForm.dataset.productId) cancelEdit();
+            productDisclosure.open = true;
+            productDisclosureLabel.textContent = "Add a product";
+            productHeading.textContent = "Add a product";
+            productSubmitLabel.textContent = "Publish listing";
+            showMessage(productMessage, "");
+            setListingPanelCollapsed(true);
+            productForm.scrollIntoView({ behavior: "smooth", block: "start" });
+            document.querySelector("#product-title").focus({ preventScroll: true });
+        });
+        mobileListingPanel.addEventListener("change", (event) => {
+            if (!sellerListings.hidden) setListingPanelCollapsed(event.matches);
+        });
+        sellerOrderSearch.addEventListener("input", renderSellerOrders);
+        cancelEditButton.addEventListener("click", cancelEdit);
+        productForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const button = productForm.querySelector("button[type='submit']");
+            const productId = productForm.dataset.productId;
+            button.disabled = true;
+            button.setAttribute("aria-busy", "true");
+            productSubmitLabel.textContent = productId ? "Saving changes..." : "Publishing...";
+            productSubmitSpinner.hidden = false;
+            productSubmitArrow.hidden = true;
+            try {
+                const selectedImages = Array.from(productImageFile.files || []);
+                const uploadedImageUrls = selectedImages.length
+                    ? await Promise.all(selectedImages.map((file) => uploadProductImage(file)))
+                    : [];
+                const urlValue = document.querySelector("#product-image").value.trim();
+                const imageUrls = uploadedImageUrls.length ? uploadedImageUrls : (urlValue ? [urlValue] : []);
+                await requestJson(productId ? `/api/seller/products/${encodeURIComponent(productId)}` : "/api/seller/products", {
+                    method: productId ? "PATCH" : "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        title: document.querySelector("#product-title").value,
+                        description: document.querySelector("#product-description").value,
+                        priceNAD: document.querySelector("#product-price").value,
+                        stock: document.querySelector("#product-stock").value,
+                        category: document.querySelector("#product-category").value,
+                        imageUrls,
+                        imageUrl: imageUrls[0] || ""
+                    })
+                });
+                if (productId) cancelEdit();
+                else {
+                    productForm.reset();
+                    resetProductUploadPreview();
+                }
+                showMessage(productMessage, productId ? "Listing updated." : "Your product is now listed in the marketplace.", true);
+                await loadListings();
+            } catch (error) {
+                showMessage(productMessage, error.message);
+            } finally {
+                button.disabled = false;
+                button.setAttribute("aria-busy", "false");
+                productSubmitLabel.textContent = productForm.dataset.productId ? "Save changes" : "Publish listing";
+                productSubmitSpinner.hidden = true;
+                productSubmitArrow.hidden = false;
+            }
+        });
+
+        loadSeller();
+    </script>
+</body>
+</html>

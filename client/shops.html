@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f4f1e8">
+    <title>Shops | Z Namibia</title>
+    <style>
+        :root { color-scheme: light; --ink: #17231e; --muted: #68736d; --paper: #f4f1e8; --white: #fffefa; --lime: #d8f36a; --forest: #18382e; --line: #d9d9cf; }
+        * { box-sizing: border-box; }
+        body { min-width: 320px; margin: 0; color: var(--ink); background: var(--paper); font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
+        button, input, select { font: inherit; }
+        a { color: inherit; }
+        .site-header { display: flex; min-height: 72px; align-items: center; justify-content: space-between; gap: 20px; padding: 12px max(24px, calc((100vw - 1120px) / 2)); border-bottom: 1px solid var(--line); }
+        .header-left { display: inline-flex; align-items: center; gap: 12px; }
+        .back-button {
+            display: inline-grid;
+            place-items: center;
+            width: 28px;
+            height: 28px;
+            padding: 0;
+            border: 1px solid var(--ink);
+            border-radius: 999px;
+            background: transparent;
+            color: var(--ink);
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+            text-decoration: none;
+        }
+        .brand { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 10px; text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+        .brand-mark { display: grid; width: 36px; aspect-ratio: 1; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; font-family: Georgia, serif; font-size: 22px; letter-spacing: 0; }
+        nav { display: flex; gap: 18px; font-size: 12px; font-weight: 700; }
+        nav a { text-decoration: none; }
+        nav a:hover { text-decoration: underline; text-underline-offset: 4px; }
+        main { width: min(1120px, calc(100% - 48px)); margin: 0 auto; }
+        .intro { display: flex; align-items: end; justify-content: space-between; gap: 24px; padding: 48px 0 28px; }
+        .eyebrow { margin: 0 0 11px; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
+        h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 45px; font-weight: 400; letter-spacing: 0; line-height: 1.05; }
+        .intro-copy { max-width: 570px; margin: 12px 0 0; color: var(--muted); font-size: 13px; line-height: 1.7; }
+        .browse-link { flex: 0 0 auto; padding: 10px 13px; border: 1px solid var(--ink); border-radius: 3px; font-size: 11px; font-weight: 700; text-decoration: none; }
+        .browse-link:hover { background: var(--lime); }
+        .filters { display: grid; grid-template-columns: minmax(220px, 1fr) 210px auto; gap: 9px; padding: 15px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+        .filters input, .filters select { width: 100%; min-width: 0; height: 43px; padding: 0 12px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: var(--white); font-size: 12px; }
+        .filters button { padding: 0 14px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: transparent; cursor: pointer; font-size: 11px; font-weight: 700; }
+        .filters button:hover { border-color: var(--ink); }
+        .results { min-height: 47px; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 11px; }
+        .shop-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px 16px; padding-bottom: 65px; }
+        .shop-card { min-width: 0; border: 1px solid var(--line); background: var(--white); }
+        .shop-card-link { display: block; height: 100%; text-decoration: none; }
+        .shop-card-link:focus-visible { outline: 2px solid #397d54; outline-offset: 3px; }
+        .shop-image { position: relative; display: grid; aspect-ratio: 4 / 3; overflow: hidden; place-items: center; color: var(--forest); background-color: var(--lime); background-image: radial-gradient(rgba(23, 35, 30, 0.42) 0.7px, transparent 0.7px); background-position: 8px 8px; background-size: 18px 18px; font-family: Georgia, serif; font-size: 80px; }
+        .shop-image img { width: 100%; height: 100%; object-fit: cover; }
+        .shop-info { padding: 15px; }
+        .shop-town { margin: 0 0 8px; color: var(--forest); font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+        .shop-name { margin: 0; color: #d9772f; font-family: Georgia, "Times New Roman", serif; font-size: 22px; font-weight: 700; letter-spacing: 0; overflow-wrap: anywhere; }
+        .business-verified-badge { display: inline-flex; align-items: center; gap: 5px; margin: 7px 0 0; padding: 4px 7px; border: 1px solid #8da78f; border-radius: 2px; color: #285b3a; background: #e8efdf; font-size: 9px; font-weight: 700; }
+        .shop-description { min-height: 38px; margin: 8px 0 13px; color: var(--muted); font-size: 11px; line-height: 1.6; }
+        .shop-rating { display: inline-flex; align-items: center; gap: 6px; color: var(--forest); font-size: 10px; font-weight: 700; }
+        .shop-rating-stars { color: #d8a82a; letter-spacing: 0.08em; }
+        .shop-footer { display: flex; justify-content: space-between; gap: 8px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 10px; font-weight: 700; }
+        .shop-cta { color: var(--forest); }
+        .empty { grid-column: 1 / -1; padding: 44px 20px; border: 1px dashed #a8b19e; text-align: center; }
+        .empty h2 { margin: 0; font-family: Georgia, serif; font-size: 25px; font-weight: 400; }
+        .empty p { margin: 10px 0 0; color: var(--muted); font-size: 12px; }
+        .error { grid-column: 1 / -1; color: #8b3b2f; font-size: 12px; }
+        footer { display: flex; justify-content: space-between; gap: 18px; padding: 20px max(24px, calc((100vw - 1120px) / 2)); border-top: 1px solid var(--line); color: var(--muted); font-size: 10px; }
+        @media (max-width: 760px) {
+            .site-header { padding: 12px 18px; }
+            nav { gap: 10px; font-size: 10px; }
+            main { width: calc(100% - 36px); }
+            .intro { align-items: start; flex-direction: column; padding-top: 35px; }
+            h1 { font-size: 38px; }
+            .filters { grid-template-columns: 1fr 1fr; }
+            .filters input { grid-column: 1 / -1; }
+            .shop-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+            .shop-info { padding: 11px; }
+            .shop-name { font-size: 19px; }
+            footer { padding: 18px; }
+        }
+        @media (max-width: 420px) {
+            .shop-grid { grid-template-columns: 1fr; }
+            .shop-image { aspect-ratio: 16 / 9; }
+        }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } }
+    </style>
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-left">
+            <a class="back-button" href="/marketplace" aria-label="Back to marketplace">←</a>
+            <a class="brand" href="/marketplace" aria-label="Z Namibia marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Namibia</span></a>
+        </div>
+        <nav aria-label="Shop navigation"><a href="/marketplace">Products</a><a href="/cart">Cart</a><a href="/sell">Sell on Z</a></nav>
+    </header>
+    <main>
+        <section class="intro">
+            <div>
+                <p class="eyebrow">Independent Namibian sellers</p>
+                <h1>Find your kind of shop.</h1>
+                <p class="intro-copy">Browse local businesses by name and town, then explore everything each shop has to offer.</p>
+            </div>
+            <a class="browse-link" href="/marketplace">Browse all products <span aria-hidden="true">&#8594;</span></a>
+        </section>
+        <form class="filters" id="shop-filters">
+            <input id="shop-search" type="search" aria-label="Search shops" placeholder="Search shop names or descriptions">
+            <select id="shop-town" aria-label="Filter shops by town">
+                <option value="">All towns</option>
+                <option>Windhoek</option>
+                <option>Swakopmund</option>
+                <option>Walvis Bay</option>
+                <option>Oshakati</option>
+                <option>Rundu</option>
+                <option>Otjiwarongo</option>
+                <option>Other</option>
+            </select>
+            <button id="clear-filters" type="button">Clear</button>
+        </form>
+        <div class="results"><span id="shop-count" aria-live="polite">Loading shops...</span><span>Local shops, all in one place</span></div>
+        <section class="shop-grid" id="shop-grid" aria-label="Shops" aria-live="polite"></section>
+    </main>
+    <footer><span>Z Namibia</span><span>Independent shops. Right here at home.</span></footer>
+    <script>
+        const shopGrid = document.querySelector("#shop-grid");
+        const shopCount = document.querySelector("#shop-count");
+        const shopSearch = document.querySelector("#shop-search");
+        const shopTown = document.querySelector("#shop-town");
+        const sellLink = document.querySelector('nav a[href="/sell"]');
+        let currentUserHasSellerShop = false;
+
+        function addText(parent, tag, className, text) {
+            const element = document.createElement(tag);
+            element.className = className;
+            element.textContent = text;
+            parent.append(element);
+            return element;
+        }
+
+        function starsForRating(rating) {
+            const normalised = Math.max(0, Math.min(5, Number(rating) || 0));
+            return Array.from({ length: 5 }, (_, index) => index < Math.round(normalised) ? "★" : "☆").join("");
+        }
+
+        function renderShop(shop) {
+            const card = document.createElement("article");
+            card.className = "shop-card";
+            const link = document.createElement("a");
+            link.className = "shop-card-link";
+            link.href = `/shops/${encodeURIComponent(shop.slug)}`;
+            const imageWrap = document.createElement("div");
+            imageWrap.className = "shop-image";
+            const shopImageUrl = shop.coverImageUrl || shop.previewImageUrl;
+            if (shopImageUrl) {
+                const image = document.createElement("img");
+                image.src = shopImageUrl;
+                image.alt = shop.coverImageUrl ? `${shop.name} storefront cover` : shop.previewTitle || `${shop.name} product`;
+                image.loading = "lazy";
+                image.addEventListener("error", () => { image.remove(); imageWrap.textContent = "Z"; }, { once: true });
+                imageWrap.append(image);
+            } else {
+                imageWrap.textContent = "Z";
+            }
+            link.append(imageWrap);
+            const info = document.createElement("div");
+            info.className = "shop-info";
+            addText(info, "p", "shop-town", `${shop.town}, Namibia`);
+            addText(info, "h2", "shop-name", shop.name);
+            if (shop.businessVerified) addText(info, "p", "business-verified-badge", "Business verified");
+            addText(info, "p", "shop-description", shop.description);
+
+            const rating = document.createElement("div");
+            rating.className = "shop-rating";
+            const stars = document.createElement("span");
+            stars.className = "shop-rating-stars";
+            stars.textContent = shop.reviewCount ? starsForRating(shop.averageRating) : "☆☆☆☆☆";
+            const ratingText = document.createElement("span");
+            ratingText.textContent = shop.reviewCount ? `${Number(shop.averageRating).toFixed(1)} · ${shop.reviewCount}` : "No ratings yet";
+            rating.append(stars, ratingText);
+            info.append(rating);
+
+            const footer = document.createElement("div");
+            footer.className = "shop-footer";
+            addText(footer, "span", "", `${shop.productCount} ${shop.productCount === 1 ? "product" : "products"}`);
+            addText(footer, "span", "shop-cta", "Visit shop →");
+            info.append(footer);
+            link.append(info);
+            card.append(link);
+            return card;
+        }
+
+        async function updateSellerStatus() {
+            try {
+                const authResponse = await fetch("/api/auth/status");
+                const authResult = await authResponse.json();
+                if (!authResult.user) {
+                    if (sellLink) {
+                        sellLink.textContent = "Sell on Z";
+                        sellLink.href = "/sell";
+                    }
+                    return;
+                }
+
+                const sellerResponse = await fetch("/api/seller/shop");
+                if (!sellerResponse.ok) {
+                    currentUserHasSellerShop = false;
+                    if (sellLink) {
+                        sellLink.textContent = "Sell on Z";
+                        sellLink.href = "/sell";
+                    }
+                    return;
+                }
+
+                const sellerResult = await sellerResponse.json();
+                currentUserHasSellerShop = Boolean(sellerResult.shop);
+                if (sellLink) {
+                    sellLink.textContent = currentUserHasSellerShop ? "My shop" : "Sell on Z";
+                    sellLink.href = "/sell";
+                }
+            } catch {
+                currentUserHasSellerShop = false;
+                if (sellLink) {
+                    sellLink.textContent = "Sell on Z";
+                    sellLink.href = "/sell";
+                }
+            }
+        }
+
+        async function loadShops() {
+            const params = new URLSearchParams();
+            if (shopSearch.value.trim()) params.set("q", shopSearch.value.trim());
+            if (shopTown.value) params.set("town", shopTown.value);
+            shopCount.textContent = "Loading shops...";
+            shopGrid.replaceChildren();
+            try {
+                const response = await fetch(`/api/shops?${params}`);
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || "Could not load shops.");
+                shopCount.textContent = `${result.shops.length} ${result.shops.length === 1 ? "shop" : "shops"}`;
+                if (!result.shops.length) {
+                    const empty = document.createElement("div");
+                    empty.className = "empty";
+                    addText(empty, "h2", "", "No shops found.");
+                    addText(empty, "p", "", "Try another search or choose a different town.");
+                    shopGrid.append(empty);
+                    return;
+                }
+                result.shops.forEach((shop) => shopGrid.append(renderShop(shop)));
+            } catch (error) {
+                shopCount.textContent = "Shops unavailable";
+                addText(shopGrid, "p", "error", error.message);
+            }
+        }
+
+        document.querySelector("#shop-filters").addEventListener("submit", (event) => { event.preventDefault(); loadShops(); });
+        shopTown.addEventListener("change", loadShops);
+        document.querySelector("#clear-filters").addEventListener("click", () => {
+            shopSearch.value = "";
+            shopTown.value = "";
+            loadShops();
+        });
+        updateSellerStatus();
+        loadShops();
+    </script>
+</body>
+</html>

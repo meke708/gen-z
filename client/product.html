@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f4f1e8">
+    <title>Product | Z Namibia</title>
+    <style>
+        :root { color-scheme: light; --ink: #17231e; --muted: #68736d; --paper: #f4f1e8; --white: #fffefa; --lime: #d8f36a; --forest: #18382e; --line: #d9d9cf; }
+        * { box-sizing: border-box; }
+        body { min-width: 320px; margin: 0; color: var(--ink); background: var(--paper); font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
+        button, input { font: inherit; }
+        a { color: inherit; }
+        .site-header { display: flex; min-height: 72px; align-items: center; justify-content: space-between; gap: 18px; padding: 12px max(24px, calc((100vw - 1120px) / 2)); border-bottom: 1px solid var(--line); }
+        .header-left { display: inline-flex; align-items: center; gap: 12px; }
+        .back-button {
+            display: inline-grid;
+            place-items: center;
+            width: 28px;
+            height: 28px;
+            padding: 0;
+            border: 1px solid var(--ink);
+            border-radius: 999px;
+            background: transparent;
+            color: var(--ink);
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+            text-decoration: none;
+        }
+        .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+        .brand-mark { display: grid; width: 36px; aspect-ratio: 1; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; font-family: Georgia, serif; font-size: 22px; letter-spacing: 0; }
+        .header-links { display: flex; align-items: center; gap: 18px; font-size: 12px; font-weight: 700; }
+        #cart-count { display: inline-block; }
+        .header-links a { text-decoration: none; }
+        .header-links a:hover { text-decoration: underline; text-underline-offset: 4px; }
+        main { width: min(1120px, calc(100% - 48px)); margin: 0 auto; }
+        .breadcrumb { display: flex; gap: 8px; padding: 26px 0 20px; color: var(--muted); font-size: 11px; }
+        .breadcrumb a { text-decoration: none; }
+        .breadcrumb a:hover { text-decoration: underline; }
+        .product-layout { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr); gap: 54px; padding: 5px 0 70px; }
+        .product-image { position: relative; display: grid; min-height: 500px; overflow: hidden; place-items: center; background-color: var(--lime); background-image: radial-gradient(rgba(23, 35, 30, 0.45) 0.7px, transparent 0.7px); background-position: 8px 8px; background-size: 18px 18px; }
+        .product-image::before { position: absolute; inset: 0; background: linear-gradient(120deg, rgba(216, 243, 106, 0.96), rgba(216, 243, 106, 0.7)); content: ""; }
+        .product-image img { position: absolute; z-index: 1; width: 100%; height: 100%; object-fit: cover; }
+        .product-image img[hidden] { display: none; }
+        .image-mark { position: relative; z-index: 1; display: grid; width: 230px; aspect-ratio: 1; place-items: center; border: 1px solid rgba(23, 35, 30, 0.38); border-radius: 50%; font-family: Georgia, serif; font-size: 170px; line-height: 1; }
+        .product-image.has-image::before, .product-image.has-image .image-mark { display: none; }
+        .product-info { padding: 10px 0; }
+        .eyebrow { margin: 0 0 13px; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
+        h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 42px; font-weight: 400; letter-spacing: 0; line-height: 1.08; overflow-wrap: anywhere; }
+        .seller-line { margin: 13px 0 23px; color: var(--muted); font-size: 12px; }
+        .seller-line a { color: #d9772f; font-weight: 800; text-decoration: underline; text-underline-offset: 3px; }
+        .price { margin: 0; font-family: Georgia, serif; font-size: 30px; }
+        .stock-note { margin: 8px 0 0; color: var(--forest); font-size: 11px; font-weight: 700; }
+        .product-location { margin: 6px 0 23px; color: var(--muted); font-size: 11px; }
+        .description { padding: 20px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); color: #37423c; font-size: 13px; line-height: 1.8; white-space: pre-line; }
+        .purchase-row { display: flex; align-items: end; gap: 12px; margin-top: 22px; }
+        .quantity-label { display: grid; gap: 7px; color: var(--muted); font-size: 10px; font-weight: 700; }
+        .quantity { width: 80px; height: 48px; padding: 0 10px; border: 1px solid var(--line); border-radius: 3px; background: var(--white); font-size: 14px; }
+        .add-button { display: flex; min-height: 48px; flex: 1; align-items: center; justify-content: space-between; gap: 15px; padding: 0 16px; border: 1px solid var(--ink); border-radius: 3px; color: var(--white); background: var(--ink); cursor: pointer; font-size: 12px; font-weight: 700; }
+        .add-button:hover { color: var(--ink); background: var(--lime); }
+        .add-button.is-added { border-color: var(--forest); background: var(--forest); }
+        .add-button.is-added:hover { color: var(--white); background: var(--forest); }
+        .add-button:disabled { opacity: 0.6; cursor: wait; }
+        .cart-flight { position: fixed; z-index: 100; display: grid; width: 58px; height: 58px; overflow: hidden; place-items: center; border: 1px solid var(--line); border-radius: 4px; background: var(--lime); box-shadow: 0 8px 20px rgba(23, 35, 30, 0.2); pointer-events: none; }
+        .cart-flight img { width: 100%; height: 100%; object-fit: cover; }
+        .cart-flight span { color: var(--forest); font-family: Georgia, serif; font-size: 27px; }
+        .feedback { min-height: 20px; margin: 12px 0 0; color: #397d54; font-size: 11px; }
+        .seller-note { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--line); }
+        .seller-note h2 { margin: 0 0 7px; font-family: Georgia, serif; font-size: 20px; font-weight: 400; }
+        .seller-note p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.7; }
+        .report-section { margin-top: 20px; }
+        .report-toggle { padding: 5px 0; border: 0; color: var(--muted); background: transparent; cursor: pointer; font-size: 10px; text-decoration: underline; text-underline-offset: 3px; }
+        .report-form { display: grid; gap: 9px; margin-top: 10px; }
+        .report-form select, .report-form textarea { width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 3px; background: var(--white); font: inherit; font-size: 11px; }
+        .report-form textarea { min-height: 76px; resize: vertical; }
+        .report-form button { justify-self: start; min-height: 36px; padding: 0 10px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: transparent; cursor: pointer; font-size: 10px; font-weight: 700; }
+        .report-form button:hover { border-color: var(--ink); background: var(--lime); }
+        .report-status { min-height: 17px; margin: 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+        .report-status a { color: var(--forest); font-weight: 700; }
+        .error-state { max-width: 650px; margin: 70px auto; text-align: center; }
+        .error-state h1 { font-size: 38px; }
+        .error-state a { display: inline-block; margin-top: 15px; font-size: 12px; font-weight: 700; }
+        footer { padding: 21px max(24px, calc((100vw - 1120px) / 2)); border-top: 1px solid var(--line); color: var(--muted); font-size: 10px; }
+        [hidden] { display: none !important; }
+
+        @media (max-width: 760px) {
+            .site-header { padding: 12px 19px; }
+            .header-links { gap: 12px; font-size: 11px; }
+            main { width: calc(100% - 36px); }
+            .breadcrumb { padding-top: 19px; }
+            .product-layout { grid-template-columns: 1fr; gap: 23px; padding-bottom: 45px; }
+            .product-image { min-height: 340px; }
+            .image-mark { width: 180px; font-size: 132px; }
+            .product-info { padding-top: 0; }
+            h1 { font-size: 36px; }
+            footer { padding: 18px 19px; }
+        }
+
+        @media (max-width: 390px) {
+            .site-header { gap: 10px; }
+            .header-links { gap: 8px; font-size: 10px; }
+            .product-image { min-height: 280px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } }
+    </style>
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-left">
+            <a class="back-button" href="/marketplace" aria-label="Back to marketplace">←</a>
+            <a class="brand" href="/marketplace" aria-label="Z Namibia marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Namibia</span></a>
+        </div>
+        <nav class="header-links" aria-label="Shopping navigation"><a href="/marketplace">Keep browsing</a><a href="/cart" id="cart-link">Cart (<span id="cart-count">0</span>)</a></nav>
+    </header>
+    <main>
+        <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/marketplace">Marketplace</a><span aria-hidden="true">/</span><span id="breadcrumb-title">Product</span></nav>
+        <section class="product-layout" id="product-layout" hidden>
+            <div class="product-image" id="product-image-wrap"><span class="image-mark" aria-hidden="true">Z</span><img id="product-image" alt="" hidden></div>
+            <div class="product-info">
+                <p class="eyebrow" id="product-category"></p>
+                <h1 id="product-title"></h1>
+                <p class="seller-line">Sold by <a id="shop-link"><strong id="shop-name"></strong></a></p>
+                <p class="price" id="product-price"></p>
+                <p class="stock-note" id="stock-note"></p>
+                <p class="product-location" id="product-location"></p>
+                <div class="description" id="product-description"></div>
+                <div class="purchase-row">
+                    <label class="quantity-label" for="quantity">Quantity<input class="quantity" id="quantity" type="number" min="1" max="99" value="1"></label>
+                    <button class="add-button" id="add-to-cart" type="button"><span>Add to cart</span><span aria-hidden="true">&#8594;</span></button>
+                </div>
+                <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
+                <section class="seller-note" aria-labelledby="seller-heading"><h2 id="seller-heading">About this seller</h2><p id="shop-description"></p></section>
+                <section class="report-section" aria-label="Report this product">
+                    <button class="report-toggle" id="report-toggle" type="button" aria-expanded="false" aria-controls="report-form">Report this listing</button>
+                    <form class="report-form" id="report-form" hidden>
+                        <label for="report-reason">Why are you reporting it?</label>
+                        <select id="report-reason" required>
+                            <option value="">Choose a reason</option>
+                            <option value="misleading">Misleading or inaccurate</option>
+                            <option value="counterfeit">Suspected counterfeit</option>
+                            <option value="unsafe">Unsafe product</option>
+                            <option value="prohibited">Prohibited item</option>
+                            <option value="other">Other concern</option>
+                        </select>
+                        <label for="report-details">Details (optional)</label>
+                        <textarea id="report-details" maxlength="500" placeholder="Give moderators helpful context."></textarea>
+                        <button type="submit">Send report</button>
+                        <p class="report-status" id="report-status" role="status" aria-live="polite"></p>
+                    </form>
+                </section>
+            </div>
+        </section>
+        <section class="error-state" id="error-state" hidden><h1>We couldn’t find that product.</h1><p class="product-location">It may have been removed or is no longer available.</p><a href="/marketplace">Back to the marketplace</a></section>
+    </main>
+    <footer>Z Namibia · Prices shown in Namibian dollars (N$)</footer>
+
+    <script>
+        const cartKey = "z_cart";
+        const priceFormat = new Intl.NumberFormat("en-NA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const countElement = document.querySelector("#cart-count");
+        const cartLink = document.querySelector("#cart-link");
+        const addButton = document.querySelector("#add-to-cart");
+        const addButtonLabel = addButton.querySelector("span");
+        const addButtonIcon = addButton.querySelector("span[aria-hidden='true']");
+        const feedback = document.querySelector("#feedback");
+        const reportToggle = document.querySelector("#report-toggle");
+        const reportForm = document.querySelector("#report-form");
+        const reportStatus = document.querySelector("#report-status");
+        let product;
+        let addButtonResetTimer;
+
+        function readCart() {
+            try {
+                const cart = JSON.parse(localStorage.getItem(cartKey) || "[]");
+                return Array.isArray(cart) ? cart.filter((item) => typeof item.id === "string" && Number.isInteger(item.quantity) && item.quantity > 0 && item.quantity <= 99) : [];
+            } catch {
+                return [];
+            }
+        }
+
+        function updateCartCount() {
+            countElement.textContent = String(readCart().reduce((total, item) => total + item.quantity, 0));
+        }
+
+        function animateCartAdd() {
+            if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+            const image = document.querySelector("#product-image");
+            const source = image.hidden ? document.querySelector("#product-image-wrap") : image;
+            const sourceRect = source.getBoundingClientRect();
+            const cartRect = cartLink.getBoundingClientRect();
+            const startX = sourceRect.left + sourceRect.width / 2 - 29;
+            const startY = sourceRect.top + sourceRect.height / 2 - 29;
+            const deltaX = cartRect.left + cartRect.width / 2 - (startX + 29);
+            const deltaY = cartRect.top + cartRect.height / 2 - (startY + 29);
+            const flight = document.createElement("div");
+            flight.className = "cart-flight";
+            flight.style.left = `${startX}px`;
+            flight.style.top = `${startY}px`;
+            if (product.imageUrl) {
+                const thumbnail = document.createElement("img");
+                thumbnail.src = product.imageUrl;
+                thumbnail.alt = "";
+                flight.append(thumbnail);
+            } else {
+                const mark = document.createElement("span");
+                mark.textContent = "Z";
+                flight.append(mark);
+            }
+            document.body.append(flight);
+            const animation = flight.animate([
+                { transform: "translate3d(0, 0, 0) scale(1)", opacity: 1 },
+                { transform: `translate3d(${deltaX * 0.55}px, ${deltaY * 0.55}px, 0) scale(0.72)`, opacity: 0.95, offset: 0.55 },
+                { transform: `translate3d(${deltaX}px, ${deltaY}px, 0) scale(0.12)`, opacity: 0.1 }
+            ], { duration: 620, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" });
+            animation.finished.then(() => flight.remove(), () => flight.remove());
+            cartLink.animate([
+                { transform: "scale(1)" },
+                { transform: "scale(1.08)" },
+                { transform: "scale(1)" }
+            ], { duration: 420, easing: "ease-out" });
+            countElement.animate([
+                { transform: "scale(1)" },
+                { transform: "scale(1.35)" },
+                { transform: "scale(1)" }
+            ], { duration: 420, easing: "ease-out" });
+        }
+
+        function showAddedButtonState() {
+            addButton.classList.add("is-added");
+            addButtonLabel.textContent = "Added to cart";
+            addButtonIcon.textContent = "✓";
+            window.clearTimeout(addButtonResetTimer);
+            addButtonResetTimer = window.setTimeout(() => {
+                addButton.classList.remove("is-added");
+                addButtonLabel.textContent = "Add to cart";
+                addButtonIcon.textContent = "→";
+            }, 1400);
+        }
+
+        function showError() {
+            document.querySelector("#product-layout").hidden = true;
+            document.querySelector("#error-state").hidden = false;
+            document.title = "Product not found | Z Namibia";
+        }
+
+        async function loadProduct() {
+            const productId = window.location.pathname.split("/").pop();
+            try {
+                const response = await fetch(`/api/products/${encodeURIComponent(productId)}`);
+                if (!response.ok) throw new Error("Product not found");
+                ({ product } = await response.json());
+                document.title = `${product.title} | Z Namibia`;
+                document.querySelector("#breadcrumb-title").textContent = product.title;
+                document.querySelector("#product-category").textContent = product.category;
+                document.querySelector("#product-title").textContent = product.title;
+                document.querySelector("#shop-name").textContent = product.shop.name;
+                document.querySelector("#shop-link").href = `/shops/${encodeURIComponent(product.shop.slug)}`;
+                document.querySelector("#product-price").textContent = `N$ ${priceFormat.format(product.priceNAD)}`;
+                const quantityInput = document.querySelector("#quantity");
+                const stockNote = document.querySelector("#stock-note");
+                if (Number.isInteger(product.stock)) {
+                    quantityInput.max = String(Math.min(product.stock, 99));
+                    stockNote.textContent = product.stock === 0 ? "Out of stock" : `${product.stock} available`;
+                    addButton.disabled = product.stock === 0;
+                } else {
+                    quantityInput.disabled = true;
+                    addButton.disabled = true;
+                    stockNote.textContent = "Seller must set stock before this item can be purchased.";
+                }
+                document.querySelector("#product-location").textContent = `${product.town}, Namibia`;
+                document.querySelector("#product-description").textContent = product.description;
+                document.querySelector("#shop-description").textContent = product.shop.description;
+                const image = document.querySelector("#product-image");
+                if (product.imageUrl) {
+                    image.src = product.imageUrl;
+                    image.alt = product.title;
+                    image.hidden = false;
+                    document.querySelector("#product-image-wrap").classList.add("has-image");
+                    image.addEventListener("error", () => {
+                        image.hidden = true;
+                        document.querySelector("#product-image-wrap").classList.remove("has-image");
+                    }, { once: true });
+                }
+                document.querySelector("#product-layout").hidden = false;
+            } catch {
+                showError();
+            }
+        }
+
+        addButton.addEventListener("click", () => {
+            const quantity = Number(document.querySelector("#quantity").value);
+            if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99 || (Number.isInteger(product.stock) && quantity > product.stock)) {
+                feedback.textContent = `Choose a quantity from 1 to ${Math.min(product.stock || 0, 99)}.`;
+                return;
+            }
+            const cart = readCart();
+            const existing = cart.find((item) => item.id === product.id);
+            if (Number.isInteger(product.stock) && quantity + (existing?.quantity || 0) > product.stock) {
+                feedback.textContent = `Only ${product.stock} are available.`;
+                return;
+            }
+            if (existing) existing.quantity = Math.min(existing.quantity + quantity, 99);
+            else cart.push({ id: product.id, quantity });
+            localStorage.setItem(cartKey, JSON.stringify(cart));
+            updateCartCount();
+            animateCartAdd();
+            showAddedButtonState();
+            feedback.textContent = `${product.title} added to your cart.`;
+        });
+
+        reportToggle.addEventListener("click", () => {
+            reportForm.hidden = !reportForm.hidden;
+            reportToggle.setAttribute("aria-expanded", String(!reportForm.hidden));
+        });
+
+        reportForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const button = reportForm.querySelector("button[type='submit']");
+            button.disabled = true;
+            reportStatus.textContent = "Sending report...";
+            try {
+                const response = await fetch(`/api/products/${encodeURIComponent(product.id)}/reports`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        reason: document.querySelector("#report-reason").value,
+                        details: document.querySelector("#report-details").value
+                    })
+                });
+                const result = await response.json();
+                if (response.status === 401) {
+                    reportStatus.replaceChildren(document.createTextNode("Please "));
+                    const login = document.createElement("a");
+                    login.href = "/login";
+                    login.textContent = "sign in";
+                    reportStatus.append(login, document.createTextNode(" before reporting a listing."));
+                    return;
+                }
+                if (!response.ok) throw new Error(result.error || "Could not submit report.");
+                reportStatus.textContent = result.message;
+                reportForm.reset();
+                reportForm.querySelector("button[type='submit']").hidden = true;
+            } catch (error) {
+                reportStatus.textContent = error.message;
+            } finally {
+                button.disabled = false;
+            }
+        });
+
+        updateCartCount();
+        loadProduct();
+    </script>
+</body>
+</html>
