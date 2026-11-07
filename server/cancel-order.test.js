@@ -7,6 +7,9 @@ const {
   getBuyerDisplayName,
   normalizeSupportRequest,
   normalizePasswordResetInput,
+  normalizeProfileInput,
+  isValidEmailVerificationToken,
+  isBuyerEmailVerified,
   assertProductionPaymentConfiguration,
   isAdminUser,
   validateImageUrl,
@@ -70,6 +73,40 @@ test('password reset credentials require a valid token and password length', () 
   assert.deepEqual(normalizePasswordResetInput({ token, password: 'strongpass1' }), { token, password: 'strongpass1' });
   assert.throws(() => normalizePasswordResetInput({ token: 'bad-token', password: 'strongpass1' }), { statusCode: 400 });
   assert.throws(() => normalizePasswordResetInput({ token, password: 'short' }), { statusCode: 400 });
+});
+
+test('profile updates validate required names, optional phone numbers, and known towns', () => {
+  assert.deepEqual(normalizeProfileInput({
+    name: '  Alex Nam ',
+    phone: '+264 81 123 4567',
+    town: 'Windhoek'
+  }), {
+    name: 'Alex Nam',
+    phone: '+264 81 123 4567',
+    town: 'Windhoek'
+  });
+  assert.deepEqual(normalizeProfileInput({ name: 'Alex', phone: '', town: '' }), {
+    name: 'Alex',
+    phone: '',
+    town: ''
+  });
+  assert.throws(() => normalizeProfileInput({ name: ' ', phone: '', town: '' }), { statusCode: 400 });
+  assert.throws(() => normalizeProfileInput({ name: 'Alex', phone: 'not a phone', town: '' }), { statusCode: 400 });
+  assert.throws(() => normalizeProfileInput({ name: 'Alex', phone: '1-------', town: '' }), { statusCode: 400 });
+  assert.throws(() => normalizeProfileInput({ name: 'Alex', phone: '', town: 'Mars' }), { statusCode: 400 });
+});
+
+test('email verification tokens require a 64-character lowercase hex token', () => {
+  assert.equal(isValidEmailVerificationToken('a'.repeat(64)), true);
+  assert.equal(isValidEmailVerificationToken('A'.repeat(64)), false);
+  assert.equal(isValidEmailVerificationToken('short'), false);
+});
+
+test('checkout requires a verified email, including for legacy accounts without the field', () => {
+  assert.equal(isBuyerEmailVerified({ emailVerified: true }), true);
+  assert.equal(isBuyerEmailVerified({ emailVerified: false }), false);
+  assert.equal(isBuyerEmailVerified({}), false);
+  assert.equal(isBuyerEmailVerified(null), false);
 });
 
 test('production cannot start with the mock payment adapter', () => {

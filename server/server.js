@@ -45,6 +45,13 @@ const passwordResetRateLimit = rateLimit({
   legacyHeaders: false,
   message: { error: 'Too many password reset attempts. Try again in an hour.' }
 });
+const emailVerificationRateLimit = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { error: 'You have requested several verification emails. Try again in an hour.' }
+});
 const sellerUploadRateLimit = rateLimit({
   windowMs: 60 * 60 * 1000,
   limit: 30,
@@ -88,6 +95,11 @@ const passwordResetMailer = process.env.SMTP_HOST && process.env.SMTP_USER && pr
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true, maxlength: 80 },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true, maxlength: 254 },
+  emailVerified: { type: Boolean, default: false },
+  phone: { type: String, trim: true, maxlength: 24, default: '' },
+  town: { type: String, trim: true, default: '' },
+  referralCode: { type: String, unique: true, sparse: true, index: true },
+  referredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
   salt: { type: String, required: true },
   passwordHash: { type: String, required: true }
 }, { timestamps: true });
@@ -101,9 +113,15 @@ const passwordResetSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   expiresAt: { type: Date, required: true, expires: 0 }
 }, { timestamps: true });
+const emailVerificationSchema = new mongoose.Schema({
+  tokenHash: { type: String, required: true, unique: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true, index: true },
+  expiresAt: { type: Date, required: true, expires: 0 }
+}, { timestamps: true });
 const shopSchema = new mongoose.Schema({
   ownerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
   name: { type: String, required: true, trim: true, maxlength: 80 },
+  nameKey: { type: String, select: false },
   slug: { type: String, required: true, unique: true },
   description: { type: String, required: true, trim: true, maxlength: 500 },
   coverImageUrl: { type: String, default: '' },
@@ -127,8 +145,10 @@ const shopSchema = new mongoose.Schema({
   kycReviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   kycReviewNote: { type: String, trim: true, maxlength: 500, default: '' }
 }, { timestamps: true });
+shopSchema.index({ nameKey: 1 }, { unique: true, partialFilterExpression: { nameKey: { $type: 'string' } } });
 const productSchema = new mongoose.Schema({
   shopId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', required: true, index: true },
+  duplicateKey: { type: String, select: false },
   title: { type: String, required: true, trim: true, maxlength: 100 },
   description: { type: String, required: true, trim: true, maxlength: 1500 },
   priceNAD: { type: Number, required: true, min: 0.01 },
@@ -142,6 +162,10 @@ const productSchema = new mongoose.Schema({
   moderationStatus: { type: String, enum: ['visible', 'hidden'], default: 'visible' },
   moderatedAt: { type: Date, default: null }
 }, { timestamps: true });
+productSchema.index(
+  { shopId: 1, duplicateKey: 1 },
+  { unique: true, partialFilterExpression: { duplicateKey: { $type: 'string' } } }
+);
 const listingReportSchema = new mongoose.Schema({
   productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
   reporterId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -215,6 +239,7 @@ supportRequestSchema.index({ status: 1, createdAt: 1 });
 const User = mongoose.model('User', userSchema);
 const Session = mongoose.model('Session', sessionSchema);
 const PasswordReset = mongoose.model('PasswordReset', passwordResetSchema);
+const EmailVerification = mongoose.model('EmailVerification', emailVerificationSchema);
 const Shop = mongoose.model('Shop', shopSchema);
 const Product = mongoose.model('Product', productSchema);
 const ListingReport = mongoose.model('ListingReport', listingReportSchema);
@@ -353,6 +378,31 @@ function normalizeEmail(email) {
   return typeof email === 'string' ? email.trim().toLowerCase() : '';
 }
 
+function normalizeProfileInput(input = {}, towns = namibianTowns) {
+  const name = typeof input.name === 'string' ? input.name.trim() : '';
+  const phone = typeof input.phone === 'string' ? input.phone.trim() : '';
+  const town = typeof input.town === 'string' ? input.town.trim() : '';
+  if (!name || name.length > 80) throw apiError(400, 'Enter a name between 1 and 80 characters.');
+  const phoneDigits = phone.replace(/\D/g, '');
+  if (phone && (!/^\+?[0-9][0-9\s()-]{6,19}$/.test(phone) || phoneDigits.length < 7 || phoneDigits.length > 15)) {
+    throw apiError(400, 'Enter a valid phone number.');
+  }
+  if (town && !towns.includes(town)) throw apiError(400, 'Choose a valid town.');
+  return { name, phone, town };
+}
+
+function isValidEmailVerificationToken(token) {
+  return typeof token === 'string' && /^[a-f0-9]{64}$/.test(token);
+}
+
+function isBuyerEmailVerified(user) {
+  return Boolean(user?.emailVerified);
+}
+
+function createReferralCode() {
+  return randomBytes(6).toString('hex').toUpperCase();
+}
+
 function isAdminUser(user, configuredEmail = process.env.ADMIN_EMAIL, configuredId = process.env.ADMIN_USER_ID) {
   const adminEmail = normalizeEmail(configuredEmail);
   const configuredAdminId = configuredId || '';
@@ -368,7 +418,15 @@ function assertProductionAdminConfiguration(nodeEnv = process.env.NODE_ENV, admi
 }
 
 function publicUser(user) {
-  return { id: user.id || user._id.toString(), name: user.name, email: user.email, isModerator: isAdminUser(user) };
+  return {
+    id: user.id || user._id.toString(),
+    name: user.name,
+    email: user.email,
+    emailVerified: Boolean(user.emailVerified),
+    phone: user.phone || '',
+    town: user.town || '',
+    isModerator: isAdminUser(user)
+  };
 }
 
 function setSessionCookie(res, token, maxAge) {
@@ -383,6 +441,30 @@ function getSessionToken(req) {
 
 function hashSessionToken(token) {
   return createHash('sha256').update(token).digest('hex');
+}
+
+async function createEmailVerification(user) {
+  if (process.env.NODE_ENV === 'production' && (!passwordResetMailer || !process.env.APP_BASE_URL?.startsWith('https://'))) {
+    throw apiError(503, 'Email verification is not configured. Contact Z support.');
+  }
+  const token = randomBytes(32).toString('hex');
+  await EmailVerification.findOneAndUpdate(
+    { userId: user._id },
+    { $set: { tokenHash: hashSessionToken(token), expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) } },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+  const baseUrl = process.env.APP_BASE_URL || `http://localhost:${process.env.PORT || 3001}`;
+  const verificationUrl = new URL(`/verify-email?token=${encodeURIComponent(token)}`, baseUrl).toString();
+  if (process.env.NODE_ENV === 'production') {
+    await passwordResetMailer.sendMail({
+      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      to: user.email,
+      subject: 'Verify your Z email address',
+      text: `Hello ${user.name},\n\nVerify your Z email address within 24 hours:\n${verificationUrl}\n\nIf you did not create this account, you can ignore this email.`
+    });
+    return '';
+  }
+  return verificationUrl;
 }
 
 async function createSession(res, user) {
@@ -603,6 +685,40 @@ function normalizeImageUrls(input) {
   }).slice(0, 6);
 }
 
+function normalizeDuplicateText(value) {
+  return value
+    .normalize('NFKD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+}
+
+function buildProductDuplicateKey({ title, description, category }) {
+  return JSON.stringify([
+    normalizeDuplicateText(title),
+    normalizeDuplicateText(description),
+    normalizeDuplicateText(category)
+  ]);
+}
+
+async function findDuplicateShopName(nameKey) {
+  if (await Shop.exists({ nameKey })) return true;
+  const legacyShops = await Shop.find({ nameKey: { $exists: false } }).select('name').lean();
+  return legacyShops.some((shop) => normalizeDuplicateText(shop.name) === nameKey);
+}
+
+async function findDuplicateProduct(shopId, duplicateKey, excludedProductId = null) {
+  const duplicateFilter = { shopId, duplicateKey };
+  if (excludedProductId) duplicateFilter._id = { $ne: excludedProductId };
+  if (await Product.exists(duplicateFilter)) return true;
+
+  const legacyFilter = { shopId, duplicateKey: { $exists: false } };
+  if (excludedProductId) legacyFilter._id = { $ne: excludedProductId };
+  const legacyProducts = await Product.find(legacyFilter).select('title description category').lean();
+  return legacyProducts.some((product) => buildProductDuplicateKey(product) === duplicateKey);
+}
+
 function validateImageUrl(url) {
   if (!url) return true;
   try {
@@ -703,16 +819,32 @@ app.post('/api/auth/register', async (req, res) => {
   const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
   const email = normalizeEmail(req.body?.email);
   const password = req.body?.password;
+  const referralCode = typeof req.body?.referralCode === 'string' ? req.body.referralCode.trim().toUpperCase() : '';
 
   if (!name || name.length > 80 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254 || typeof password !== 'string' || password.length < 8 || password.length > 128) {
     return res.status(400).json({ error: 'Enter a valid name and email, and a password between 8 and 128 characters.' });
   }
+  if (referralCode && !/^[A-F0-9]{12}$/.test(referralCode)) {
+    return res.status(400).json({ error: 'That referral code is not valid.' });
+  }
+  if (process.env.NODE_ENV === 'production' && (!passwordResetMailer || !process.env.APP_BASE_URL?.startsWith('https://'))) {
+    return res.status(503).json({ error: 'Email verification is not configured. Contact Z support.' });
+  }
+  const referrer = referralCode ? await User.findOne({ referralCode }) : null;
+  if (referralCode && !referrer) return res.status(400).json({ error: 'That referral code was not found.' });
 
   const salt = randomBytes(16).toString('hex');
   const passwordHash = (await scryptAsync(password, salt, 64)).toString('hex');
   let user;
   try {
-    user = await User.create({ name, email, salt, passwordHash });
+    user = await User.create({
+      name,
+      email,
+      salt,
+      passwordHash,
+      referralCode: createReferralCode(),
+      referredBy: referrer?._id || null
+    });
   } catch (error) {
     if (error.code === 11000) {
       return res.status(409).json({ error: 'An account with that email already exists. Try signing in.' });
@@ -721,8 +853,25 @@ app.post('/api/auth/register', async (req, res) => {
   }
 
   await createSession(res, user);
+  let verificationUrl = '';
+  let verificationDeliveryFailed = false;
+  try {
+    verificationUrl = await createEmailVerification(user);
+  } catch (error) {
+    console.error('New account verification email could not be sent:', error.message);
+    verificationDeliveryFailed = true;
+  }
 
-  return res.status(201).json({ user: publicUser(user) });
+  return res.status(201).json({
+    user: publicUser(user),
+    verificationRequired: true,
+    verificationUrl,
+    message: verificationDeliveryFailed
+      ? 'Your account was created, but the verification email could not be sent. Request a new link from your Profile.'
+      : verificationUrl
+        ? 'Open the verification link to verify your email before placing an order.'
+        : 'We sent a verification link to your email. Verify it before placing an order.'
+  });
 });
 
 app.post('/api/auth/login', async (req, res) => {
@@ -813,6 +962,62 @@ app.get('/api/auth/me', async (req, res) => {
   return res.json({ user: publicUser(user) });
 });
 
+app.post('/api/auth/verify-email/resend', emailVerificationRateLimit, async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to verify your email address.' });
+  if (user.emailVerified) return res.status(409).json({ error: 'Your email address is already verified.' });
+  try {
+    const verificationUrl = await createEmailVerification(user);
+    return res.json({
+      message: 'A new verification link has been sent.',
+      verificationUrl
+    });
+  } catch (error) {
+    if (error.statusCode) return res.status(error.statusCode).json({ error: error.message });
+    console.error('Email verification delivery failed:', error.message);
+    return res.status(503).json({ error: 'Could not send the verification email. Try again later.' });
+  }
+});
+
+app.post('/api/auth/verify-email', async (req, res) => {
+  const token = req.body?.token;
+  if (!isValidEmailVerificationToken(token)) return res.status(400).json({ error: 'Use a valid email verification link.' });
+  const verification = await EmailVerification.findOneAndDelete({
+    tokenHash: hashSessionToken(token),
+    expiresAt: { $gt: new Date() }
+  });
+  if (!verification) return res.status(400).json({ error: 'This email verification link is invalid or has expired. Request a new one.' });
+  const user = await User.findById(verification.userId);
+  if (!user) return res.status(400).json({ error: 'This email verification link is invalid or has expired. Request a new one.' });
+  user.emailVerified = true;
+  await user.save();
+  await EmailVerification.deleteMany({ userId: user._id });
+  return res.json({ ok: true, message: 'Your email is verified. You can now place an order.' });
+});
+
+app.patch('/api/account/profile', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to update your profile.' });
+  const profile = normalizeProfileInput(req.body);
+  user.name = profile.name;
+  user.phone = profile.phone;
+  user.town = profile.town;
+  await user.save();
+  return res.json({ user: publicUser(user) });
+});
+
+app.get('/api/account/referrals', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to view referrals.' });
+  if (!user.referralCode) {
+    user.referralCode = createReferralCode();
+    await user.save();
+  }
+  const referralCount = await User.countDocuments({ referredBy: user._id });
+  const referralUrl = `/login?ref=${encodeURIComponent(user.referralCode)}`;
+  return res.json({ referralCode: user.referralCode, referralUrl, referralCount, rewardsEnabled: false });
+});
+
 app.get('/api/auth/status', async (req, res) => {
   const user = await getSessionUser(req);
   return res.json({ user: user ? publicUser(user) : null });
@@ -853,6 +1058,7 @@ app.post('/api/orders/quote', async (req, res) => {
 app.post('/api/orders', async (req, res) => {
   const user = await getSessionUser(req);
   if (!user) return res.status(401).json({ error: 'Sign in to place an order.' });
+  if (!isBuyerEmailVerified(user)) return res.status(403).json({ error: 'Verify your email address in your account before placing an order.' });
   if (!mockPaymentsEnabled) return res.status(503).json({ error: 'Mock checkout is disabled. A live payment provider is not configured.' });
   await releaseExpiredReservations();
   const quote = await buildOrderQuote(req.body?.items, req.body?.deliveryTown);
@@ -1860,16 +2066,25 @@ app.post('/api/seller/shop', async (req, res) => {
   const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
   const description = typeof req.body?.description === 'string' ? req.body.description.trim() : '';
   const town = req.body?.town;
-  if (!name || name.length > 80 || !description || description.length > 500 || !namibianTowns.includes(town)) {
+  const nameKey = name ? normalizeDuplicateText(name) : '';
+  if (!name || name.length > 80 || !nameKey || !description || description.length > 500 || !namibianTowns.includes(town)) {
     return res.status(400).json({ error: 'Enter a shop name, a short description, and a valid town.' });
+  }
+  if (await findDuplicateShopName(nameKey)) {
+    return res.status(409).json({ error: 'A shop with the same name already exists.' });
   }
 
   const slug = `${name.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50) || 'shop'}-${randomBytes(3).toString('hex')}`;
   try {
-    const shop = await Shop.create({ ownerId: user._id, name, description, town, slug });
+    const shop = await Shop.create({ ownerId: user._id, name, nameKey, description, town, slug });
     return res.status(201).json({ shop: { id: shop._id.toString(), name: shop.name, description: shop.description, town: shop.town, slug: shop.slug } });
   } catch (error) {
-    if (error.code === 11000) return res.status(409).json({ error: 'You already have a shop. Refresh this page to manage it.' });
+    if (error.code === 11000 && error.keyPattern?.ownerId) {
+      return res.status(409).json({ error: 'You already have a shop. Refresh this page to manage it.' });
+    }
+    if (error.code === 11000 && error.keyPattern?.nameKey) {
+      return res.status(409).json({ error: 'A shop with the same name already exists.' });
+    }
     throw error;
   }
 });
@@ -1949,12 +2164,24 @@ app.post('/api/seller/products', async (req, res) => {
   const imageUrls = normalizeImageUrls(req.body?.imageUrls || req.body?.imageUrl || []);
   const imageUrl = imageUrls[0] || '';
   const imageIsValid = imageUrls.length === 0 || imageUrls.every((url) => validateImageUrl(url));
+  const duplicateKey = buildProductDuplicateKey({ title, description, category: typeof category === 'string' ? category : '' });
 
   if (!title || title.length > 100 || !description || description.length > 1500 || !Number.isFinite(priceNAD) || priceNAD < 0.01 || priceNAD > 10000000 || !Number.isInteger(stock) || stock < 0 || stock > 100000 || !productCategories.includes(category) || !imageIsValid) {
     return res.status(400).json({ error: 'Check the product details, price, stock, category, and image URL.' });
   }
+  if (await findDuplicateProduct(shop._id, duplicateKey)) {
+    return res.status(409).json({ error: 'A matching product listing already exists in your shop.' });
+  }
 
-  const product = await Product.create({ shopId: shop._id, title, description, priceNAD, stock, isAvailable: stock > 0, category, town: shop.town, imageUrl, imageUrls });
+  let product;
+  try {
+    product = await Product.create({ shopId: shop._id, duplicateKey, title, description, priceNAD, stock, isAvailable: stock > 0, category, town: shop.town, imageUrl, imageUrls });
+  } catch (error) {
+    if (error.code === 11000 && error.keyPattern?.duplicateKey) {
+      return res.status(409).json({ error: 'A matching product listing already exists in your shop.' });
+    }
+    throw error;
+  }
   return res.status(201).json({ product: { id: product._id.toString(), title: product.title, priceNAD: product.priceNAD, stock: product.stock, category: product.category } });
 });
 
@@ -1981,15 +2208,27 @@ app.patch('/api/seller/products/:id', async (req, res) => {
     const imageUrls = normalizeImageUrls(req.body?.imageUrls || req.body?.imageUrl || []);
     const imageUrl = imageUrls[0] || '';
     const imageIsValid = imageUrls.length === 0 || imageUrls.every((url) => validateImageUrl(url));
+    const duplicateKey = buildProductDuplicateKey({ title, description, category: typeof category === 'string' ? category : '' });
 
     if (!title || title.length > 100 || !description || description.length > 1500 || !Number.isFinite(priceNAD) || priceNAD < 0.01 || priceNAD > 10000000 || !Number.isInteger(stock) || stock < 0 || stock > 100000 || !productCategories.includes(category) || !imageIsValid) {
       return res.status(400).json({ error: 'Check the product details, price, stock, category, and image URL.' });
     }
+    if (await findDuplicateProduct(shop._id, duplicateKey, product._id)) {
+      return res.status(409).json({ error: 'A matching product listing already exists in your shop.' });
+    }
 
-    updates = { title, description, priceNAD, stock, isAvailable: stock > 0, category, imageUrl, imageUrls };
+    updates = { duplicateKey, title, description, priceNAD, stock, isAvailable: stock > 0, category, imageUrl, imageUrls };
   }
 
-  const updated = await Product.findByIdAndUpdate(product._id, { $set: updates }, { new: true, runValidators: true }).lean();
+  let updated;
+  try {
+    updated = await Product.findByIdAndUpdate(product._id, { $set: updates }, { new: true, runValidators: true }).lean();
+  } catch (error) {
+    if (error.code === 11000 && error.keyPattern?.duplicateKey) {
+      return res.status(409).json({ error: 'A matching product listing already exists in your shop.' });
+    }
+    throw error;
+  }
   return res.json({ product: { id: updated._id.toString(), title: updated.title, description: updated.description, priceNAD: updated.priceNAD, stock: updated.stock, category: updated.category, imageUrl: updated.imageUrl, imageUrls: updated.imageUrls || [], status: updated.status } });
 });
 
@@ -2016,6 +2255,10 @@ app.get('/login', async (req, res) => {
 
 app.get('/reset-password', (req, res) => {
   return res.sendFile(path.join(__dirname, '..', 'client', 'reset-password.html'));
+});
+
+app.get('/verify-email', (req, res) => {
+  return res.sendFile(path.join(__dirname, '..', 'client', 'verify-email.html'));
 });
 
 app.get('/health', (req, res) => {
@@ -2080,8 +2323,13 @@ module.exports = {
   canCancelOrder,
   resolveSellerApprovalState,
   getBuyerDisplayName,
+  normalizeDuplicateText,
+  buildProductDuplicateKey,
   normalizeSupportRequest,
   normalizePasswordResetInput,
+  normalizeProfileInput,
+  isValidEmailVerificationToken,
+  isBuyerEmailVerified,
   isAdminUser,
   validateImageUrl,
   hasValidImageSignature,
