@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f4f1e8">
+    <title>Verify email | Z Namibia</title>
+    <style>
+        :root { color-scheme: light; --ink: #17231e; --muted: #69736d; --paper: #f4f1e8; --white: #fffefa; --forest: #18382e; }
+        * { box-sizing: border-box; }
+        body { display: grid; min-height: 100vh; margin: 0; padding: 24px; place-items: center; color: var(--ink); background: var(--paper); font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
+        main { width: min(100%, 480px); padding: 36px; border: 1px solid #d8d8ce; background: var(--white); }
+        .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+        .brand-mark { display: grid; width: 36px; aspect-ratio: 1; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; font-family: Georgia, serif; font-size: 22px; }
+        h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 36px; font-weight: 400; }
+        p { color: var(--muted); line-height: 1.6; }
+        a { display: inline-flex; min-height: 44px; align-items: center; margin-top: 16px; padding: 0 16px; color: var(--white); background: var(--forest); font-size: 13px; font-weight: 700; text-decoration: none; }
+        #verification-status { min-height: 24px; }
+        @media (max-width: 480px) { main { padding: 26px; } }
+    </style>
+</head>
+<body>
+    <main>
+        <div class="brand"><span class="brand-mark" aria-hidden="true">Z</span><span>Your Z account</span></div>
+        <h1>Email verification</h1>
+        <p id="verification-status" role="status" aria-live="polite">Checking your verification link...</p>
+        <a href="/dashboard">Go to your account</a>
+    </main>
+    <script>
+        const status = document.querySelector("#verification-status");
+        const token = new URLSearchParams(window.location.search).get("token") || "";
+        if (!/^[a-f0-9]{64}$/.test(token)) {
+            status.textContent = "This verification link is invalid. Sign in to your account to request a new one.";
+        } else {
+            fetch("/api/auth/verify-email", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ token })
+            }).then(async (response) => {
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || "Could not verify this email address.");
+                status.textContent = result.message;
+            }).catch((error) => {
+                status.textContent = error.message || "Could not verify this email address.";
+            });
+        }
+    </script>
+</body>
+</html>

@@ -31,7 +31,7 @@
         .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
         .brand-mark { display: grid; width: 36px; aspect-ratio: 1; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; font-family: Georgia, serif; font-size: 22px; letter-spacing: 0; }
         .header-links { display: flex; align-items: center; gap: 18px; font-size: 12px; font-weight: 700; }
-        #cart-count { display: inline-block; }
+        #cart-count { display: inline-grid; }
         .header-links a { text-decoration: none; }
         .header-links a:hover { text-decoration: underline; text-underline-offset: 4px; }
         main { width: min(1120px, calc(100% - 48px)); margin: 0 auto; }
@@ -105,6 +105,8 @@
 
         @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } }
     </style>
+    <link rel="stylesheet" href="/loading.css">
+    <script src="/loading.js"></script>
 </head>
 <body>
     <header class="site-header">
@@ -112,7 +114,7 @@
             <a class="back-button" href="/marketplace" aria-label="Back to marketplace">←</a>
             <a class="brand" href="/marketplace" aria-label="Z Namibia marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Namibia</span></a>
         </div>
-        <nav class="header-links" aria-label="Shopping navigation"><a href="/marketplace">Keep browsing</a><a href="/cart" id="cart-link">Cart (<span id="cart-count">0</span>)</a></nav>
+        <nav class="header-links" aria-label="Shopping navigation"><a href="/marketplace">Keep browsing</a><a class="cart-icon-link" href="/cart" id="cart-link" aria-label="View cart, 0 items"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h2l2.2 11.2a2 2 0 0 0 2 1.6h8.9a2 2 0 0 0 1.9-1.5L22 8H6"></path><circle cx="10" cy="20" r="1"></circle><circle cx="18" cy="20" r="1"></circle></svg><span class="cart-count" id="cart-count">0</span></a></nav>
     </header>
     <main>
         <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/marketplace">Marketplace</a><span aria-hidden="true">/</span><span id="breadcrumb-title">Product</span></nav>
@@ -181,7 +183,9 @@
         }
 
         function updateCartCount() {
-            countElement.textContent = String(readCart().reduce((total, item) => total + item.quantity, 0));
+            const count = readCart().reduce((total, item) => total + item.quantity, 0);
+            countElement.textContent = String(count);
+            cartLink.setAttribute("aria-label", `View cart, ${count} ${count === 1 ? "item" : "items"}`);
         }
 
         function animateCartAdd() {
@@ -352,5 +356,6 @@
         updateCartCount();
         loadProduct();
     </script>
+    <script src="/navigation.js" defer></script>
 </body>
 </html>

@@ -56,13 +56,26 @@
         .seller-shop-menu-panel a, .seller-shop-menu-panel button { display: block; padding: 10px; border: 0; color: var(--ink); background: transparent; cursor: pointer; font-size: 11px; font-weight: 700; text-align: left; text-decoration: none; }
         .seller-shop-menu-panel a:hover, .seller-shop-menu-panel button:hover, .seller-shop-menu-panel a:focus-visible, .seller-shop-menu-panel button:focus-visible { color: var(--forest); background: #edf0df; outline: none; }
         main { width: min(1040px, calc(100% - 48px)); margin: 0 auto; }
-        .page-intro { display: grid; grid-template-columns: minmax(0, 1fr) minmax(270px, 380px); align-items: center; gap: 40px; padding: 48px 0 26px; }
+        .page-intro { padding: 48px 0 26px; }
         .page-intro-copy { min-width: 0; }
-        .page-intro-cover { display: block; width: 100%; aspect-ratio: 16 / 10; border: 1px solid var(--line); object-fit: cover; background: #e4ecc9; }
         .eyebrow { margin: 0 0 12px; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: 0.17em; text-transform: uppercase; }
         h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 46px; font-weight: 400; letter-spacing: 0; line-height: 1.05; }
         .page-intro > p:last-child { max-width: 560px; margin: 13px 0 0; color: var(--muted); font-size: 13px; line-height: 1.7; }
-        .seller-layout { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 52px; padding: 20px 0 70px; }
+        .seller-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 340px); align-items: start; gap: 24px; padding: 8px 0 70px; }
+        .seller-layout > .seller-stats, .seller-layout > section[aria-labelledby="shop-heading"] { grid-column: 1 / -1; }
+        .seller-layout > section[aria-labelledby="shop-heading"] { padding-bottom: 4px; }
+        .seller-tabs { display: grid; grid-column: 1 / -1; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 6px; border: 1px solid var(--line); background: var(--white); }
+        .seller-tab { min-height: 46px; padding: 0 12px; border: 1px solid transparent; border-radius: 3px; color: var(--muted); background: transparent; cursor: pointer; font-size: 12px; font-weight: 700; }
+        .seller-tab:hover { color: var(--forest); background: #f1f5df; }
+        .seller-tab[aria-selected="true"] { border-color: var(--forest); color: var(--white); background: var(--forest); }
+        .seller-tab:focus-visible { outline: 2px solid #397d54; outline-offset: 2px; }
+        .seller-tab-panel { grid-column: 1 / -1; min-width: 0; }
+        .seller-tab-panel[hidden] { display: none !important; }
+        #products-panel { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 24px; }
+        #products-panel[hidden] { display: none !important; }
+        #settings-panel { padding: 22px; border: 1px solid var(--line); background: var(--white); }
+        #settings-panel .shipping-settings { max-width: 760px; margin: 0; padding: 0; border: 0; }
+        #settings-panel .shipping-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .section-heading { margin: 0 0 17px; padding-bottom: 12px; border-bottom: 1px solid var(--ink); font-family: Georgia, "Times New Roman", serif; font-size: 25px; font-weight: 400; letter-spacing: 0; }
         .field { margin-bottom: 16px; }
         label { display: block; margin-bottom: 7px; font-size: 11px; font-weight: 700; }
@@ -147,21 +160,13 @@
         .shipping-settings { margin: 22px 0 28px; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
         .shipping-settings h3 { margin: 0 0 12px; font-family: Georgia, serif; font-size: 19px; font-weight: 400; }
         .shipping-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
-        .seller-layout.has-shop { display: block; }
-        .seller-layout.has-shop #product-section { width: min(1040px, calc(100vw - 760px)); margin: 0 auto; }
-        .product-disclosure { width: min(100%, 620px); margin: 48px auto 34px; border-bottom: 1px solid var(--line); }
-        .product-disclosure summary { display: flex; min-height: 52px; align-items: center; justify-content: space-between; gap: 12px; padding: 0 12px; border: 1px solid var(--line); background: var(--white); cursor: pointer; font-size: 12px; font-weight: 700; list-style: none; }
-        .product-disclosure summary::-webkit-details-marker { display: none; }
-        .product-disclosure summary:hover { border-color: var(--ink); background: #f1f5df; }
-        .product-disclosure summary:focus-visible { outline: 2px solid #397d54; outline-offset: 3px; }
-        .product-disclosure-indicator { display: grid; width: 25px; height: 25px; flex: 0 0 auto; place-items: center; border: 1px solid var(--line); border-radius: 50%; font-size: 17px; font-weight: 400; }
-        .product-disclosure[open] .product-disclosure-indicator { transform: rotate(45deg); }
-        .product-disclosure-content { padding-top: 18px; }
-        .seller-stats { position: fixed; z-index: 14; top: 50%; left: 16px; width: min(280px, calc(100vw - 960px)); max-height: calc(100vh - 36px); overflow-y: auto; transform: translateY(-50%); padding: 16px; border: 1px solid var(--line); background: var(--white); box-shadow: 0 12px 36px rgba(23, 35, 30, 0.14); }
+        .seller-layout.has-shop { display: grid; }
+        #product-section { min-width: 0; }
+        .seller-stats { position: static; width: auto; max-height: none; margin: 0; padding: 18px 20px; border: 1px solid var(--line); background: var(--white); }
         .seller-stats-header { padding-bottom: 11px; border-bottom: 1px solid var(--ink); }
         .seller-stats-header .eyebrow { margin-bottom: 5px; }
         .seller-stats-title { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 21px; font-weight: 400; }
-        .seller-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px 10px; margin: 14px 0 0; }
+        .seller-stats-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; margin: 14px 0 0; }
         .seller-stats-grid div { min-width: 0; padding-top: 9px; border-top: 1px solid var(--line); }
         .seller-stats-grid dt { color: var(--muted); font-size: 9px; line-height: 1.35; }
         .seller-stats-grid dd { margin: 5px 0 0; color: var(--ink); font-family: Georgia, serif; font-size: 17px; overflow-wrap: anywhere; }
@@ -169,38 +174,28 @@
         .seller-stats-grid .payout-held dd { color: #805a24; }
         .seller-stats-grid .payout-ready dd { color: var(--forest); }
         .seller-stats-grid .payout-paid dd { color: #285b3a; }
-        .seller-stats .shipping-settings { margin: 17px 0 0; padding: 14px 0 0; border-top: 1px solid var(--line); border-bottom: 0; }
-        .seller-stats .shipping-settings h3 { font-size: 17px; }
-        .seller-listings { position: fixed; z-index: 15; top: 50%; right: 16px; width: min(340px, calc(100vw - 32px)); max-height: calc(100vh - 36px); transform: translateY(-50%); overflow: hidden; padding: 15px; border: 1px solid var(--line); background: var(--white); box-shadow: 0 12px 36px rgba(23, 35, 30, 0.18); }
+        .seller-listings { position: static; width: 100%; min-width: 0; padding: 22px; border: 1px solid var(--line); background: var(--white); }
         .listing-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 11px; border-bottom: 1px solid var(--ink); }
+        .listing-panel-heading { min-width: 0; }
         .listing-panel-header .eyebrow { margin-bottom: 5px; }
         .listing-panel-title { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 21px; font-weight: 400; letter-spacing: 0; }
-        .listing-count { flex: 0 0 auto; color: var(--muted); font-size: 10px; }
-        .listing-panel-toggle { display: none; padding: 5px 7px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: transparent; cursor: pointer; font-size: 10px; font-weight: 700; }
-        .inventory-add-product { display: flex; width: 100%; min-height: 36px; align-items: center; justify-content: center; gap: 7px; margin: 11px 0; border: 1px solid var(--forest); border-radius: 3px; color: var(--white); background: var(--forest); cursor: pointer; font-size: 10px; font-weight: 700; }
-        .inventory-add-product::before { content: "+"; color: var(--lime); font-size: 17px; font-weight: 400; line-height: 1; }
+        .listing-panel-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 10px; }
+        .listing-count { color: var(--muted); font-size: 10px; white-space: nowrap; }
+        .inventory-add-product { display: inline-flex; min-height: 32px; align-items: center; justify-content: center; gap: 5px; padding: 0 10px; border: 1px solid var(--forest); border-radius: 999px; color: var(--white); background: var(--forest); cursor: pointer; font-size: 10px; font-weight: 700; white-space: nowrap; }
+        .inventory-add-product::before { content: "+"; color: var(--lime); font-size: 15px; font-weight: 400; line-height: 1; }
         .inventory-add-product:hover { color: var(--ink); background: var(--lime); }
         .inventory-add-product:hover::before { color: var(--ink); }
         .inventory-add-product:focus-visible { outline: 2px solid #397d54; outline-offset: 3px; }
-        #listing-list { max-height: calc(100vh - 180px); overflow-y: auto; overscroll-behavior: contain; }
-        .listing { display: grid; grid-template-columns: 50px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 11px 0; border-bottom: 1px solid var(--line); }
-        .listing-image { display: grid; width: 50px; aspect-ratio: 1; overflow: hidden; place-items: center; color: var(--forest); background: #e4ecc9; font-family: Georgia, serif; font-size: 25px; }
+        #listing-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); align-items: stretch; gap: 12px; width: 100%; }
+        #listing-list > .empty-listings { grid-column: 1 / -1; }
+        .listing { min-width: 0; margin: 0; padding: 7px; border: 1px solid var(--line); border-radius: 5px; background: var(--white); transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease; }
+        .listing:hover { transform: translateY(-2px); border-color: #b9c7ab; box-shadow: 0 6px 16px rgba(23, 35, 30, 0.08); }
+        .listing-view { display: grid; width: 100%; height: 100%; grid-template-rows: auto 1fr; gap: 9px; padding: 0; border: 0; color: var(--ink); background: transparent; cursor: pointer; text-align: left; }
+        .listing-view:hover h3 { color: var(--forest); }
+        .listing-view:focus-visible { outline: 2px solid #397d54; outline-offset: 2px; }
+        .listing-image { display: grid; width: 100%; aspect-ratio: 1.2; overflow: hidden; place-items: center; color: var(--forest); background: #e4ecc9; font-family: Georgia, serif; font-size: 28px; }
         .listing-image img { width: 100%; height: 100%; object-fit: cover; }
-        .listing h3 { margin: 0; font-size: 12px; line-height: 1.4; }
-        .listing p { margin: 4px 0 0; color: var(--muted); font-size: 10px; }
-        .listing-status { display: inline-block; margin-top: 7px; padding: 4px 6px; color: var(--forest); background: #e9edda; font-size: 9px; font-weight: 700; text-transform: uppercase; }
-        .listing-status.archived { color: #6b5140; background: #eee6db; }
-        .listing-status.hidden { color: #7a1d1d; background: #f7d9d9; }
-        .listing-controls { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
-        .listing-price { white-space: nowrap; font-family: Georgia, serif; font-size: 14px; }
-        .listing-options { position: relative; }
-        .listing-options summary { padding: 6px 8px; border: 1px solid var(--line); border-radius: 3px; cursor: pointer; font-size: 10px; font-weight: 700; list-style: none; white-space: nowrap; }
-        .listing-options summary::-webkit-details-marker { display: none; }
-        .listing-options summary:hover { border-color: var(--ink); }
-        .options-menu { position: absolute; z-index: 2; top: calc(100% + 4px); right: 0; display: grid; min-width: 142px; gap: 2px; padding: 5px; border: 1px solid var(--line); background: var(--white); box-shadow: 0 8px 20px rgba(23, 35, 30, 0.12); }
-        .options-menu button { padding: 8px; border: 0; color: var(--ink); background: transparent; cursor: pointer; font-size: 10px; text-align: left; }
-        .options-menu button:hover { background: #edf0df; }
-        .options-menu .delete-listing { color: #8b3b2f; }
+        .listing h3 { align-self: center; margin: 0; padding: 0 3px 4px; font-size: 12px; font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
         .secondary-button { min-height: 42px; margin-left: 8px; padding: 0 12px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: transparent; cursor: pointer; font-size: 11px; font-weight: 700; }
         .secondary-button:hover { border-color: var(--ink); }
         .secondary-button:disabled { opacity: 0.7; cursor: wait; }
@@ -212,9 +207,95 @@
         .cover-spinner { display: inline-block; width: 13px; height: 13px; margin-right: 7px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; vertical-align: -2px; animation: cover-spin 0.75s linear infinite; }
         @keyframes cover-spin { to { transform: rotate(360deg); } }
         .empty-listings { color: var(--muted); font-size: 12px; line-height: 1.7; }
-        .seller-operations { margin-top: 64px; }
-        .seller-order-row { margin-top: 10px; padding: 0 12px; border: 1px solid var(--line); border-radius: 4px; background: var(--white); }
-        .seller-order-row:first-child { margin-top: 0; }
+        .seller-operations { order: -1; margin: 0 0 38px; }
+        #seller-order-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); align-items: stretch; gap: 12px; margin-bottom: 30px; }
+        #seller-order-list > .empty-listings { grid-column: 1 / -1; }
+        .seller-order-row { min-width: 0; margin: 0; padding: 7px; border: 1px solid var(--line); border-radius: 5px; background: var(--white); transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease; }
+        .seller-order-row:hover { transform: translateY(-2px); border-color: #b9c7ab; box-shadow: 0 6px 16px rgba(23, 35, 30, 0.08); }
+        .seller-order-card { display: grid; width: 100%; height: 100%; grid-template-rows: auto 1fr; gap: 9px; padding: 0; border: 0; color: var(--ink); background: transparent; cursor: pointer; text-align: left; }
+        .seller-order-card:hover .seller-order-card-name { color: var(--forest); }
+        .seller-order-card:focus-visible { outline: 2px solid #397d54; outline-offset: 2px; }
+        .seller-order-card-image { display: grid; width: 100%; aspect-ratio: 1.2; overflow: hidden; place-items: center; color: var(--forest); background: #e4ecc9; font-family: Georgia, serif; font-size: 28px; }
+        .seller-order-card-image img { width: 100%; height: 100%; object-fit: cover; }
+        .seller-order-card-image { position: relative; }
+        .seller-order-new-badge { position: absolute; top: 6px; right: 6px; display: grid; width: 22px; height: 22px; place-items: center; border: 1px solid rgba(255, 255, 255, 0.9); border-radius: 50%; color: #fff; background: #d83a35; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22); font-family: Georgia, "Times New Roman", serif; font-size: 11px; font-weight: 700; line-height: 1; }
+        .seller-order-card-name { align-self: center; margin: 0; padding: 0 3px 4px; font-size: 12px; font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
+        .seller-order-detail-view { box-sizing: border-box; width: min(680px, calc(100vw - 32px)); max-width: none; max-height: min(90vh, 900px); margin: auto; padding: 0; overflow-y: auto; border: 0; color: var(--ink); background: transparent; }
+        .seller-order-detail-view[hidden] { display: none !important; }
+        .seller-order-detail-view::backdrop { background: rgba(15, 23, 18, 0.62); backdrop-filter: blur(2px); }
+        .seller-order-dialog { position: relative; padding: clamp(20px, 4vw, 32px); border: 1px solid rgba(255, 255, 255, 0.75); border-radius: 16px; background: var(--white); box-shadow: 0 20px 70px rgba(0, 0, 0, 0.28); }
+        .seller-order-detail-close { position: absolute; top: 20px; right: 20px; display: grid; min-width: 38px; min-height: 38px; place-items: center; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink); background: #f7f8f2; cursor: pointer; font-size: 11px; font-weight: 700; transition: background 0.18s ease, border-color 0.18s ease; }
+        .seller-order-detail-close:hover { border-color: #b9c7ab; background: #edf2e2; }
+        .seller-order-detail-close:focus-visible { outline: 2px solid #397d54; outline-offset: 2px; }
+        .seller-order-detail-title { max-width: calc(100% - 112px); margin: 4px 0 20px; padding: 0 0 16px; border-bottom: 1px solid var(--line); font-family: Georgia, "Times New Roman", serif; font-size: clamp(25px, 4vw, 32px); font-weight: 400; line-height: 1.15; overflow-wrap: anywhere; }
+        .seller-order-content { padding: 0 0 4px; }
+        .seller-order-dialog .order-detail-grid { gap: 10px; margin: 0 0 20px; }
+        .seller-order-dialog .order-detail { padding: 11px 12px; border: 1px solid #e8ebdf; border-radius: 8px; background: #fafbf7; }
+        .seller-order-dialog .order-detail dt { font-size: 10px; }
+        .seller-order-dialog .order-detail dd { margin-top: 5px; font-size: 12px; line-height: 1.4; }
+        .seller-order-dialog .order-items-list { overflow: hidden; border: 1px solid var(--line); border-radius: 9px; }
+        .seller-order-dialog .order-product { grid-template-columns: 64px minmax(0, 1fr) auto; gap: 12px; padding: 12px; border-bottom-color: #e8ebdf; }
+        .seller-order-dialog .order-product:last-child { border-bottom: 0; }
+        .seller-order-dialog .order-product-image { width: 64px; border-radius: 6px; }
+        .seller-order-dialog .order-product-name { font-size: 13px; font-weight: 700; }
+        .seller-order-dialog .order-product-meta { font-size: 11px; }
+        .seller-order-dialog .order-product-total { font-size: 14px; }
+        .seller-order-dialog .order-totals { max-width: none; gap: 9px; margin-top: 14px; padding: 15px; border-radius: 9px; background: #f5f7ef; }
+        .seller-order-dialog .order-total-line { font-size: 12px; }
+        .seller-order-dialog .order-total-line.final { padding-top: 11px; border-top-color: #dce2d2; font-size: 13px; }
+        .seller-order-dialog .seller-order-content > p { font-size: 12px; }
+        .seller-order-dialog .approval-actions { gap: 10px; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
+        .seller-order-dialog .approval-actions .accept-button,
+        .seller-order-dialog .approval-actions .reject-button { min-height: 46px; padding: 0 20px; border-radius: 7px; font-size: 12px; }
+        .seller-order-dialog .seller-order-content form { display: flex; flex-wrap: wrap; max-width: 100%; gap: 9px; margin-top: 18px; }
+        .seller-order-dialog .seller-order-content form input { min-width: min(220px, 100%); min-height: 44px; flex: 1 1 220px; }
+        .seller-order-dialog .seller-order-content form button { min-height: 44px; padding: 0 16px; border-radius: 7px; }
+        .seller-listing-detail-view { width: min(620px, calc(100vw - 32px)); }
+        .seller-product-dialog { width: min(600px, calc(100vw - 32px)); max-height: min(86vh, 760px); scrollbar-width: none; }
+        .seller-product-dialog::-webkit-scrollbar { display: none; }
+        .seller-product-dialog .seller-order-dialog { padding: clamp(18px, 3vw, 26px); }
+        .seller-product-dialog #product-section { display: block; min-width: 0; padding: 0; border: 0; background: transparent; }
+        .seller-product-dialog #product-section[hidden] { display: none !important; }
+        .seller-product-dialog #product-heading { margin: 0 0 14px; padding: 0 100px 11px 0; font-size: 23px; }
+        .seller-product-dialog #product-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 14px; }
+        .seller-product-dialog #product-form .field:nth-child(1),
+        .seller-product-dialog #product-form .field:nth-child(2),
+        .seller-product-dialog #product-form > button,
+        .seller-product-dialog #product-form > .message { grid-column: 1 / -1; }
+        .seller-product-dialog #product-form .field { min-width: 0; margin-bottom: 10px; }
+        .seller-product-dialog #product-form label { margin-bottom: 5px; font-size: 10px; }
+        .seller-product-dialog #product-form input:not([type="file"]),
+        .seller-product-dialog #product-form select,
+        .seller-product-dialog #product-form textarea { min-height: 40px; padding: 9px 10px; font-size: 11px; }
+        .seller-product-dialog #product-form textarea { min-height: 76px; }
+        .seller-product-dialog #product-form .cover-upload-button { gap: 9px; margin-top: 5px; padding: 8px 10px; }
+        .seller-product-dialog #product-form .cover-upload-icon { width: 34px; height: 34px; }
+        .seller-product-dialog #product-form .cover-upload-copy strong { font-size: 11px; }
+        .seller-product-dialog #product-form .cover-file-name,
+        .seller-product-dialog #product-form .hint { margin-top: 4px; font-size: 9px; }
+        .seller-product-dialog #product-form > .primary-button { width: 100%; margin-top: 4px; }
+        .seller-product-dialog #product-form > .primary-button { min-height: 42px; }
+        .seller-product-dialog #product-form > .secondary-button { justify-self: start; margin: 0; }
+        .seller-product-dialog #product-form > .message { min-height: 0; margin-top: 7px; }
+        .seller-listing-detail-view .seller-order-detail-title { margin-bottom: 18px; }
+        .seller-listing-detail-content { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 20px; align-items: start; }
+        .seller-listing-detail-image { display: grid; width: 100%; aspect-ratio: 1; overflow: hidden; place-items: center; border-radius: 10px; color: var(--forest); background: #e4ecc9; font-family: Georgia, serif; font-size: 48px; }
+        .seller-listing-detail-image img { width: 100%; height: 100%; object-fit: cover; }
+        .seller-listing-detail-copy { min-width: 0; }
+        .seller-listing-detail-price { display: block; margin: 0 0 12px; color: var(--forest); font-family: Georgia, "Times New Roman", serif; font-size: 25px; font-weight: 400; }
+        .seller-listing-detail-status { display: inline-block; margin: 0 0 15px; padding: 6px 9px; border-radius: 999px; color: var(--forest); background: #e9edda; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+        .seller-listing-detail-status.archived { color: #6b5140; background: #eee6db; }
+        .seller-listing-detail-status.hidden { color: #7a1d1d; background: #f7d9d9; }
+        .seller-listing-detail-description { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; white-space: pre-wrap; }
+        .seller-listing-detail-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin: 18px 0 0; }
+        .seller-listing-detail-facts div { min-width: 0; padding: 11px; border: 1px solid #e8ebdf; border-radius: 8px; background: #fafbf7; }
+        .seller-listing-detail-facts dt { color: var(--muted); font-size: 10px; }
+        .seller-listing-detail-facts dd { margin: 5px 0 0; font-size: 12px; font-weight: 700; overflow-wrap: anywhere; }
+        .seller-listing-detail-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
+        .seller-listing-detail-actions button { min-height: 42px; padding: 0 14px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); background: transparent; cursor: pointer; font-size: 11px; font-weight: 700; }
+        .seller-listing-detail-actions button:hover { border-color: var(--forest); background: #f1f5df; }
+        .seller-listing-detail-actions .delete-listing { margin-left: auto; border-color: #e4c1ba; color: #8b3b2f; }
+        .seller-listing-detail-actions .delete-listing:hover { background: #fff5f2; }
         .payout-row { display: grid; gap: 7px; margin-top: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--white); }
         .payout-row:first-child { margin-top: 0; }
         .payout-row-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
@@ -223,34 +304,11 @@
         .payout-row-amount { color: var(--ink); font-family: Georgia, serif; font-size: 16px; font-weight: 400; white-space: nowrap; }
         .payout-row .seller-status-badge { justify-self: start; }
         .payout-row p { margin: 0; color: var(--muted); font-size: 9px; line-height: 1.5; overflow-wrap: anywhere; }
-        .seller-operations > h2:first-of-type { margin-bottom: 18px; padding-bottom: 0; border-bottom: 0; text-align: center; }
-        .seller-operations > h2:nth-of-type(2) { margin-top: 40px; padding: 18px 0 0; border-top: 1px solid var(--ink); border-bottom: 0; }
+        .seller-operations > h2:first-of-type { margin-bottom: 14px; }
+        .seller-operations > h2:nth-of-type(2) { margin-top: 34px; padding: 18px 0 0; border-top: 1px solid var(--line); border-bottom: 0; }
         .seller-order-search { display: block; width: min(100%, 440px); min-height: 40px; margin: 0 auto 16px; border-top: 0; }
-        #seller-order-list { margin-bottom: 30px; }
         #payout-ledger { margin-bottom: 18px; }
         .seller-operations > .hint { margin-top: 14px; }
-        .seller-order-disclosure > summary { display: grid; min-height: 78px; grid-template-columns: 48px minmax(0, 1fr) auto 18px; align-items: center; gap: 12px; cursor: pointer; list-style: none; }
-        .seller-order-disclosure > summary::-webkit-details-marker { display: none; }
-        .seller-order-disclosure > summary:focus-visible { outline: 2px solid #397d54; outline-offset: 3px; }
-        .seller-order-image-carousel, .seller-order-carousel-image, .seller-order-image-placeholder { position: relative; display: grid; width: 48px; height: 48px; place-items: center; overflow: hidden; border: 1px solid var(--line); border-radius: 3px; color: var(--forest); background: #e4ecc9; }
-        .seller-order-carousel-image { object-fit: cover; }
-        .seller-order-image-placeholder { font-family: Georgia, serif; font-size: 19px; }
-        .seller-order-image-control { position: absolute; top: 50%; display: grid; width: 14px; height: 20px; place-items: center; padding: 0; transform: translateY(-50%); border: 0; border-radius: 2px; color: var(--white); background: rgba(23, 35, 30, 0.78); cursor: pointer; font-size: 14px; line-height: 1; }
-        .seller-order-image-control.previous { left: 1px; }
-        .seller-order-image-control.next { right: 1px; }
-        .seller-order-image-control:focus-visible { outline: 2px solid var(--lime); outline-offset: 1px; }
-        .seller-order-image-count { position: absolute; right: 2px; bottom: 2px; padding: 1px 3px; border-radius: 2px; color: var(--white); background: rgba(23, 35, 30, 0.78); font-size: 7px; line-height: 1; }
-        @media (prefers-reduced-motion: reduce) { .seller-order-carousel-image { transition: none; } }
-        .seller-order-summary-main { display: grid; min-width: 0; gap: 7px; }
-        .seller-order-heading { display: flex; min-width: 0; align-items: center; gap: 10px; }
-        .seller-order-row h3 { margin: 0; color: var(--ink); font-size: 13px; font-weight: 700; overflow-wrap: anywhere; }
-        .seller-order-summary-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--muted); font-size: 10px; line-height: 1.4; }
-        .seller-order-summary-meta span { margin: 0; color: inherit; font-size: inherit; }
-        .seller-order-summary-side { display: grid; justify-items: end; gap: 7px; }
-        .seller-order-summary-side > strong { color: var(--ink); font-family: Georgia, serif; font-size: 14px; font-weight: 400; white-space: nowrap; }
-        .seller-order-summary-cue { color: var(--muted); font-size: 17px; line-height: 1; transition: transform 0.15s ease; }
-        .seller-order-disclosure[open] .seller-order-summary-cue { transform: rotate(45deg); }
-        .seller-order-content { padding: 0 0 16px; }
         .seller-order-content > p, .payout-row p { margin: 7px 0 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
         .order-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 10px 0 16px; }
         .order-detail { min-width: 0; padding-top: 8px; border-top: 1px solid var(--line); }
@@ -384,42 +442,61 @@
         .payout-timing-note { display: flex; align-items: baseline; gap: 7px; }
         .payout-timing-note::before { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: #d99a1b; content: ""; }
         @media (max-width: 600px) {
-            .seller-order-disclosure > summary { grid-template-columns: 42px minmax(0, 1fr) 18px; gap: 8px; padding: 10px 0; }
-            .seller-order-image-carousel, .seller-order-carousel-image, .seller-order-image-placeholder { width: 42px; height: 42px; }
-            .seller-order-summary-side { grid-column: 2; grid-row: 2; display: flex; align-items: center; justify-items: start; gap: 10px; }
-            .seller-order-summary-cue { grid-column: 3; grid-row: 1 / span 2; }
+            .seller-order-detail-view { width: calc(100vw - 24px); max-height: 92vh; }
+            .seller-order-dialog { padding: 20px 14px 16px; border-radius: 13px; }
+            .seller-order-detail-close { top: 14px; right: 14px; min-height: 34px; min-width: 34px; padding: 0 10px; }
+            .seller-order-detail-title { margin-bottom: 16px; padding-bottom: 13px; }
+            .seller-order-dialog .order-detail-grid { gap: 7px; }
+            .seller-order-dialog .order-detail { padding: 9px; }
+            .seller-order-dialog .order-product { grid-template-columns: 48px minmax(0, 1fr) auto; gap: 8px; padding: 9px; }
+            .seller-order-dialog .order-product-image { width: 48px; }
+            .seller-order-dialog .order-product-total { font-size: 12px; }
+            .seller-order-dialog .order-totals { padding: 12px; }
+            .seller-listing-detail-content { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+            .seller-listing-detail-image { max-height: 250px; aspect-ratio: 1.5; }
+            .seller-listing-detail-price { font-size: 22px; }
+            .seller-product-dialog { width: calc(100vw - 24px); max-height: 92vh; }
+            .seller-product-dialog .seller-order-dialog { padding: 20px 14px 16px; }
+            .seller-product-dialog #product-heading { margin-bottom: 12px; font-size: 21px; }
+            .seller-product-dialog #product-form { grid-template-columns: minmax(0, 1fr); }
+            .seller-product-dialog #product-form > .field { grid-column: 1; }
+            #seller-order-list { grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)); gap: 9px; }
+            .seller-order-row { padding: 6px; }
+            .seller-order-card { gap: 7px; }
+            .seller-order-card-name { font-size: 11px; }
+        }
+        @media (max-width: 360px) {
+            .seller-order-dialog .order-product { grid-template-columns: 42px minmax(0, 1fr); }
+            .seller-order-dialog .order-product-image { width: 42px; }
+            .seller-order-dialog .order-product-total { grid-column: 2; }
         }
         [hidden] { display: none !important; }
 
-        @media (max-width: 1199px) {
-            .seller-stats { position: static; width: min(100%, 620px); max-height: none; margin: 16px 0 24px; transform: none; }
-            .seller-layout.has-shop #product-section { width: min(1040px, calc(100vw - 420px)); max-width: none; margin: 0; }
-        }
-
         @media (max-width: 900px) {
-            .site-header { padding: 12px 19px; }
-            .header-links { gap: 12px; font-size: 11px; }
+            .site-header { flex-wrap: wrap; padding: 12px 19px; }
+            .header-links { width: 100%; min-width: 0; flex-wrap: nowrap; justify-content: flex-start; gap: 16px; overflow-x: auto; padding: 4px 0 6px; font-size: 11px; scrollbar-width: thin; white-space: nowrap; }
+            .header-links > * { flex: 0 0 auto; }
             main { width: calc(100% - 36px); }
-            .page-intro { grid-template-columns: 1fr; gap: 20px; padding-top: 37px; }
-            .page-intro-cover { width: min(100%, 520px); }
+            .page-intro { padding-top: 37px; }
             h1 { font-size: 39px; }
-            .seller-layout { grid-template-columns: 1fr; gap: 38px; padding-top: 12px; }
-            .seller-layout.has-shop { display: block; }
-            .seller-layout.has-shop #product-section { width: 100%; max-width: none; }
-            .seller-listings { top: auto; right: 12px; bottom: 12px; width: min(360px, calc(100vw - 24px)); max-height: calc(100vh - 24px); transform: none; }
-            .listing-panel-toggle { display: inline-block; }
-            .seller-listings.is-collapsed #listing-list, .seller-listings.is-collapsed .listing-count { display: none; }
-            .seller-listings.is-collapsed { width: min(270px, calc(100vw - 24px)); padding: 11px 13px; }
-            .seller-listings.is-collapsed .listing-panel-header { padding-bottom: 0; border-bottom: 0; }
-            #listing-list { max-height: 42vh; }
-            .listing { grid-template-columns: 46px minmax(0, 1fr) auto; gap: 7px; }
-            .listing-image { width: 46px; }
+            .seller-layout, .seller-layout.has-shop { grid-template-columns: minmax(0, 1fr); gap: 18px; padding-top: 8px; }
+            .seller-layout > .seller-stats, .seller-layout > section[aria-labelledby="shop-heading"] { grid-column: 1; }
+            .seller-tabs, .seller-tab-panel { grid-column: 1; }
+            #products-panel { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+            .seller-stats-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+            .seller-listings { padding: 16px; }
+            #listing-list { grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)); gap: 9px; }
+            .listing { padding: 6px; }
+            .listing-view { gap: 7px; }
+            .listing h3 { font-size: 11px; }
         }
 
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
         }
     </style>
+    <link rel="stylesheet" href="/loading.css">
+    <script src="/loading.js"></script>
 </head>
 <body>
     <header class="site-header">
@@ -439,7 +516,6 @@
                     <a href="/sell/assistant">Shop AI assistant</a>
                     <a href="/sell/verification">Business verification</a>
                     <a href="/dashboard">Buyer profile</a>
-                    <button id="change-cover-menu" type="button">Change cover photo</button>
                     <a href="/dashboard#account-title">Buyer details</a>
                 </div>
             </details>
@@ -452,11 +528,6 @@
                 <p class="eyebrow">Seller profile</p>
                 <h1>Seller dashboard</h1>
                 <p>Manage your storefront, products, orders, and delivery for shoppers across Namibia.</p>
-            </div>
-            <div class="page-intro-media">
-                <img class="page-intro-cover" id="page-intro-cover" src="/z-storefront.png" alt="Z Namibia storefront">
-                <input class="cover-file-input" id="shop-cover-file" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose a replacement storefront cover">
-                <p class="cover-feedback" id="shop-cover-message" role="status" aria-live="polite"></p>
             </div>
         </section>
 
@@ -474,36 +545,80 @@
                     <div><dt>Paid orders</dt><dd id="seller-stat-orders">0</dd></div>
                     <div><dt>To ship</dt><dd id="seller-stat-to-ship">0</dd></div>
                 </dl>
-                <form class="shipping-settings" id="shipping-form" hidden>
-                    <h3>Delivery and free shipping</h3>
-                    <div class="shipping-grid">
-                        <div class="field"><label for="shipping-local">Same-town fee (N$)</label><input id="shipping-local" type="number" min="0" step="0.01" required></div>
-                        <div class="field"><label for="shipping-hub">Main-hub fee (N$)</label><input id="shipping-hub" type="number" min="0" step="0.01" required></div>
-                        <div class="field"><label for="shipping-remote">Remote-area fee (N$)</label><input id="shipping-remote" type="number" min="0" step="0.01" required></div>
-                        <div class="field"><label for="shipping-threshold">Free above (N$, 0 disables)</label><input id="shipping-threshold" type="number" min="0" step="0.01" required></div>
-                    </div>
-                    <label class="auto-approval-toggle" for="auto-approve-orders">
-                        <span>Auto-approve new orders</span>
-                        <span class="toggle-switch">
-                            <input id="auto-approve-orders" type="checkbox">
-                            <span class="toggle-slider" aria-hidden="true"></span>
-                        </span>
-                    </label>
-                    <button class="shipping-save" type="submit"><span>Save delivery settings</span><span aria-hidden="true">&#8594;</span></button>
-                    <p class="message shipping-save-feedback" id="shipping-message" role="status" aria-live="polite"></p>
-                </form>
             </aside>
             <section aria-labelledby="shop-heading">
                 <h2 class="section-heading" id="shop-heading">Your storefront</h2>
                 <p class="message" id="seller-message" role="status" aria-live="polite" hidden></p>
             </section>
 
-            <section id="product-section" aria-label="Product management" hidden>
-                <details class="product-disclosure" id="product-disclosure">
-                    <summary><span id="product-disclosure-label">Add a product</span><span class="product-disclosure-indicator" aria-hidden="true">+</span></summary>
-                    <div class="product-disclosure-content">
-                        <h2 class="section-heading" id="product-heading">Add a product</h2>
-                        <form id="product-form">
+            <nav class="seller-tabs" role="tablist" aria-label="Seller dashboard sections">
+                <button class="seller-tab" id="orders-tab" type="button" role="tab" aria-selected="true" aria-controls="orders-panel" tabindex="0">Orders</button>
+                <button class="seller-tab" id="products-tab" type="button" role="tab" aria-selected="false" aria-controls="products-panel" tabindex="-1">Listings</button>
+                <button class="seller-tab" id="settings-tab" type="button" role="tab" aria-selected="false" aria-controls="settings-panel" tabindex="-1">Settings</button>
+            </nav>
+
+            <section class="seller-tab-panel" id="orders-panel" role="tabpanel" aria-labelledby="orders-tab">
+                <section class="seller-operations" id="seller-operations" hidden>
+                    <h2 class="section-heading">Incoming orders</h2>
+                    <input class="seller-order-search" id="seller-order-search" type="search" placeholder="Search order, product, status, tracking..." aria-label="Search orders" hidden>
+                    <div id="seller-order-list" aria-live="polite"><p class="empty-listings">Loading orders...</p></div>
+                    <dialog class="seller-order-detail-view" id="seller-order-detail-view" aria-labelledby="seller-order-detail-title" hidden>
+                        <div class="seller-order-dialog">
+                            <button class="seller-order-detail-close" id="seller-order-detail-close" type="button">Close</button>
+                            <h3 class="seller-order-detail-title" id="seller-order-detail-title"></h3>
+                            <div id="seller-order-detail-content"></div>
+                        </div>
+                    </dialog>
+                    <h2 class="section-heading">Payout activity</h2>
+                    <div id="payout-ledger" aria-live="polite"><p class="empty-listings">Loading balances...</p></div>
+                    <p class="hint" id="payout-mode-note">Loading payout mode...</p>
+                </section>
+            </section>
+
+            <section class="seller-tab-panel" id="products-panel" role="tabpanel" aria-labelledby="products-tab" hidden>
+                <section class="seller-listings" id="seller-listings" aria-labelledby="listing-panel-title" hidden>
+                    <div class="listing-panel-header">
+                        <div class="listing-panel-heading">
+                            <p class="eyebrow">Listings</p>
+                            <h2 class="listing-panel-title" id="listing-panel-title">Your products</h2>
+                        </div>
+                        <div class="listing-panel-actions">
+                            <span class="listing-count" id="listing-count">Loading...</span>
+                            <button class="inventory-add-product" id="inventory-add-product" type="button" aria-label="Add a product">Add</button>
+                        </div>
+                    </div>
+                    <div id="listing-list" aria-live="polite"><p class="empty-listings">Loading listings...</p></div>
+                </section>
+            </section>
+            <section class="seller-tab-panel" id="settings-panel" role="tabpanel" aria-labelledby="settings-tab" hidden>
+                <div id="settings-content">
+                    <form class="shipping-settings" id="shipping-form" hidden>
+                        <h2 class="section-heading">Delivery and order settings</h2>
+                        <div class="shipping-grid">
+                            <div class="field"><label for="shipping-local">Same-town fee (N$)</label><input id="shipping-local" type="number" min="0" step="0.01" required></div>
+                            <div class="field"><label for="shipping-hub">Main-hub fee (N$)</label><input id="shipping-hub" type="number" min="0" step="0.01" required></div>
+                            <div class="field"><label for="shipping-remote">Remote-area fee (N$)</label><input id="shipping-remote" type="number" min="0" step="0.01" required></div>
+                            <div class="field"><label for="shipping-threshold">Free above (N$, 0 disables)</label><input id="shipping-threshold" type="number" min="0" step="0.01" required></div>
+                        </div>
+                        <label class="auto-approval-toggle" for="auto-approve-orders">
+                            <span>Auto-approve new orders</span>
+                            <span class="toggle-switch">
+                                <input id="auto-approve-orders" type="checkbox">
+                                <span class="toggle-slider" aria-hidden="true"></span>
+                            </span>
+                        </label>
+                        <button class="shipping-save" type="submit"><span>Save delivery settings</span><span aria-hidden="true">&#8594;</span></button>
+                        <p class="message shipping-save-feedback" id="shipping-message" role="status" aria-live="polite"></p>
+                    </form>
+                </div>
+            </section>
+        </div>
+        <dialog class="seller-order-detail-view seller-product-dialog" id="product-dialog" aria-labelledby="product-heading" hidden>
+            <div class="seller-order-dialog">
+                <button class="seller-order-detail-close" id="product-dialog-close" type="button">Close</button>
+                <section id="product-section" aria-label="Product management" hidden>
+                    <h2 class="section-heading" id="product-heading">Add a product</h2>
+                    <form id="product-form">
                     <div class="field">
                         <label for="product-title">Product name</label>
                         <input id="product-title" name="title" maxlength="100" placeholder="What are you selling?" required>
@@ -550,45 +665,29 @@
                     <button class="secondary-button" id="cancel-edit" type="button" hidden>Cancel edit</button>
                     <p class="message" id="product-message" role="status" aria-live="polite"></p>
                         </form>
-                    </div>
-                </details>
-                <section class="seller-operations" id="seller-operations" hidden>
-                    <h2 class="section-heading">Incoming orders</h2>
-                    <input class="seller-order-search" id="seller-order-search" type="search" placeholder="Search order, product, status, tracking..." aria-label="Search orders" hidden>
-                    <div id="seller-order-list" aria-live="polite"><p class="empty-listings">Loading orders...</p></div>
-                    <h2 class="section-heading">Payout activity</h2>
-                    <div id="payout-ledger" aria-live="polite"><p class="empty-listings">Loading balances...</p></div>
-                    <p class="hint" id="payout-mode-note">Loading payout mode...</p>
                 </section>
-            </section>
-            <aside class="seller-listings is-collapsed" id="seller-listings" aria-label="Seller inventory" hidden>
-                <div class="listing-panel-header">
-                    <div>
-                        <p class="eyebrow">Inventory</p>
-                        <h2 class="listing-panel-title">Your listings</h2>
-                    </div>
-                    <span class="listing-count" id="listing-count">Loading...</span>
-                    <button class="listing-panel-toggle" id="listing-panel-toggle" type="button" aria-expanded="false" aria-controls="listing-list">Show</button>
                 </div>
-                <button class="inventory-add-product" id="inventory-add-product" type="button">Add a product</button>
-                <div id="listing-list" aria-live="polite"><p class="empty-listings">Loading listings...</p></div>
-            </aside>
-        </div>
+            </dialog>
+        <dialog class="seller-order-detail-view seller-listing-detail-view" id="seller-listing-detail-view" aria-labelledby="seller-listing-detail-title" hidden>
+            <div class="seller-order-dialog">
+                <button class="seller-order-detail-close" id="seller-listing-detail-close" type="button">Close</button>
+                <h3 class="seller-order-detail-title" id="seller-listing-detail-title"></h3>
+                <div class="seller-listing-detail-content" id="seller-listing-detail-content"></div>
+            </div>
+        </dialog>
     </main>
 
     <script>
         const sellerShopMenu = document.querySelector("#seller-shop-menu");
         const sellerShopName = document.querySelector("#seller-shop-name");
         const sellerShopPublicLink = document.querySelector("#seller-shop-public-link");
-        const changeCoverMenu = document.querySelector("#change-cover-menu");
         const sellerMessage = document.querySelector("#seller-message");
-        const shopCoverMessage = document.querySelector("#shop-cover-message");
-        const shopCoverFile = document.querySelector("#shop-cover-file");
-        const pageIntroCover = document.querySelector("#page-intro-cover");
         const shippingForm = document.querySelector("#shipping-form");
         const shippingMessage = document.querySelector("#shipping-message");
         const sellerLayout = document.querySelector(".seller-layout");
         const sellerStats = document.querySelector("#seller-stats");
+        const sellerTabs = Array.from(document.querySelectorAll(".seller-tab"));
+        const sellerTabPanels = Array.from(document.querySelectorAll(".seller-tab-panel"));
         const sellerStatSales = document.querySelector("#seller-stat-sales");
         const sellerStatHeld = document.querySelector("#seller-stat-held");
         const sellerStatReady = document.querySelector("#seller-stat-ready");
@@ -599,12 +698,10 @@
         const sellerListings = document.querySelector("#seller-listings");
         const payoutModeNote = document.querySelector("#payout-mode-note");
         const listingCount = document.querySelector("#listing-count");
-        const listingPanelToggle = document.querySelector("#listing-panel-toggle");
         const inventoryAddProduct = document.querySelector("#inventory-add-product");
-        const mobileListingPanel = window.matchMedia("(max-width: 900px)");
         const productSection = document.querySelector("#product-section");
-        const productDisclosure = document.querySelector("#product-disclosure");
-        const productDisclosureLabel = document.querySelector("#product-disclosure-label");
+        const productDialog = document.querySelector("#product-dialog");
+        const productDialogClose = document.querySelector("#product-dialog-close");
         const productForm = document.querySelector("#product-form");
         const productMessage = document.querySelector("#product-message");
         const productHeading = document.querySelector("#product-heading");
@@ -620,12 +717,23 @@
         const sellerOperations = document.querySelector("#seller-operations");
         const sellerOrderList = document.querySelector("#seller-order-list");
         const sellerOrderSearch = document.querySelector("#seller-order-search");
+        const sellerOrderDetailView = document.querySelector("#seller-order-detail-view");
+        const sellerOrderDetailTitle = document.querySelector("#seller-order-detail-title");
+        const sellerOrderDetailContent = document.querySelector("#seller-order-detail-content");
+        const sellerOrderDetailClose = document.querySelector("#seller-order-detail-close");
+        const sellerListingDetailView = document.querySelector("#seller-listing-detail-view");
+        const sellerListingDetailTitle = document.querySelector("#seller-listing-detail-title");
+        const sellerListingDetailContent = document.querySelector("#seller-listing-detail-content");
+        const sellerListingDetailClose = document.querySelector("#seller-listing-detail-close");
         const payoutLedger = document.querySelector("#payout-ledger");
         const priceFormat = new Intl.NumberFormat("en-NA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         let productPreviewUrl = "";
         let sellerOrdersForSearch = [];
         let payoutLedgerRefreshTimer = null;
         let payoutLedgerRequestInFlight = false;
+        let activeSellerOrderTrigger = null;
+        let activeSellerListingTrigger = null;
+        let activeProductDialogTrigger = null;
 
         function sellerOrderMatchesQuery(order, query) {
             if (!query) return true;
@@ -668,7 +776,11 @@
         }
 
         function renderSellerOrders() {
+            if (sellerOrderDetailView.open) sellerOrderDetailView.close();
             sellerOrderList.replaceChildren();
+            sellerOrderList.hidden = false;
+            sellerOrderDetailView.hidden = true;
+            sellerOrderDetailContent.replaceChildren();
             sellerOrderSearch.hidden = sellerOrdersForSearch.length === 0;
             if (!sellerOrdersForSearch.length) {
                 const emptyOrders = document.createElement("p");
@@ -677,6 +789,14 @@
                 sellerOrderList.append(emptyOrders);
                 return;
             }
+
+            const pendingOrderPositions = new Map();
+            let pendingOrderPosition = 0;
+            sellerOrdersForSearch.forEach((order) => {
+                if (order.approvalStatus === "pending") {
+                    pendingOrderPositions.set(order, ++pendingOrderPosition);
+                }
+            });
 
             const query = sellerOrderSearch.value.trim().toLocaleLowerCase();
             const matchingOrders = sellerOrdersForSearch.filter((order) => sellerOrderMatchesQuery(order, query));
@@ -687,7 +807,7 @@
                 sellerOrderList.append(noMatches);
                 return;
             }
-            matchingOrders.forEach((order) => sellerOrderList.append(renderSellerOrder(order)));
+            matchingOrders.forEach((order) => sellerOrderList.append(renderSellerOrder(order, pendingOrderPositions.get(order))));
         }
 
         function resetProductUploadPreview() {
@@ -712,17 +832,6 @@
             if (productPreviewUrl) productImageThumb.src = productPreviewUrl;
         });
 
-        shopCoverFile.addEventListener("change", () => {
-            const selectedFile = shopCoverFile.files[0];
-            if (selectedFile) saveShopCover(selectedFile);
-        });
-
-        changeCoverMenu.addEventListener("click", () => {
-            sellerShopMenu.open = false;
-            shopCoverMessage.textContent = "";
-            shopCoverFile.click();
-        });
-
         async function requestJson(url, options) {
             const response = await fetch(url, options);
             const result = await response.json();
@@ -735,11 +844,33 @@
             element.classList.toggle("success", success);
         }
 
-        function setListingPanelCollapsed(collapsed) {
-            sellerListings.classList.toggle("is-collapsed", collapsed);
-            listingPanelToggle.setAttribute("aria-expanded", String(!collapsed));
-            listingPanelToggle.textContent = collapsed ? "Show" : "Hide";
+        function activateSellerTab(tabId, focusTab = false) {
+            const selectedTab = sellerTabs.find((tab) => tab.id === tabId);
+            if (!selectedTab) return;
+            sellerTabs.forEach((tab) => {
+                const isSelected = tab === selectedTab;
+                tab.setAttribute("aria-selected", String(isSelected));
+                tab.tabIndex = isSelected ? 0 : -1;
+            });
+            sellerTabPanels.forEach((panel) => {
+                panel.hidden = panel.id !== selectedTab.getAttribute("aria-controls");
+            });
+            if (focusTab) selectedTab.focus();
         }
+
+        sellerTabs.forEach((tab, index) => {
+            tab.addEventListener("click", () => activateSellerTab(tab.id));
+            tab.addEventListener("keydown", (event) => {
+                let nextIndex;
+                if (event.key === "ArrowRight") nextIndex = (index + 1) % sellerTabs.length;
+                else if (event.key === "ArrowLeft") nextIndex = (index - 1 + sellerTabs.length) % sellerTabs.length;
+                else if (event.key === "Home") nextIndex = 0;
+                else if (event.key === "End") nextIndex = sellerTabs.length - 1;
+                else return;
+                event.preventDefault();
+                activateSellerTab(sellerTabs[nextIndex].id, true);
+            });
+        });
 
         function renderListing(product) {
             const row = document.createElement("article");
@@ -759,73 +890,94 @@
             } else {
                 imageWrap.textContent = "Z";
             }
-            row.append(imageWrap);
             const detail = document.createElement("div");
             const title = document.createElement("h3");
             title.textContent = product.title;
             detail.append(title);
-            const meta = document.createElement("p");
-            const stockLabel = Number.isInteger(product.stock) ? `${product.stock} in stock` : "Stock unset";
-            meta.textContent = `${product.category} · ${product.town} · ${stockLabel}`;
-            detail.append(meta);
+            const viewButton = document.createElement("button");
+            viewButton.type = "button";
+            viewButton.className = "listing-view";
+            viewButton.setAttribute("aria-label", `View ${product.title} listing details`);
+            viewButton.append(imageWrap, detail);
+            viewButton.addEventListener("click", () => openSellerListingDetails(product, viewButton));
+            row.append(viewButton);
+            return row;
+        }
+
+        function openSellerListingDetails(product, trigger) {
+            const previewImage = product.imageUrls?.[0] || product.imageUrl;
+            const imageWrap = document.createElement("div");
+            imageWrap.className = "seller-listing-detail-image";
+            if (previewImage) {
+                const image = document.createElement("img");
+                image.src = previewImage;
+                image.alt = product.title;
+                image.addEventListener("error", () => { image.remove(); imageWrap.textContent = "Z"; }, { once: true });
+                imageWrap.append(image);
+            } else {
+                imageWrap.textContent = "Z";
+            }
+
+            const copy = document.createElement("div");
+            copy.className = "seller-listing-detail-copy";
+            const price = document.createElement("strong");
+            price.className = "seller-listing-detail-price";
+            price.textContent = `N$ ${priceFormat.format(product.priceNAD)}`;
             const status = document.createElement("span");
-            detail.append(status);
             const isHidden = product.moderationStatus === "hidden";
             const isArchived = product.status === "archived";
             const isOutOfStock = product.stock === 0;
-            status.className = `listing-status${isHidden ? " hidden" : isArchived || isOutOfStock ? " archived" : ""}`;
+            status.className = `seller-listing-detail-status${isHidden ? " hidden" : isArchived || isOutOfStock ? " archived" : ""}`;
             status.textContent = isHidden ? "Hidden by admin" : isArchived ? "Archived" : isOutOfStock ? "Out of stock" : "Active";
-            row.append(detail);
-
-            const controls = document.createElement("div");
-            controls.className = "listing-controls";
-            const price = document.createElement("strong");
-            price.className = "listing-price";
-            price.textContent = `N$ ${priceFormat.format(product.priceNAD)}`;
-            controls.append(price);
-
-            const options = document.createElement("details");
-            options.className = "listing-options";
-            const summary = document.createElement("summary");
-            summary.textContent = "Options";
-            options.append(summary);
-            const menu = document.createElement("div");
-            menu.className = "options-menu";
-
+            const description = document.createElement("p");
+            description.className = "seller-listing-detail-description";
+            description.textContent = product.description || "No description provided.";
+            const facts = document.createElement("dl");
+            facts.className = "seller-listing-detail-facts";
+            [
+                ["Category", product.category || "Not set"],
+                ["Location", product.town || "Not set"],
+                ["Stock", Number.isInteger(product.stock) ? String(product.stock) : "Not set"],
+                ["Photos", String(product.imageUrls?.length || (product.imageUrl ? 1 : 0))]
+            ].forEach(([label, value]) => {
+                const fact = document.createElement("div");
+                const term = document.createElement("dt");
+                term.textContent = label;
+                const detail = document.createElement("dd");
+                detail.textContent = value;
+                fact.append(term, detail);
+                facts.append(fact);
+            });
+            const actions = document.createElement("div");
+            actions.className = "seller-listing-detail-actions";
             const editButton = document.createElement("button");
             editButton.type = "button";
             editButton.textContent = "Edit listing";
             editButton.addEventListener("click", () => {
-                options.open = false;
-                beginEdit(product);
+                const returnTarget = activeSellerListingTrigger;
+                sellerListingDetailView.close();
+                beginEdit(product, returnTarget);
             });
-            menu.append(editButton);
-
             const archiveButton = document.createElement("button");
             archiveButton.type = "button";
             archiveButton.textContent = product.status === "archived" ? "Restore listing" : "Archive listing";
-            archiveButton.addEventListener("click", async () => {
-                options.open = false;
-                await changeListingStatus(product, product.status === "archived" ? "active" : "archived");
-            });
-            menu.append(archiveButton);
-
+            archiveButton.addEventListener("click", () => changeListingStatus(product, product.status === "archived" ? "active" : "archived"));
             const deleteButton = document.createElement("button");
             deleteButton.type = "button";
             deleteButton.className = "delete-listing";
             deleteButton.textContent = "Delete listing";
-            deleteButton.addEventListener("click", async () => {
-                options.open = false;
-                await deleteListing(product);
-            });
-            menu.append(deleteButton);
-            options.append(menu);
-            controls.append(options);
-            row.append(controls);
-            return row;
+            deleteButton.addEventListener("click", () => deleteListing(product));
+            actions.append(editButton, archiveButton, deleteButton);
+            copy.append(price, status, description, facts, actions);
+            sellerListingDetailTitle.textContent = product.title || "Listing details";
+            sellerListingDetailContent.replaceChildren(imageWrap, copy);
+            activeSellerListingTrigger = trigger;
+            sellerListingDetailView.hidden = false;
+            sellerListingDetailView.showModal();
+            sellerListingDetailClose.focus();
         }
 
-        function beginEdit(product) {
+        function beginEdit(product, returnTarget = activeSellerListingTrigger) {
             productForm.dataset.productId = product.id;
             document.querySelector("#product-title").value = product.title;
             document.querySelector("#product-description").value = product.description;
@@ -835,13 +987,13 @@
             document.querySelector("#product-image").value = (product.imageUrls && product.imageUrls[0]) || product.imageUrl || "";
             productImageFile.value = "";
             resetProductUploadPreview();
-            productDisclosure.open = true;
-            productDisclosureLabel.textContent = "Editing product";
             productHeading.textContent = "Edit product";
             productSubmitLabel.textContent = "Save changes";
             cancelEditButton.hidden = false;
             showMessage(productMessage, "Update the details, then save your changes.", true);
-            productForm.scrollIntoView({ behavior: "smooth", block: "start" });
+            activeProductDialogTrigger = returnTarget;
+            productDialog.hidden = false;
+            productDialog.showModal();
             document.querySelector("#product-title").focus({ preventScroll: true });
         }
 
@@ -850,7 +1002,6 @@
             productForm.reset();
             productImageFile.value = "";
             resetProductUploadPreview();
-            productDisclosureLabel.textContent = "Add a product";
             productHeading.textContent = "Add a product";
             productSubmitLabel.textContent = "Publish listing";
             cancelEditButton.hidden = true;
@@ -885,6 +1036,7 @@
         async function loadListings() {
             try {
                 const { products } = await requestJson("/api/seller/products");
+                if (sellerListingDetailView.open) sellerListingDetailView.close();
                 listingCount.textContent = `${products.length} ${products.length === 1 ? "listing" : "listings"}`;
                 listingList.replaceChildren();
                 if (!products.length) {
@@ -923,126 +1075,36 @@
             };
         }
 
-        function createSellerOrderImageCarousel(items) {
-            const images = (items || []).filter((item) => item?.imageUrl);
-            if (!images.length) {
-                const placeholder = document.createElement("div");
-                placeholder.className = "seller-order-image-placeholder";
-                placeholder.textContent = "Z";
-                return placeholder;
-            }
-            if (images.length === 1) {
-                const image = document.createElement("img");
-                image.className = "seller-order-carousel-image";
-                image.src = images[0].imageUrl;
-                image.alt = `${images[0].title} preview`;
-                return image;
-            }
-
-            const carousel = document.createElement("div");
-            carousel.className = "seller-order-image-carousel";
-            carousel.setAttribute("role", "group");
-            carousel.setAttribute("aria-label", `Order images, ${images.length} products`);
-            const image = document.createElement("img");
-            image.className = "seller-order-carousel-image";
-            const count = document.createElement("span");
-            count.className = "seller-order-image-count";
-            let activeIndex = 0;
-            const showImage = (index) => {
-                activeIndex = (index + images.length) % images.length;
-                image.src = images[activeIndex].imageUrl;
-                image.alt = `${images[activeIndex].title} preview, ${activeIndex + 1} of ${images.length}`;
-                count.textContent = `${activeIndex + 1}/${images.length}`;
-            };
-            showImage(0);
-
-            const createControl = (direction, label, symbol) => {
-                const button = document.createElement("button");
-                button.type = "button";
-                button.className = `seller-order-image-control ${direction}`;
-                button.setAttribute("aria-label", label);
-                button.title = label;
-                button.textContent = symbol;
-                button.addEventListener("click", (event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    showImage(activeIndex + (direction === "next" ? 1 : -1));
-                });
-                return button;
-            };
-            carousel.append(image, createControl("previous", "Previous product image", "‹"), createControl("next", "Next product image", "›"), count);
-
-            const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-            let timer = null;
-            const stop = () => {
-                if (timer !== null) window.clearInterval(timer);
-                timer = null;
-            };
-            const start = () => {
-                if (reduceMotion || timer !== null) return;
-                timer = window.setInterval(() => {
-                    if (!carousel.isConnected) return stop();
-                    showImage(activeIndex + 1);
-                }, 3500);
-            };
-            carousel.addEventListener("mouseenter", stop);
-            carousel.addEventListener("mouseleave", start);
-            carousel.addEventListener("focusin", stop);
-            carousel.addEventListener("focusout", (event) => {
-                if (!carousel.contains(event.relatedTarget)) start();
-            });
-            start();
-            return carousel;
-        }
-
-        function renderSellerOrder(sellerOrder) {
+        function renderSellerOrder(sellerOrder, pendingOrderPosition) {
             const row = document.createElement("article");
             row.className = "seller-order-row";
-            const statusState = getSellerDecisionStatus(sellerOrder);
-            const statusLabel = statusState.label;
-            const statusKey = statusState.key;
-            const disclosure = document.createElement("details");
-            disclosure.className = "seller-order-disclosure";
-            const summary = document.createElement("summary");
-            const orderImageCarousel = createSellerOrderImageCarousel(sellerOrder.items);
-            const summaryMain = document.createElement("div");
-            summaryMain.className = "seller-order-summary-main";
-            const headingRow = document.createElement("div");
-            headingRow.className = "seller-order-heading";
-            const heading = document.createElement("h3");
-            heading.textContent = sellerOrder.orderNumber;
-            headingRow.append(heading);
-            summaryMain.append(headingRow);
-            const summaryMeta = document.createElement("div");
-            summaryMeta.className = "seller-order-summary-meta";
-            const shopName = document.createElement("span");
-            shopName.textContent = sellerOrder.shopName;
-            const buyerName = document.createElement("span");
-            buyerName.textContent = sellerOrder.buyerName || "Customer";
-            const orderDate = sellerOrder.orderCreatedAt || sellerOrder.createdAt;
-            const date = document.createElement("span");
-            date.textContent = orderDate ? new Date(orderDate).toLocaleDateString() : "Date unavailable";
-            const itemCount = (sellerOrder.items || []).reduce((total, item) => total + (Number(item.quantity) || 0), 0);
-            const count = document.createElement("span");
-            count.textContent = `${itemCount} ${itemCount === 1 ? "item" : "items"}`;
-            summaryMeta.append(shopName, buyerName, date, count);
-            summaryMain.append(summaryMeta);
-            const orderStatus = document.createElement("span");
-            orderStatus.className = `seller-status-badge incoming-${statusKey}`;
-            orderStatus.textContent = statusLabel;
-            const summarySide = document.createElement("div");
-            summarySide.className = "seller-order-summary-side";
-            summarySide.append(orderStatus);
-            const payoutAmount = document.createElement("strong");
-            payoutAmount.textContent = `N$ ${priceFormat.format(sellerOrder.payoutNAD)}`;
-            summarySide.append(payoutAmount);
-            summary.append(orderImageCarousel, summaryMain, summarySide);
-            const cue = document.createElement("span");
-            cue.className = "seller-order-summary-cue";
-            cue.setAttribute("aria-hidden", "true");
-            cue.textContent = "+";
-            summary.append(cue);
-            disclosure.append(summary);
+            const openDetails = document.createElement("button");
+            openDetails.type = "button";
+            openDetails.className = "seller-order-card";
+            const firstItem = sellerOrder.items?.[0];
+            const imageWrap = document.createElement("span");
+            imageWrap.className = "seller-order-card-image";
+            if (firstItem?.imageUrl) {
+                const image = document.createElement("img");
+                image.src = firstItem.imageUrl;
+                image.alt = "";
+                image.addEventListener("error", () => { image.remove(); imageWrap.textContent = "Z"; }, { once: true });
+                imageWrap.append(image);
+            } else {
+                imageWrap.textContent = "Z";
+            }
+            if (sellerOrder.approvalStatus === "pending") {
+                const pendingBadge = document.createElement("span");
+                pendingBadge.className = "seller-order-new-badge";
+                pendingBadge.textContent = String(pendingOrderPosition);
+                pendingBadge.setAttribute("aria-label", `Unaccepted order ${pendingOrderPosition}`);
+                pendingBadge.title = `Unaccepted order ${pendingOrderPosition}`;
+                imageWrap.append(pendingBadge);
+            }
+            const itemName = document.createElement("span");
+            itemName.className = "seller-order-card-name";
+            itemName.textContent = firstItem?.title || sellerOrder.orderNumber || "Order";
+            openDetails.append(imageWrap, itemName);
 
             const content = document.createElement("div");
             content.className = "seller-order-content";
@@ -1215,8 +1277,15 @@
                     : `Delivery confirmed. Manual payout review opens ${new Date(sellerOrder.payoutEligibleAt).toLocaleString()}.`;
                 content.append(hold);
             }
-            disclosure.append(content);
-            row.append(disclosure);
+            openDetails.addEventListener("click", () => {
+                sellerOrderDetailTitle.textContent = firstItem?.title || sellerOrder.orderNumber || "Order details";
+                sellerOrderDetailContent.replaceChildren(content);
+                activeSellerOrderTrigger = openDetails;
+                sellerOrderDetailView.hidden = false;
+                sellerOrderDetailView.showModal();
+                sellerOrderDetailClose.focus();
+            });
+            row.append(openDetails);
             return row;
         }
 
@@ -1333,11 +1402,7 @@
                     sellerShopMenu.hidden = false;
                     sellerLayout.classList.add("has-shop");
                     sellerStats.hidden = false;
-                    if (shop.coverImageUrl) {
-                        pageIntroCover.src = shop.coverImageUrl;
-                    }
                     sellerListings.hidden = false;
-                    setListingPanelCollapsed(mobileListingPanel.matches);
                     const rates = shop.shippingRates || {};
                     document.querySelector("#shipping-local").value = rates.localNAD ?? 30;
                     document.querySelector("#shipping-hub").value = rates.hubNAD ?? 70;
@@ -1345,7 +1410,6 @@
                     document.querySelector("#shipping-threshold").value = rates.freeThresholdNAD ?? 800;
                     document.querySelector("#auto-approve-orders").checked = Boolean(shop.autoApprovalEnabled);
                     shippingForm.hidden = false;
-                    sellerOperations.append(productDisclosure);
                     productSection.hidden = false;
                     sellerOperations.hidden = false;
                     await loadListings();
@@ -1404,45 +1468,49 @@
             return result.imageUrl;
         }
 
-        async function saveShopCover(imageFile) {
-            changeCoverMenu.disabled = true;
-            changeCoverMenu.textContent = "Uploading cover...";
-            try {
-                const coverImageUrl = await uploadProductImage(imageFile, "shop-cover");
-                await requestJson("/api/seller/shop/cover", {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ coverImageUrl })
-                });
-                pageIntroCover.src = coverImageUrl;
-                showMessage(shopCoverMessage, "Storefront photo saved.", true);
-            } catch (error) {
-                showMessage(shopCoverMessage, error.message);
-            } finally {
-                shopCoverFile.value = "";
-                changeCoverMenu.disabled = false;
-                changeCoverMenu.textContent = "Change cover photo";
-            }
-        }
-
-        listingPanelToggle.addEventListener("click", () => {
-            setListingPanelCollapsed(!sellerListings.classList.contains("is-collapsed"));
-        });
         inventoryAddProduct.addEventListener("click", () => {
+            activateSellerTab("products-tab");
             if (productForm.dataset.productId) cancelEdit();
-            productDisclosure.open = true;
-            productDisclosureLabel.textContent = "Add a product";
             productHeading.textContent = "Add a product";
             productSubmitLabel.textContent = "Publish listing";
             showMessage(productMessage, "");
-            setListingPanelCollapsed(true);
-            productForm.scrollIntoView({ behavior: "smooth", block: "start" });
+            activeProductDialogTrigger = inventoryAddProduct;
+            productDialog.hidden = false;
+            productDialog.showModal();
             document.querySelector("#product-title").focus({ preventScroll: true });
         });
-        mobileListingPanel.addEventListener("change", (event) => {
-            if (!sellerListings.hidden) setListingPanelCollapsed(event.matches);
+        productDialogClose.addEventListener("click", () => productDialog.close());
+        productDialog.addEventListener("click", (event) => {
+            if (event.target === productDialog) productDialog.close();
+        });
+        productDialog.addEventListener("close", () => {
+            productDialog.hidden = true;
+            if (activeProductDialogTrigger?.isConnected) activeProductDialogTrigger.focus();
+            activeProductDialogTrigger = null;
         });
         sellerOrderSearch.addEventListener("input", renderSellerOrders);
+        sellerOrderDetailClose.addEventListener("click", () => {
+            sellerOrderDetailView.close();
+        });
+        sellerOrderDetailView.addEventListener("click", (event) => {
+            if (event.target === sellerOrderDetailView) sellerOrderDetailView.close();
+        });
+        sellerOrderDetailView.addEventListener("close", () => {
+            sellerOrderDetailView.hidden = true;
+            sellerOrderDetailContent.replaceChildren();
+            if (activeSellerOrderTrigger?.isConnected) activeSellerOrderTrigger.focus();
+            activeSellerOrderTrigger = null;
+        });
+        sellerListingDetailClose.addEventListener("click", () => sellerListingDetailView.close());
+        sellerListingDetailView.addEventListener("click", (event) => {
+            if (event.target === sellerListingDetailView) sellerListingDetailView.close();
+        });
+        sellerListingDetailView.addEventListener("close", () => {
+            sellerListingDetailView.hidden = true;
+            sellerListingDetailContent.replaceChildren();
+            if (!productDialog.open && activeSellerListingTrigger?.isConnected) activeSellerListingTrigger.focus();
+            activeSellerListingTrigger = null;
+        });
         cancelEditButton.addEventListener("click", cancelEdit);
         productForm.addEventListener("submit", async (event) => {
             event.preventDefault();
@@ -1493,5 +1561,6 @@
 
         loadSeller();
     </script>
+    <script src="/navigation.js" defer></script>
 </body>
 </html>

@@ -308,6 +308,10 @@
                         <label for="name">Your name</label>
                         <input id="name" name="name" type="text" autocomplete="name" placeholder="Jordan Lee">
                     </div>
+                    <div class="field" id="referral-code-field" hidden>
+                        <label for="referral-code">Referral code (optional)</label>
+                        <input id="referral-code" name="referralCode" type="text" autocomplete="off" maxlength="12" placeholder="Enter a code">
+                    </div>
                     <div class="field">
                         <label for="email">Email address</label>
                         <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
@@ -340,6 +344,8 @@
         const revealButton = document.querySelector("#reveal-password");
         const nameField = document.querySelector("#name-field");
         const nameInput = document.querySelector("#name");
+        const referralCodeField = document.querySelector("#referral-code-field");
+        const referralCodeInput = document.querySelector("#referral-code");
         const options = document.querySelector("#form-options");
         const title = document.querySelector("#form-title");
         const intro = document.querySelector("#form-intro");
@@ -355,6 +361,7 @@
         function updateFormMode() {
             nameField.hidden = !isCreatingAccount;
             nameInput.required = isCreatingAccount;
+            referralCodeField.hidden = !isCreatingAccount;
             passwordField.hidden = isRequestingReset;
             password.required = !isRequestingReset;
             password.autocomplete = isCreatingAccount ? "new-password" : "current-password";
@@ -432,12 +439,28 @@
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         name: nameInput.value,
+                        referralCode: referralCodeInput.value,
                         email: document.querySelector("#email").value,
                         password: password.value
                     })
                 });
                 const result = await response.json();
                 if (!response.ok) throw new Error(result.error || "Something went wrong. Please try again.");
+                if (isCreatingAccount) {
+                    message.textContent = result.message || "Your account has been created. Verify your email before placing an order.";
+                    if (result.verificationUrl) {
+                        const verificationLink = document.createElement("a");
+                        verificationLink.href = result.verificationUrl;
+                        verificationLink.textContent = "Open verification link";
+                        message.append(document.createElement("br"), verificationLink);
+                    }
+                    const accountLink = document.createElement("a");
+                    accountLink.href = "/dashboard?section=profile";
+                    accountLink.textContent = "Go to your account";
+                    message.append(document.createElement("br"), accountLink);
+                    message.classList.add("success");
+                    return;
+                }
                 window.location.assign("/dashboard");
             } catch (error) {
                 message.textContent = error.message || "Could not reach Z. Check that the server is running and try again.";
@@ -446,6 +469,13 @@
                 updateFormMode();
             }
         });
+
+        const referralCodeFromLink = new URLSearchParams(window.location.search).get("ref");
+        if (referralCodeFromLink && /^[a-f0-9]{12}$/i.test(referralCodeFromLink)) {
+            referralCodeInput.value = referralCodeFromLink.toUpperCase();
+            isCreatingAccount = true;
+            updateFormMode();
+        }
 
     </script>
 </body>

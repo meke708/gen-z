@@ -41,6 +41,8 @@
         [hidden] { display: none !important; }
         @media (max-width: 700px) { .site-header { padding: 12px 18px; } nav { gap: 9px; } main { width: calc(100% - 36px); padding-top: 30px; } .submission { grid-template-columns: 1fr; gap: 14px; } }
     </style>
+    <link rel="stylesheet" href="/loading.css">
+    <script src="/loading.js"></script>
 </head>
 <body>
     <header class="site-header">
@@ -153,5 +155,6 @@
 
         loadSubmissions();
     </script>
+    <script src="/navigation.js" defer></script>
 </body>
 </html>

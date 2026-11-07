@@ -73,6 +73,8 @@
             .summary { position: static; }
         }
     </style>
+    <link rel="stylesheet" href="/loading.css">
+    <script src="/loading.js"></script>
 </head>
 <body>
     <header class="site-header">
@@ -80,7 +82,7 @@
             <a class="back-button" href="/cart" aria-label="Back to cart">←</a>
             <a class="brand" href="/marketplace" aria-label="Z Namibia marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Namibia</span></a>
         </div>
-        <nav><a href="/cart">Back to cart</a><a href="/dashboard">My account</a></nav>
+        <nav aria-label="Checkout navigation"><a class="cart-icon-link" href="/cart" aria-label="View cart, 0 items"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h2l2.2 11.2a2 2 0 0 0 2 1.6h8.9a2 2 0 0 0 1.9-1.5L22 8H6"></path><circle cx="10" cy="20" r="1"></circle><circle cx="18" cy="20" r="1"></circle></svg><span class="cart-count">0</span></a><a href="/dashboard">My account</a></nav>
     </header>
     <main>
         <p class="eyebrow">One order, separate local sellers</p>
@@ -285,6 +287,12 @@
                 createOrderButton.querySelector("span").textContent = "Test order created";
             } catch (error) {
                 paymentMessage.textContent = error.message;
+                if (error.message.includes("Verify your email address")) {
+                    const link = document.createElement("a");
+                    link.href = "/dashboard?section=profile";
+                    link.textContent = "Verify your email in account settings";
+                    paymentMessage.append(document.createElement("br"), link);
+                }
                 createOrderButton.disabled = false;
             }
         });
@@ -312,5 +320,6 @@
             checkoutMessage.textContent = error.message;
         });
     </script>
+    <script src="/navigation.js" defer></script>
 </body>
 </html>

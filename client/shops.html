@@ -84,6 +84,8 @@
         }
         @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } }
     </style>
+    <link rel="stylesheet" href="/loading.css">
+    <script src="/loading.js"></script>
 </head>
 <body>
     <header class="site-header">
@@ -91,7 +93,7 @@
             <a class="back-button" href="/marketplace" aria-label="Back to marketplace">←</a>
             <a class="brand" href="/marketplace" aria-label="Z Namibia marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Namibia</span></a>
         </div>
-        <nav aria-label="Shop navigation"><a href="/marketplace">Products</a><a href="/cart">Cart</a><a href="/sell">Sell on Z</a></nav>
+        <nav aria-label="Shop navigation"><a href="/marketplace">Products</a><a class="cart-icon-link" href="/cart" aria-label="View cart, 0 items"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h2l2.2 11.2a2 2 0 0 0 2 1.6h8.9a2 2 0 0 0 1.9-1.5L22 8H6"></path><circle cx="10" cy="20" r="1"></circle><circle cx="18" cy="20" r="1"></circle></svg><span class="cart-count">0</span></a><a href="/sell">Sell on Z</a></nav>
     </header>
     <main>
         <section class="intro">
@@ -261,5 +263,6 @@
         updateSellerStatus();
         loadShops();
     </script>
+    <script src="/navigation.js" defer></script>
 </body>
 </html>
