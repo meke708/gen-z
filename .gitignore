@@ -7,6 +7,8 @@
 *.pem
 *.p12
 *.pfx
+server/terms-of-service-internal.pdf
+server/genz-pdf-for research_purpose/*.pdf
 *.log
 .DS_Store
 Thumbs.db
