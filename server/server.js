@@ -351,7 +351,9 @@ if (!Number.isFinite(payoutSweepSeconds) || payoutSweepSeconds < 1 || payoutSwee
   throw new Error('PAYOUT_SWEEP_SECONDS must be between 1 and 3600.');
 }
 const payoutSweepIntervalMs = payoutSweepSeconds * 1000;
-const mockPaymentsEnabled = paymentAdapter.mode === 'mock' && process.env.NODE_ENV !== 'production' && process.env.MOCK_PAYMENTS_ENABLED !== 'false';
+const mockPaymentsRequested = paymentAdapter.mode === 'mock' && process.env.MOCK_PAYMENTS_ENABLED !== 'false';
+const allowMockPaymentsInProduction = process.env.ALLOW_MOCK_PAYMENTS_IN_PRODUCTION === 'true';
+const mockPaymentsEnabled = mockPaymentsRequested && (process.env.NODE_ENV !== 'production' || allowMockPaymentsInProduction);
 
 app.use(helmet({
   contentSecurityPolicy: {
@@ -741,10 +743,11 @@ function normalizePasswordResetInput(input = {}) {
 function assertProductionPaymentConfiguration(
   nodeEnv = process.env.NODE_ENV,
   paymentMode = paymentAdapter.mode,
-  mockPaymentsEnabled = process.env.MOCK_PAYMENTS_ENABLED !== 'false'
+  mockPaymentsRequested = process.env.MOCK_PAYMENTS_ENABLED !== 'false',
+  allowMockPaymentsInProduction = process.env.ALLOW_MOCK_PAYMENTS_IN_PRODUCTION === 'true'
 ) {
-  if (nodeEnv === 'production' && paymentMode === 'mock' && mockPaymentsEnabled) {
-    throw new Error('Production startup blocked: configure live payments or set MOCK_PAYMENTS_ENABLED=false to disable checkout.');
+  if (nodeEnv === 'production' && paymentMode === 'mock' && mockPaymentsRequested && !allowMockPaymentsInProduction) {
+    throw new Error('Production startup blocked: set ALLOW_MOCK_PAYMENTS_IN_PRODUCTION=true only for a test deployment, or set MOCK_PAYMENTS_ENABLED=false to disable checkout.');
   }
 }
 

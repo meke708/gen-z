@@ -160,10 +160,11 @@ test('seller access and checkout require a verified email, including for legacy 
   assert.equal(isEmailVerified(null), false);
 });
 
-test('production cannot start with the mock payment adapter', () => {
+test('production mock payments require an explicit testing opt-in', () => {
   assert.doesNotThrow(() => assertProductionPaymentConfiguration('development', 'mock'));
-  assert.throws(() => assertProductionPaymentConfiguration('production', 'mock', true), /MOCK_PAYMENTS_ENABLED=false/);
+  assert.throws(() => assertProductionPaymentConfiguration('production', 'mock', true, false), /ALLOW_MOCK_PAYMENTS_IN_PRODUCTION=true/);
   assert.doesNotThrow(() => assertProductionPaymentConfiguration('production', 'mock', false));
+  assert.doesNotThrow(() => assertProductionPaymentConfiguration('production', 'mock', true, true));
   assert.doesNotThrow(() => assertProductionPaymentConfiguration('production', 'live'));
 });
 
