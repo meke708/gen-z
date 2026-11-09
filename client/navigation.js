@@ -134,11 +134,15 @@
 
     const adminLinks = [
         ["/admin/moderation", "Moderation"],
+        ["/admin/support", "Support inbox"],
+        ["/marketplace", "Marketplace"]
+    ];
+    const superAdminLinks = [
         ["/admin/payouts", "Payouts"],
         ["/admin/kyc", "Business verification"],
         ["/admin/support", "Support"],
         ["/admin/accounts", "User accounts"],
-        ["/marketplace", "Marketplace"]
+        ["/admin/platform", "Platform controls"]
     ];
     const sellerLinks = [
         ["/sell/dashboard", "Dashboard"],
@@ -146,6 +150,7 @@
         ["/sell/listings", "Manage listings"],
         ["/sell/transactions", "Transactions"],
         ["/sell/assistant", "Shop AI assistant"],
+        ["/support", "Help & support"],
         ["/marketplace", "Marketplace"]
     ];
 
@@ -222,6 +227,18 @@
                 setNavLabel(accountLink, user ? "My account" : "Sign in");
                 if (routes.includes(normalizeHref(accountLink))) accountLink.setAttribute("aria-current", "page");
                 else accountLink.removeAttribute("aria-current");
+                if (path.startsWith("/admin/") && user?.isSuperAdmin) {
+                    for (const [href, label] of superAdminLinks) {
+                        let anchor = [...nav.querySelectorAll("a")].find((candidate) => normalizeHref(candidate) === href);
+                        if (!anchor) {
+                            anchor = document.createElement("a");
+                            anchor.href = href;
+                            anchor.textContent = label;
+                        }
+                        if (routes.includes(href)) anchor.setAttribute("aria-current", "page");
+                        nav.insertBefore(anchor, accountLink);
+                    }
+                }
             })
             .catch((error) => console.error("Navigation account status could not be loaded:", error));
     }

@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f4f1e8">
+    <title>User activity | Z Operations</title>
+    <style>
+        :root { color-scheme: light; --ink: #17231e; --muted: #68736d; --paper: #f4f1e8; --white: #fffefa; --forest: #18382e; --line: #d9d9cf; --warning: #8b3b2f; --amber: #805a24; }
+        * { box-sizing: border-box; }
+        body { min-width: 320px; margin: 0; color: var(--ink); background: var(--paper); font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
+        .site-header { display: flex; min-height: 72px; align-items: center; justify-content: space-between; gap: 16px; padding: 12px max(24px, calc((100vw - 1120px) / 2)); border-bottom: 1px solid var(--line); background: var(--white); }
+        .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+        .brand-mark { display: grid; width: 36px; aspect-ratio: 1; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; font-family: Georgia, serif; font-size: 22px; }
+        nav { display: flex; flex-wrap: wrap; gap: 14px; font-size: 10px; font-weight: 700; }
+        nav a { color: var(--forest); text-decoration: none; }
+        main { width: min(1120px, calc(100% - 48px)); margin: 0 auto; padding: 40px 0 70px; }
+        .eyebrow { margin: 0 0 10px; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+        h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 36px; font-weight: 400; overflow-wrap: anywhere; }
+        .identity, .disclaimer, .risk-card, .activity-card { border: 1px solid var(--line); background: var(--white); }
+        .identity { margin-top: 16px; padding: 15px; color: var(--muted); font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+        .identity strong { color: var(--ink); }
+        .disclaimer { margin: 20px 0; padding: 12px 14px; border-left: 3px solid var(--amber); color: var(--muted); font-size: 11px; line-height: 1.6; }
+        h2 { margin: 30px 0 12px; font-family: Georgia, "Times New Roman", serif; font-size: 24px; font-weight: 400; }
+        .risk-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+        .risk-card { min-height: 100px; padding: 13px; }
+        .risk-card strong { display: block; color: var(--forest); font-size: 23px; }
+        .risk-card span { display: block; margin-top: 7px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+        .risk-card.is-warning strong { color: var(--warning); }
+        .section-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+        .activity-card { padding: 15px; min-width: 0; }
+        .activity-card h2 { margin: 0 0 10px; font-family: inherit; font-size: 14px; font-weight: 700; }
+        .activity-list { display: grid; gap: 8px; max-height: 420px; overflow: auto; margin: 0; padding: 0; list-style: none; }
+        .activity-item { padding: 9px 0; border-top: 1px solid var(--line); font-size: 11px; line-height: 1.55; overflow-wrap: anywhere; }
+        .activity-item strong { display: block; color: var(--ink); }
+        .activity-item span, .activity-item time { display: block; color: var(--muted); }
+        .status { display: inline-block; margin-top: 4px; padding: 3px 6px; border-radius: 999px; color: var(--forest); background: #e8eddd; font-size: 9px; font-weight: 700; text-transform: uppercase; }
+        .status.is-risk { color: var(--warning); background: #f5e8e2; }
+        .status-message, .empty { color: var(--muted); font-size: 12px; line-height: 1.6; }
+        .status-message.is-error { color: var(--warning); }
+        @media (max-width: 760px) {
+            .risk-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .section-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 520px) {
+            .site-header { align-items: flex-start; padding: 12px 18px; }
+            nav { gap: 9px; }
+            main { width: calc(100% - 36px); padding-top: 30px; }
+            h1 { font-size: 30px; }
+            .risk-grid { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+    <link rel="stylesheet" href="/loading.css">
+    <script src="/loading.js"></script>
+</head>
+<body>
+    <header class="site-header">
+        <a class="brand" href="/admin/accounts"><span class="brand-mark" aria-hidden="true">Z</span><span>User accounts</span></a>
+        <nav aria-label="Super-admin navigation">
+            <a href="/admin/accounts">Accounts</a>
+            <a href="/admin/moderation">Moderation</a>
+            <a href="/admin/support">Support</a>
+        </nav>
+    </header>
+    <main>
+        <p class="eyebrow">Trust and safety · Account activity</p>
+        <h1 id="account-name">Loading user activity...</h1>
+        <div class="identity" id="account-identity" aria-live="polite"></div>
+        <p class="status-message" id="activity-status" role="status" aria-live="polite">Loading account activity...</p>
+        <section aria-labelledby="signals-title">
+            <h2 id="signals-title">Automated risk signals</h2>
+            <p class="disclaimer">These are rule-based moderation signals, not proof of fraud or an automated decision. Report points measure queue priority and are not a fraud probability. Review the underlying activity before taking action.</p>
+            <div class="risk-grid" id="risk-signals"></div>
+        </section>
+        <div class="section-grid" id="activity-sections"></div>
+    </main>
+    <script>
+        const accountName = document.querySelector("#account-name");
+        const accountIdentity = document.querySelector("#account-identity");
+        const activityStatus = document.querySelector("#activity-status");
+        const riskSignals = document.querySelector("#risk-signals");
+        const activitySections = document.querySelector("#activity-sections");
+        const accountId = window.location.pathname.split("/").filter(Boolean).at(-2);
+
+        async function loadActivity() {
+            try {
+                const response = await fetch(`/api/admin/users/${encodeURIComponent(accountId)}/activity`);
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || "Account activity could not be loaded.");
+                renderActivity(result);
+                activityStatus.textContent = "Recent account activity loaded.";
+            } catch (error) {
+                accountName.textContent = "User activity unavailable";
+                activityStatus.classList.add("is-error");
+                activityStatus.textContent = error.message || "Account activity could not be loaded.";
+            }
+        }
+
+        function addStatus(item, value, isRisk = false) {
+            const badge = document.createElement("span");
+            badge.className = `status${isRisk ? " is-risk" : ""}`;
+            badge.textContent = value.replaceAll("_", " ");
+            item.append(badge);
+        }
+
+        function formatDate(value) {
+            return value ? new Date(value).toLocaleString() : "Date unavailable";
+        }
+
+        function renderActivity(result) {
+            const { account, riskSignals: signals, activity } = result;
+            accountName.textContent = account.name || "Unnamed account";
+            accountIdentity.replaceChildren();
+            const accountDetails = document.createElement("strong");
+            accountDetails.textContent = account.email;
+            const details = document.createElement("span");
+            details.textContent = ` · ${account.role} · ${account.emailVerified ? "Email verified" : "Email not verified"} · ${account.isSuspended ? "Suspended" : "Active"} · Joined ${new Date(account.createdAt).toLocaleDateString()}`;
+            accountIdentity.append(accountDetails, details);
+
+            const signalCards = [
+                ["Dismissed reports", signals.dismissedReportCount, `3 dismissals pause reporting; ${signals.reportingPaused ? "this account is currently paused" : "reporting is not paused"}`, signals.reportingPaused],
+                ["Report credibility points", signals.submittedCredibilityPoints, `Across ${signals.submittedReportCount} reports submitted; points prioritize review, not fraud likelihood`, false],
+                ["Pending reports on listings", signals.pendingReportsOnListings, `${signals.pendingReportPointsOnListings} pending priority points across this account's listings`, signals.pendingReportsOnListings > 0],
+                ["Listings hidden by report threshold", signals.reportHiddenListings, "Listings currently hidden by automated report threshold", signals.reportHiddenListings > 0]
+            ];
+            riskSignals.replaceChildren();
+            signalCards.forEach(([label, value, note, warning]) => {
+                const card = document.createElement("article");
+                card.className = `risk-card${warning ? " is-warning" : ""}`;
+                const number = document.createElement("strong");
+                number.textContent = value;
+                const title = document.createElement("span");
+                title.textContent = label;
+                const description = document.createElement("span");
+                description.textContent = note;
+                card.append(number, title, description);
+                riskSignals.append(card);
+            });
+
+            const sections = [
+                {
+                    title: `Sign-in activity (${activity.loginActivities.length})`,
+                    entries: activity.loginActivities,
+                    empty: "No retained sign-in activity.",
+                    render(entry) {
+                        return [`${entry.device} · ${entry.city || entry.countryCode || "Location unavailable"}`, `IP ${entry.clientIp || "unavailable"} · ${entry.ispProvider || "Network unavailable"}`];
+                    }
+                },
+                {
+                    title: `Reports submitted (${signals.submittedReportCount} total; ${activity.submittedReports.length} recent shown)`,
+                    entries: activity.submittedReports,
+                    empty: "No listing reports submitted.",
+                    render(entry) {
+                        return [`${entry.reason} · ${entry.product}`, `${entry.credibilityPoints} priority points${entry.verifiedBuyer ? " · verified buyer" : ""}${entry.sellerReporter ? " · shop owner report" : ""}${entry.details ? ` · ${entry.details}` : ""}`];
+                    },
+                    status(entry) { return entry.status; },
+                    risky(entry) { return entry.status === "dismissed"; }
+                },
+                {
+                    title: `Reports on their listings (${signals.receivedReportCount} total; ${activity.receivedReports.length} recent shown)`,
+                    entries: activity.receivedReports,
+                    empty: "No retained listing reports.",
+                    render(entry) { return [`${entry.reason} · ${entry.product}`, `Reporter: ${entry.reporter} · ${entry.credibilityPoints} priority points${entry.details ? ` · ${entry.details}` : ""}`]; },
+                    status(entry) { return entry.status; },
+                    risky(entry) { return entry.status === "pending"; }
+                },
+                {
+                    title: "Recent orders",
+                    entries: [
+                        ...activity.buyerOrders.map((entry) => ({ ...entry, kind: "Buyer order" })),
+                        ...activity.sellerOrders.map((entry) => ({ ...entry, kind: `Seller order · ${entry.shopName}` }))
+                    ].sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt)),
+                    empty: "No buyer or seller orders found.",
+                    render(entry) { return [`${entry.kind} · ${entry.orderNumber}`, `Payment ${entry.paymentStatus}${entry.approvalStatus ? ` · approval ${entry.approvalStatus}` : ""}${entry.fulfillmentStatus ? ` · fulfillment ${entry.fulfillmentStatus}` : ""}${entry.payoutStatus ? ` · payout ${entry.payoutStatus}` : ""}${entry.totalNAD !== undefined ? ` · NAD ${entry.totalNAD}` : ""}`]; }
+                },
+                {
+                    title: `Recent support requests (up to ${activity.supportRequests.length} shown)`,
+                    entries: activity.supportRequests,
+                    empty: "No support requests.",
+                    render(entry) { return [entry.topic.replaceAll("_", " "), entry.message]; },
+                    status(entry) { return entry.status; }
+                },
+                {
+                    title: `Recent suspension appeals (up to ${activity.appeals.length} shown)`,
+                    entries: activity.appeals,
+                    empty: "No suspension appeals.",
+                    render(entry) { return [entry.referenceId ? `Reference ${entry.referenceId}` : "Suspension appeal", entry.reason]; },
+                    status(entry) { return entry.status; }
+                },
+                {
+                    title: `Account actions (${activity.accountActions.length})`,
+                    entries: activity.accountActions,
+                    empty: "No account suspension or reactivation actions.",
+                    render(entry) { return [entry.action.replaceAll("_", " "), `${entry.details} · Admin ID ${entry.actorId}`]; }
+                },
+                {
+                    title: "Other activity",
+                    entries: [],
+                    empty: "",
+                    summary: `${activity.shops.length} shop(s) · ${activity.reviewsWritten} review(s) written · ${activity.referrals} referral(s)`,
+                    render() { return []; }
+                }
+            ];
+            activitySections.replaceChildren();
+            sections.forEach((section) => {
+                const card = document.createElement("section");
+                card.className = "activity-card";
+                const heading = document.createElement("h2");
+                heading.textContent = section.title;
+                const list = document.createElement("ul");
+                list.className = "activity-list";
+                if (section.summary) {
+                    const summary = document.createElement("p");
+                    summary.className = "empty";
+                    summary.textContent = section.summary;
+                    card.append(heading, summary);
+                    activitySections.append(card);
+                    return;
+                }
+                if (!section.entries.length) {
+                    const empty = document.createElement("p");
+                    empty.className = "empty";
+                    empty.textContent = section.empty;
+                    card.append(heading, empty);
+                    activitySections.append(card);
+                    return;
+                }
+                section.entries.forEach((entry) => {
+                    const item = document.createElement("li");
+                    item.className = "activity-item";
+                    const [title, description] = section.render(entry);
+                    const strong = document.createElement("strong");
+                    strong.textContent = title;
+                    const details = document.createElement("span");
+                    details.textContent = description;
+                    const timestamp = document.createElement("time");
+                    timestamp.dateTime = entry.createdAt;
+                    timestamp.textContent = formatDate(entry.createdAt);
+                    item.append(strong, details, timestamp);
+                    if (section.status) addStatus(item, section.status(entry), section.risky?.(entry));
+                    list.append(item);
+                });
+                card.append(heading, list);
+                activitySections.append(card);
+            });
+        }
+
+        loadActivity();
+    </script>
+    <script src="/navigation.js" defer></script>
+</body>
+</html>

@@ -152,8 +152,9 @@
                             <option value="prohibited">Prohibited item</option>
                             <option value="other">Other concern</option>
                         </select>
-                        <label for="report-details">Details (optional)</label>
-                        <textarea id="report-details" maxlength="500" placeholder="Give moderators helpful context."></textarea>
+                        <label for="report-details">Details (optional for buyers)</label>
+                        <textarea id="report-details" maxlength="500" placeholder="Give moderators helpful context. Shop owners must include at least 20 characters."></textarea>
+                        <p class="report-status">Each account can report a listing once. Confirmed completed buyers receive higher review priority; all reports are reviewed by moderators. Repeated unfounded reports may pause reporting.</p>
                         <button type="submit">Send report</button>
                         <p class="report-status" id="report-status" role="status" aria-live="polite"></p>
                     </form>

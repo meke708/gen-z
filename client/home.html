@@ -632,7 +632,18 @@
                     })
                 });
                 const result = await response.json();
-                if (!response.ok) throw new Error(result.error || "Something went wrong. Please try again.");
+                if (!response.ok) {
+                    if (result.account_status === "suspended") {
+                        sessionStorage.removeItem("suspendedAppealAccessToken");
+                        sessionStorage.setItem("suspendedAccountEmail", document.querySelector("#email").value.trim());
+                        if (/^[a-f0-9]{64}$/.test(result.appeal_access_token || "")) {
+                            sessionStorage.setItem("suspendedAppealAccessToken", result.appeal_access_token);
+                        }
+                        window.location.assign("/account-suspended");
+                        return;
+                    }
+                    throw new Error(result.error || "Something went wrong. Please try again.");
+                }
                 if (isCreatingAccount) {
                     const verificationUrl = result.verificationUrl
                         ? new URL(result.verificationUrl, window.location.origin)
@@ -646,7 +657,7 @@
                 }
                 window.location.assign(getLoginReturnPath());
             } catch (error) {
-                message.textContent = error.message || "Could not reach Z. Check that the server is running and try again.";
+                message.replaceChildren(document.createTextNode(error.message || "Could not reach Z. Check that the server is running and try again."));
             } finally {
                 submitButton.disabled = false;
                 updateFormMode();

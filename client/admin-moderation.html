@@ -44,6 +44,19 @@
         .report-actions button:disabled { opacity: 0.55; cursor: wait; }
         .queue-status { min-height: 20px; margin: 12px 0 0; color: #8b3b2f; font-size: 11px; }
         .empty { padding: 35px 0; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+        .audit-list { border-top: 1px solid var(--line); }
+        .audit-event { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px 16px; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 11px; }
+        .audit-event strong { text-transform: capitalize; }
+        .audit-event span, .audit-event time { color: var(--muted); overflow-wrap: anywhere; }
+        .audit-event .audit-actor { grid-column: 1 / -1; }
+        .restriction-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; padding: 16px 0; border-top: 1px solid var(--line); }
+        .restriction-card h2 { margin: 0; font-size: 14px; }
+        .restriction-meta, .restriction-listing { margin: 6px 0 0; color: var(--muted); font-size: 10px; line-height: 1.6; overflow-wrap: anywhere; }
+        .restriction-actions { display: flex; flex-direction: column; gap: 7px; min-width: 150px; }
+        .restriction-actions button { min-height: 36px; padding: 0 9px; border: 1px solid var(--ink); border-radius: 3px; color: var(--white); background: var(--ink); cursor: pointer; font-size: 10px; font-weight: 700; }
+        .restriction-actions .release { color: var(--ink); background: transparent; }
+        .restriction-actions button:disabled { opacity: .55; cursor: wait; }
+        .restriction-intro { color: var(--muted); font-size: 11px; line-height: 1.6; }
         .note { margin-top: 22px; padding: 13px; border-left: 3px solid var(--lime); color: var(--muted); background: #e9edda; font-size: 10px; line-height: 1.7; }
         @media (max-width: 650px) {
             .site-header { padding: 12px 18px; }
@@ -65,21 +78,46 @@
             <a class="back-button" href="/dashboard" aria-label="Go to account">←</a>
             <a class="brand" href="/marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Operations</span></a>
         </div>
-        <nav><a href="/admin/payouts">Payouts</a><a href="/admin/kyc">Business verification</a><a href="/admin/support">Support</a><a href="/marketplace">Marketplace</a></nav>
+        <nav><a href="/marketplace">Marketplace</a></nav>
     </header>
     <main>
         <p class="eyebrow">Marketplace safety</p>
         <h1>Listing review</h1>
-        <p class="intro">Three unique pending reports automatically hide a listing. Review the context below, then keep it hidden, restore it, or dismiss an individual report.</p>
+        <p class="intro">Review new shops, product submissions, and listing reports. Confirmed completed buyers receive higher report priority; shop-owner reports need details and do not add to the hide score. A listing is temporarily hidden at 50 report points, but every report remains available for review.</p>
+        <section aria-labelledby="shop-review-title">
+            <div class="queue-heading"><span id="shop-review-title">New shop profiles</span><span id="shop-review-count">Loading...</span></div>
+            <div id="shop-review-list"></div>
+        </section>
+        <section aria-labelledby="product-review-title">
+            <div class="queue-heading"><span id="product-review-title">New product listings</span><span id="product-review-count">Loading...</span></div>
+            <div id="product-review-list"></div>
+        </section>
         <div class="queue-heading"><span>Pending reports</span><span id="report-count">Loading...</span></div>
         <div id="report-list"></div>
+        <section aria-labelledby="seller-restrictions-title" id="seller-restrictions-section">
+            <div class="queue-heading"><span id="seller-restrictions-title">Automated seller holds · 24-hour review window</span><span id="seller-restrictions-count">Loading...</span></div>
+            <p class="restriction-intro">A hold is triggered when three separate listings reach the 50-point report threshold within 48 hours. It temporarily hides the shop, blocks inventory changes and payouts, and preserves buyer access and order fulfillment. Reports are signals, not proof; a Super Admin must review before permanent seller restriction.</p>
+            <div id="seller-restrictions-list" aria-live="polite"></div>
+        </section>
+        <section aria-labelledby="audit-title">
+            <div class="queue-heading"><span id="audit-title">Recent moderation actions</span></div>
+            <div class="audit-list" id="moderation-audit-list" aria-live="polite">Loading audit history...</div>
+        </section>
         <p class="queue-status" id="queue-status" role="status" aria-live="polite"></p>
-        <p class="note">This queue is restricted to the account configured by ADMIN_EMAIL in server/.env. Hiding removes a listing from browse and checkout; it does not delete seller data.</p>
+        <p class="note">Dismissed reports count toward an account's false-report limit. After three dismissed reports, that account is paused from reporting and directed to support. Hiding a listing removes it from browse and checkout; it does not delete seller data.</p>
     </main>
     <script>
         const reportList = document.querySelector("#report-list");
         const reportCount = document.querySelector("#report-count");
         const queueStatus = document.querySelector("#queue-status");
+        const shopReviewList = document.querySelector("#shop-review-list");
+        const productReviewList = document.querySelector("#product-review-list");
+        const shopReviewCount = document.querySelector("#shop-review-count");
+        const productReviewCount = document.querySelector("#product-review-count");
+        const moderationAuditList = document.querySelector("#moderation-audit-list");
+        const sellerRestrictionsList = document.querySelector("#seller-restrictions-list");
+        const sellerRestrictionsCount = document.querySelector("#seller-restrictions-count");
+        let isSuperAdmin = false;
 
         async function requestJson(url, options) {
             const response = await fetch(url, options);
@@ -123,9 +161,17 @@
             shopName.textContent = report.product?.shopName || "Unknown shop";
             const reportMetaText = report.isHiddenProduct
                 ? `Hidden listing · ${new Date(report.createdAt).toLocaleString()}`
-                : `· ${report.reportCount} pending ${report.reportCount === 1 ? "report" : "reports"} · Reported by ${report.reporter?.name || "Unknown account"} · ${new Date(report.createdAt).toLocaleString()}`;
+                : `· ${report.reportCount} pending ${report.reportCount === 1 ? "report" : "reports"} · ${report.reportScore} priority points · Reported by ${report.reporter?.name || "Unknown account"} · ${new Date(report.createdAt).toLocaleString()}`;
             metadata.append(shopName, document.createTextNode(reportMetaText));
             content.append(metadata);
+            if (!report.isHiddenProduct) {
+                const priority = document.createElement("p");
+                priority.className = "report-details";
+                priority.textContent = report.sellerReporter
+                    ? `Shop owner report · 0 priority points${report.reporter?.dismissedReportCount ? ` · ${report.reporter.dismissedReportCount} previously dismissed` : ""}`
+                    : `${report.verifiedBuyer ? "Confirmed completed buyer" : "No completed purchase found"} · ${report.credibilityPoints} points${report.reporter?.dismissedReportCount ? ` · ${report.reporter.dismissedReportCount} previously dismissed` : ""}`;
+                content.append(priority);
+            }
             const reason = document.createElement("p");
             reason.className = "report-reason";
             reason.textContent = report.reason.replaceAll("_", " ");
@@ -150,7 +196,7 @@
                 const dismissButton = document.createElement("button");
                 dismissButton.className = "dismiss";
                 dismissButton.type = "button";
-                dismissButton.textContent = "Dismiss report";
+                dismissButton.textContent = "Dismiss as unfounded";
                 dismissButton.addEventListener("click", () => resolveReport(report, "dismiss", dismissButton));
                 actions.append(dismissButton);
             }
@@ -158,7 +204,188 @@
             return card;
         }
 
+        function createSubmissionCard(submission, type) {
+            const card = document.createElement("article");
+            card.className = "report";
+            if (type === "product" && submission.imageUrl) {
+                const imageWrap = document.createElement("div");
+                imageWrap.className = "report-image";
+                const image = document.createElement("img");
+                image.src = submission.imageUrl;
+                image.alt = submission.title;
+                image.addEventListener("error", () => { image.remove(); imageWrap.textContent = "Z"; }, { once: true });
+                imageWrap.append(image);
+                card.append(imageWrap);
+            }
+
+            function createSellerRestrictionCard(restriction) {
+                const card = document.createElement("article");
+                card.className = "restriction-card";
+                const details = document.createElement("div");
+                const heading = document.createElement("h2");
+                heading.textContent = `${restriction.shopName} · ${restriction.sellerName}`;
+                const metadata = document.createElement("p");
+                metadata.className = "restriction-meta";
+                metadata.textContent = `${restriction.sellerEmail} · Hold expires ${new Date(restriction.restrictedUntil).toLocaleString()} · Account ID ${restriction.accountId}`;
+                const reason = document.createElement("p");
+                reason.className = "restriction-meta";
+                reason.textContent = restriction.reason;
+                details.append(heading, metadata, reason);
+                restriction.triggeredListings.forEach((listing) => {
+                    const item = document.createElement("p");
+                    item.className = "restriction-listing";
+                    item.textContent = `${listing.productTitle} · crossed threshold ${new Date(listing.triggeredAt).toLocaleString()}`;
+                    details.append(item);
+                });
+
+                const actions = document.createElement("div");
+                actions.className = "restriction-actions";
+                if (isSuperAdmin) {
+                    const release = document.createElement("button");
+                    release.className = "release";
+                    release.type = "button";
+                    release.textContent = "Release hold";
+                    release.addEventListener("click", () => reviewSellerRestriction(restriction, "release", release));
+                    const ban = document.createElement("button");
+                    ban.type = "button";
+                    ban.textContent = "Confirm permanent seller ban";
+                    ban.addEventListener("click", () => reviewSellerRestriction(restriction, "ban", ban));
+                    actions.append(release, ban);
+                } else {
+                    const note = document.createElement("p");
+                    note.className = "restriction-meta";
+                    note.textContent = "Super Admin review required to release or permanently restrict seller access.";
+                    actions.append(note);
+                }
+                card.append(details, actions);
+                return card;
+            }
+
+            async function reviewSellerRestriction(restriction, decision, button) {
+                const prompt = decision === "ban"
+                    ? `Permanently restrict seller access for ${restriction.sellerName} (${restriction.sellerEmail})? Buyer access and current order history will remain available.`
+                    : `Release the temporary seller hold for ${restriction.sellerName} (${restriction.sellerEmail})?`;
+                if (!window.confirm(prompt)) return;
+                button.disabled = true;
+                try {
+                    const result = await requestJson(`/api/admin/seller-restrictions/${encodeURIComponent(restriction.shopId)}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ decision })
+                    });
+                    queueStatus.textContent = result.message;
+                    await Promise.all([loadSellerRestrictions(), loadModerationAudit()]);
+                } catch (error) {
+                    queueStatus.textContent = error.message;
+                    button.disabled = false;
+                }
+            }
+
+            async function loadSellerRestrictions() {
+                try {
+                    const { restrictions } = await requestJson("/api/admin/seller-restrictions");
+                    sellerRestrictionsCount.textContent = String(restrictions.length);
+                    sellerRestrictionsList.replaceChildren();
+                    if (!restrictions.length) {
+                        const empty = document.createElement("p");
+                        empty.className = "empty";
+                        empty.textContent = "No active automated seller holds need review.";
+                        sellerRestrictionsList.append(empty);
+                        return;
+                    }
+                    restrictions.forEach((restriction) => sellerRestrictionsList.append(createSellerRestrictionCard(restriction)));
+                } catch (error) {
+                    sellerRestrictionsCount.textContent = "Unavailable";
+                    sellerRestrictionsList.textContent = error.message;
+                }
+            }
+
+            const content = document.createElement("div");
+            content.className = "report-content";
+            const title = document.createElement("h2");
+            title.textContent = type === "shop" ? submission.name : submission.title;
+            content.append(title);
+            const metadata = document.createElement("p");
+            metadata.className = "report-meta";
+            metadata.textContent = type === "shop"
+                ? `${submission.ownerName} · ${submission.town} · ${new Date(submission.submittedAt).toLocaleString()}`
+                : `${submission.shopName} · ${submission.category} · N$ ${Number(submission.priceNAD).toFixed(2)} · ${new Date(submission.submittedAt).toLocaleString()}`;
+            content.append(metadata);
+            const description = document.createElement("p");
+            description.className = "report-details";
+            description.textContent = submission.description;
+            content.append(description);
+            card.append(content);
+
+            const actions = document.createElement("div");
+            actions.className = "report-actions";
+            for (const decision of ["approve", "reject"]) {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.textContent = decision === "approve" ? "Approve" : "Reject";
+                if (decision === "reject") button.className = "dismiss";
+                button.addEventListener("click", () => reviewSubmission(submission, type, decision, button));
+                actions.append(button);
+            }
+            card.append(actions);
+            return card;
+        }
+
+        async function reviewSubmission(submission, type, decision, button) {
+            const approvalNote = decision === "reject" && type === "shop"
+                ? window.prompt("Give the seller a short reason for rejection (at least 5 characters):")
+                : "";
+            if (decision === "reject" && type === "shop" && (approvalNote === null || approvalNote.trim().length < 5)) return;
+            button.disabled = true;
+            try {
+                const endpoint = type === "shop"
+                    ? `/api/admin/shops/${encodeURIComponent(submission.id)}/approval`
+                    : `/api/admin/products/${encodeURIComponent(submission.id)}/review`;
+                await requestJson(endpoint, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ decision, approvalNote })
+                });
+                queueStatus.textContent = `${type === "shop" ? "Shop" : "Product listing"} ${decision === "approve" ? "approved" : "rejected"}.`;
+                await loadReviewQueue();
+            } catch (error) {
+                queueStatus.textContent = error.message;
+                button.disabled = false;
+            }
+        }
+
+        async function loadReviewQueue() {
+            try {
+                const { shops, products } = await requestJson("/api/admin/review-queue");
+                shopReviewCount.textContent = String(shops.length);
+                productReviewCount.textContent = String(products.length);
+                shopReviewList.replaceChildren();
+                productReviewList.replaceChildren();
+                if (!shops.length) {
+                    const empty = document.createElement("p");
+                    empty.className = "empty";
+                    empty.textContent = "No new shops need review.";
+                    shopReviewList.append(empty);
+                } else {
+                    shops.forEach((shop) => shopReviewList.append(createSubmissionCard(shop, "shop")));
+                }
+                if (!products.length) {
+                    const empty = document.createElement("p");
+                    empty.className = "empty";
+                    empty.textContent = "No new listings need review.";
+                    productReviewList.append(empty);
+                } else {
+                    products.forEach((product) => productReviewList.append(createSubmissionCard(product, "product")));
+                }
+            } catch (error) {
+                shopReviewCount.textContent = "Unavailable";
+                productReviewCount.textContent = "Unavailable";
+                queueStatus.textContent = error.message;
+            }
+        }
+
         async function resolveReport(report, decision, button) {
+            if (decision === "dismiss" && !window.confirm("Mark this report as unfounded? Three dismissed reports pause the reporter from submitting more reports.")) return;
             button.disabled = true;
             try {
                 const endpoint = report.isHiddenProduct
@@ -174,6 +401,7 @@
                     ? (decision === "restore" ? "Listing restored to the marketplace." : "Listing hidden from the marketplace.")
                     : (decision === "dismiss" ? "Report dismissed." : decision === "hide" ? "Listing hidden from the marketplace." : "Listing restored to the marketplace.");
                 await loadReports();
+                await loadModerationAudit();
             } catch (error) {
                 queueStatus.textContent = error.message;
                 button.disabled = false;
@@ -199,7 +427,49 @@
             }
         }
 
+        async function loadModerationAudit() {
+            try {
+                const { events } = await requestJson("/api/admin/moderation-audit");
+                moderationAuditList.replaceChildren();
+                if (!events.length) {
+                    moderationAuditList.textContent = "No moderation actions recorded yet.";
+                    return;
+                }
+                for (const event of events) {
+                    const row = document.createElement("article");
+                    row.className = "audit-event";
+                    const action = document.createElement("strong");
+                    action.textContent = event.action.replaceAll("_", " ");
+                    const timestamp = document.createElement("time");
+                    timestamp.dateTime = event.createdAt;
+                    timestamp.textContent = new Date(event.createdAt).toLocaleString();
+                    const target = document.createElement("span");
+                    target.textContent = `${event.targetLabel || event.targetType} · ID ${event.targetId}`;
+                    const actor = document.createElement("span");
+                    actor.className = "audit-actor";
+                    actor.textContent = event.actor.type === "system"
+                        ? "Automated system"
+                        : `Moderator: ${event.actor.name} (${event.actor.email || "email unavailable"}) · ID ${event.actor.id}`;
+                    row.append(action, timestamp, target, actor);
+                    moderationAuditList.append(row);
+                }
+            } catch (error) {
+                moderationAuditList.textContent = error.message || "Audit history could not be loaded.";
+            }
+        }
+
         loadReports();
+        loadReviewQueue();
+        loadModerationAudit();
+        loadSellerRestrictions();
+        fetch("/api/auth/me")
+            .then(async (response) => {
+                if (!response.ok) return;
+                const { user } = await response.json();
+                isSuperAdmin = Boolean(user?.isSuperAdmin);
+                if (isSuperAdmin) loadSellerRestrictions();
+            })
+            .catch((error) => console.error("Could not check admin role for seller restriction actions:", error));
     </script>
     <script src="/navigation.js" defer></script>
 </body>

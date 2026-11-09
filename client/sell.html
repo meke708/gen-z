@@ -1402,8 +1402,10 @@
             const isHidden = product.moderationStatus === "hidden";
             const isArchived = product.status === "archived";
             const isOutOfStock = product.stock === 0;
-            status.className = `seller-listing-detail-status${isHidden ? " hidden" : isArchived || isOutOfStock ? " archived" : ""}`;
-            status.textContent = isHidden ? "Hidden by admin" : isArchived ? "Archived" : isOutOfStock ? "Out of stock" : "Active";
+            const isPendingReview = product.reviewStatus === "pending";
+            const isRejected = product.reviewStatus === "rejected";
+            status.className = `seller-listing-detail-status${isHidden || isRejected ? " hidden" : isPendingReview || isArchived || isOutOfStock ? " archived" : ""}`;
+            status.textContent = isPendingReview ? "Awaiting moderator review" : isRejected ? "Rejected · edit to resubmit" : isHidden ? "Hidden by moderator" : isArchived ? "Archived" : isOutOfStock ? "Out of stock" : "Active";
             const description = document.createElement("p");
             description.className = "seller-listing-detail-description";
             description.textContent = product.description || "No description provided.";
@@ -1448,7 +1450,7 @@
             archiveButton.addEventListener("click", () => changeListingStatus(product, product.status === "archived" ? "active" : "archived"));
             const promoteButton = document.createElement("button");
             promoteButton.type = "button";
-            const canPromote = product.status === "active" && product.isAvailable !== false && product.stock > 0 && product.moderationStatus !== "hidden";
+            const canPromote = product.status === "active" && product.isAvailable !== false && product.stock > 0 && product.reviewStatus !== "pending" && product.reviewStatus !== "rejected" && product.moderationStatus !== "hidden";
             promoteButton.hidden = !canPromote || product.promotion?.status === "active";
             promoteButton.textContent = product.promotion?.status === "pending" ? "Complete test payment" : "Promote · N$50 / 7 days";
             promoteButton.addEventListener("click", () => promoteListing(product, promoteButton));
@@ -2179,10 +2181,17 @@
                     return;
                 }
                 if (shop) {
+                    const shopApprovalStatus = shop.approvalStatus || "approved";
                     sellerShopPublicLink.href = `/shops/${encodeURIComponent(shop.slug)}`;
+                    sellerShopPublicLink.hidden = shopApprovalStatus !== "approved";
                     sellerShopName.textContent = shop.name;
                     sellerShopMenu.hidden = false;
                     sellerLayout.classList.add("has-shop");
+                    if (shopApprovalStatus === "pending") {
+                        showMessage(sellerMessage, "Your shop is under moderator review and is not public yet. You can prepare product listings while you wait.", true);
+                    } else if (shopApprovalStatus === "rejected") {
+                        showMessage(sellerMessage, `Your shop was not approved. Contact support for next steps. ${shop.approvalNote || ""}`);
+                    }
                     configureSellerPromotions(shop);
                     sellerStats.hidden = sellerPage !== "dashboard";
                     sellerListings.hidden = sellerPage !== "listings";
@@ -2359,7 +2368,9 @@
                     resetProductUploadPreview();
                     updateProductUrlPreview();
                 }
-                showMessage(productMessage, productId ? "Listing updated." : "Your product is now listed in the marketplace.", true);
+                showMessage(productMessage, productId
+                    ? "Your listing changes were submitted for moderator review."
+                    : "Your listing was submitted for moderator review and will be public after approval.", true);
                 await loadListings();
             } catch (error) {
                 showMessage(productMessage, error.message);

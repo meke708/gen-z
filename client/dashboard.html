@@ -116,6 +116,7 @@
         .feature-unavailable { max-width: 600px; padding: 18px; border-left: 3px solid #d9772f; background: #f7f5ee; }
         .feature-unavailable p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.7; }
         .overview-links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+        .overview-links a { display: inline-flex; align-items: center; text-decoration: none; }
         .login-activity { margin-top: 22px; padding: 18px; border: 1px solid var(--line); background: #f7f5ee; }
         .login-activity-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
         .login-activity-header h3 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 20px; font-weight: 400; }
@@ -524,6 +525,7 @@
                     <h2 id="admin-tools-title">Admin</h2>
                     <nav aria-label="Admin portal">
                         <a href="/admin/moderation">Admin portal</a>
+                        <a href="/admin/support">Support inbox</a>
                     </nav>
                 </section>
             </aside>
@@ -553,6 +555,7 @@
                     <div class="overview-links">
                         <button class="account-action" type="button" data-account-target="orders">View your orders</button>
                         <button class="account-action" type="button" data-account-target="profile">Edit your profile</button>
+                        <a class="account-action" href="/support">Help & support</a>
                     </div>
                 </section>
 
@@ -565,6 +568,14 @@
                         </div>
                         <p class="login-activity-status" id="login-activity-status" role="status" aria-live="polite">Loading recent sign-ins...</p>
                         <ol class="login-activity-list" id="login-activity-list"></ol>
+                    </section>
+                    <section class="login-activity" id="support-notifications-section" aria-labelledby="support-notifications-title" hidden>
+                        <div class="login-activity-header">
+                            <h3 id="support-notifications-title">Support tasks for moderators</h3>
+                            <a href="/admin/support">Open support inbox</a>
+                        </div>
+                        <p class="login-activity-status" id="support-notifications-status" role="status" aria-live="polite">Loading support tasks...</p>
+                        <ol class="login-activity-list" id="support-notifications-list"></ol>
                     </section>
                 </section>
 
@@ -647,10 +658,17 @@
         const loginActivityStatus = document.querySelector("#login-activity-status");
         const loginActivityList = document.querySelector("#login-activity-list");
         const notificationCountBadge = document.querySelector("#notification-count");
+        const supportNotificationsSection = document.querySelector("#support-notifications-section");
+        const supportNotificationsStatus = document.querySelector("#support-notifications-status");
+        const supportNotificationsList = document.querySelector("#support-notifications-list");
         const wishlistStatus = document.querySelector("#wishlist-status");
         const wishlistProductsContainer = document.querySelector("#wishlist-products");
         let loginActivityRefreshTimer = null;
         let loginActivityRequestInFlight = false;
+        let supportNotificationsRequestInFlight = false;
+        let loginActivityUnreadCount = 0;
+        let supportNotificationUnreadCount = 0;
+        let currentUserIsModerator = false;
         let hasPromotedDashboardProducts = false;
         let wishlistProducts = [];
         const buyerOrders = document.querySelector("#buyer-orders");
@@ -976,6 +994,7 @@
                 else button.removeAttribute("aria-current");
             });
             if (section === "notifications") void loadLoginActivity();
+            if (section === "notifications") void loadSupportNotifications();
             if (section === "wishlist") void loadWishlist();
             return true;
         }
@@ -1067,6 +1086,13 @@
             }
         }
 
+        function updateNotificationBadge() {
+            const unreadCount = loginActivityUnreadCount + supportNotificationUnreadCount;
+            notificationCountBadge.hidden = unreadCount === 0;
+            notificationCountBadge.textContent = unreadCount > 99 ? "99+" : String(unreadCount);
+            notificationCountBadge.setAttribute("aria-label", `${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}`);
+        }
+
         async function loadLoginActivity() {
             if (loginActivityRequestInFlight) return;
             loginActivityRequestInFlight = true;
@@ -1110,9 +1136,8 @@
                     unreadCount = 0;
                     loginActivityList.querySelectorAll(".is-new").forEach((item) => item.classList.remove("is-new"));
                 }
-                notificationCountBadge.hidden = unreadCount === 0;
-                notificationCountBadge.textContent = unreadCount > 99 ? "99+" : String(unreadCount);
-                notificationCountBadge.setAttribute("aria-label", `${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}`);
+                loginActivityUnreadCount = unreadCount;
+                updateNotificationBadge();
                 loginActivityStatus.classList.toggle("has-unread", unreadCount > 0);
                 loginActivityStatus.textContent = unreadCount
                     ? `${unreadCount} new sign-in${unreadCount === 1 ? "" : "s"}. If you don't recognize one, change your password.`
@@ -1120,21 +1145,71 @@
                         ? "No new sign-ins. Recent account activity is listed below."
                         : "No recent sign-ins recorded.";
             } catch (error) {
-                notificationCountBadge.hidden = true;
                 loginActivityStatus.classList.remove("has-unread");
                 loginActivityStatus.textContent = error.message || "Could not load sign-in activity.";
+                updateNotificationBadge();
             } finally {
                 loginActivityRequestInFlight = false;
             }
         }
 
-        async function updateSellerCallout({ isModerator = false, emailVerified = true } = {}) {
+        async function loadSupportNotifications() {
+            if (!currentUserIsModerator || supportNotificationsRequestInFlight) return;
+            supportNotificationsRequestInFlight = true;
+            supportNotificationsSection.hidden = false;
+            try {
+                const response = await fetch("/api/account/support-notifications");
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || "Could not load support notifications.");
+                supportNotificationsList.replaceChildren();
+                const notifications = Array.isArray(result.notifications) ? result.notifications : [];
+                notifications.forEach((notification) => {
+                    const item = document.createElement("li");
+                    if (!notification.readAt) item.classList.add("is-new");
+                    const title = document.createElement("strong");
+                    title.textContent = `${notification.orderNumber ? `Order ${notification.orderNumber} · ` : ""}${notification.topic.replaceAll("_", " ")}`;
+                    const date = document.createElement("time");
+                    date.dateTime = notification.createdAt;
+                    date.textContent = new Date(notification.createdAt).toLocaleString();
+                    const status = document.createElement("span");
+                    status.className = "login-activity-network";
+                    status.textContent = `General marketplace request · ${notification.status.replaceAll("_", " ")}`;
+                    item.append(title, date, status);
+                    supportNotificationsList.append(item);
+                });
+                let unreadCount = Number(result.unreadCount) || 0;
+                if (unreadCount && !document.querySelector('[data-account-view="notifications"]').hidden) {
+                    const readResponse = await fetch("/api/account/support-notifications/read", { method: "POST" });
+                    const readResult = await readResponse.json();
+                    if (!readResponse.ok) throw new Error(readResult.error || "Could not mark support notifications as viewed.");
+                    unreadCount = 0;
+                    supportNotificationsList.querySelectorAll(".is-new").forEach((item) => item.classList.remove("is-new"));
+                }
+                supportNotificationUnreadCount = unreadCount;
+                supportNotificationsStatus.classList.toggle("has-unread", unreadCount > 0);
+                supportNotificationsStatus.textContent = unreadCount
+                    ? `${unreadCount} new general support request${unreadCount === 1 ? "" : "s"}. Open the inbox to review and respond.`
+                    : notifications.length
+                        ? "No new support tasks. Recent general requests are listed below."
+                        : "No general support tasks yet.";
+                updateNotificationBadge();
+            } catch (error) {
+                supportNotificationsStatus.classList.remove("has-unread");
+                supportNotificationsStatus.textContent = error.message || "Could not load support notifications.";
+            } finally {
+                supportNotificationsRequestInFlight = false;
+            }
+        }
+
+        async function updateSellerCallout({ isModerator = false, isSuperAdmin = false, emailVerified = true } = {}) {
+            const roleLabel = isSuperAdmin ? "Super Admin" : "Moderator";
+            const roleSuffix = isModerator ? ` + ${roleLabel}` : "";
             if (adminToolsSection) {
                 adminToolsSection.hidden = !isModerator;
                 adminToolsSection.setAttribute("aria-hidden", String(!isModerator));
             }
             if (!emailVerified) {
-                accountRole.textContent = isModerator ? "Buyer + Moderator" : "Buyer";
+                accountRole.textContent = `Buyer${roleSuffix}`;
                 if (myShopLink) myShopLink.hidden = true;
                 if (sellerProfileLink) sellerProfileLink.hidden = true;
                 if (heroTitle) heroTitle.textContent = "Verify your email to start selling.";
@@ -1146,7 +1221,7 @@
             try {
                 const response = await fetch("/api/seller/shop");
                 if (!response.ok) {
-                    accountRole.textContent = isModerator ? "Moderator" : "Buyer";
+                    accountRole.textContent = isModerator ? roleLabel : "Buyer";
                     if (myShopLink) myShopLink.hidden = true;
                     if (sellerProfileLink) sellerProfileLink.hidden = true;
                     if (heroTitle) heroTitle.textContent = "Bring your shop to Z.";
@@ -1159,7 +1234,7 @@
                 const result = await response.json();
                 const hasShop = Boolean(result.shop);
                 if (result.shop?.sellerSuspended) {
-                    accountRole.textContent = isModerator ? "Buyer + Suspended Seller + Moderator" : "Buyer + Suspended Seller";
+                    accountRole.textContent = `Buyer + Suspended Seller${roleSuffix}`;
                     if (myShopLink) myShopLink.hidden = true;
                     if (sellerProfileLink) sellerProfileLink.hidden = true;
                     if (heroTitle) heroTitle.textContent = "Seller access suspended.";
@@ -1169,9 +1244,7 @@
                     if (shopButton) shopButton.hidden = true;
                     return;
                 }
-                accountRole.textContent = isModerator
-                    ? (hasShop ? "Buyer + Seller + Moderator" : "Buyer + Moderator")
-                    : (hasShop ? "Buyer + Seller" : "Buyer");
+                accountRole.textContent = `${hasShop ? "Buyer + Seller" : "Buyer"}${roleSuffix}`;
                 if (!hasShop) {
                     if (myShopLink) {
                         myShopLink.hidden = true;
@@ -1185,8 +1258,21 @@
                     return;
                 }
 
-                showShopArtwork(result.shop);
-                loadShopProducts();
+                if (result.shop.approvalStatus === "pending") {
+                    if (heroTitle) heroTitle.textContent = "Your shop is under review.";
+                    if (heroCopy) heroCopy.textContent = "Your profile is private until a moderator approves it. You can prepare product listings while you wait.";
+                    updateHeroButtons({ hasShop: true });
+                } else if (result.shop.approvalStatus === "rejected") {
+                    if (heroTitle) heroTitle.textContent = "Your shop needs attention.";
+                    if (heroCopy) heroCopy.textContent = `Your profile was not approved. Contact support for next steps. ${result.shop.approvalNote || ""}`;
+                    updateHeroButtons({ hasShop: true });
+                } else {
+                    showShopArtwork(result.shop);
+                    loadShopProducts();
+                    if (heroTitle) heroTitle.textContent = "Your shop is ready.";
+                    if (heroCopy) heroCopy.textContent = "Your storefront is live. Update your listings, manage orders, and keep your shop moving.";
+                    updateHeroButtons({ hasShop: true });
+                }
                 if (myShopLink) {
                     myShopLink.hidden = false;
                     myShopLink.setAttribute("aria-hidden", "false");
@@ -1194,11 +1280,8 @@
                     myShopLink.textContent = "My shop";
                 }
                 if (sellerProfileLink) sellerProfileLink.hidden = false;
-                if (heroTitle) heroTitle.textContent = "Your shop is ready.";
-                if (heroCopy) heroCopy.textContent = "Your storefront is live. Update your listings, manage orders, and keep your shop moving.";
-                updateHeroButtons({ hasShop: true });
             } catch {
-                accountRole.textContent = isModerator ? "Moderator" : "Buyer";
+                accountRole.textContent = isModerator ? roleLabel : "Buyer";
                 if (myShopLink) myShopLink.hidden = true;
                 if (sellerProfileLink) sellerProfileLink.hidden = true;
                 if (heroTitle) heroTitle.textContent = "Bring your shop to Z.";
@@ -1599,12 +1682,18 @@
             .then(async (result) => {
                 if (!result) return;
                 updateProfileForm(result.user);
-                await updateSellerCallout({ isModerator: result.user.isModerator, emailVerified: result.user.emailVerified });
+                currentUserIsModerator = Boolean(result.user.isModerator && !result.user.isSuperAdmin);
+                supportNotificationsSection.hidden = !currentUserIsModerator;
+                await updateSellerCallout({ isModerator: result.user.isModerator, isSuperAdmin: result.user.isSuperAdmin, emailVerified: result.user.emailVerified });
                 await loadPromotedDashboardProducts();
                 await window.ZWishlistSync.initialize();
                 await loadLoginActivity();
+                if (currentUserIsModerator) await loadSupportNotifications();
                 loginActivityRefreshTimer = window.setInterval(() => {
-                    if (!document.hidden) void loadLoginActivity();
+                    if (!document.hidden) {
+                        void loadLoginActivity();
+                        if (currentUserIsModerator) void loadSupportNotifications();
+                    }
                 }, 60000);
                 await loadReferralInfo();
                 await loadBuyerOrders();

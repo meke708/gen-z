@@ -20,7 +20,8 @@
         .intro { max-width: 650px; margin: 12px 0 28px; color: var(--muted); font-size: 13px; line-height: 1.65; }
         .queue-tools { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--line); }
         .queue-tools label { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 11px; }
-        .queue-tools select, .queue-tools button { min-height: 36px; padding: 0 10px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: var(--white); font: inherit; font-size: 11px; }
+        .queue-tools select, .queue-tools input, .queue-tools button { min-height: 36px; padding: 0 10px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: var(--white); font: inherit; font-size: 11px; }
+        .queue-tools input { flex: 1; min-width: 120px; max-width: 360px; }
         .queue-tools button { border-color: var(--ink); cursor: pointer; font-weight: 700; }
         .request { display: grid; grid-template-columns: minmax(0, 1fr) 230px; gap: 22px; padding: 20px 0; border-bottom: 1px solid var(--line); }
         .request-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
@@ -28,15 +29,41 @@
         .request-meta { margin: 7px 0 14px; color: var(--muted); font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
         .request-message { margin: 0; font-size: 12px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
         .request-response { margin-top: 12px; padding: 10px; border-left: 2px solid var(--orange); background: var(--white); font-size: 11px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .triage { margin-top: 14px; padding: 11px; border: 1px solid var(--line); background: #f1f3e8; }
+        .triage-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; font-size: 11px; }
+        .triage-confidence { color: var(--forest); font-weight: 700; }
+        .triage-note { margin: 6px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
         .status-pill { flex: 0 0 auto; padding: 5px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--forest); background: #edf0df; font-size: 9px; font-weight: 800; text-transform: uppercase; }
         .request-form { display: grid; align-content: start; gap: 8px; }
         .request-form label { display: grid; gap: 4px; color: var(--muted); font-size: 10px; }
         .request-form select, .request-form textarea { width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: var(--white); font: inherit; font-size: 11px; }
         .request-form textarea { min-height: 96px; resize: vertical; }
         .request-form button { min-height: 36px; border: 1px solid var(--ink); border-radius: 3px; color: var(--white); background: var(--ink); cursor: pointer; font-size: 11px; font-weight: 700; }
+        .request-form button.use-draft { border-color: var(--forest); color: var(--forest); background: transparent; }
         .request-form button:disabled { opacity: .6; cursor: wait; }
         .empty, .queue-status { color: var(--muted); font-size: 12px; line-height: 1.6; }
         .queue-status { min-height: 18px; color: var(--forest); }
+        .appeal-section { margin-top: 40px; padding-top: 24px; border-top: 2px solid var(--ink); }
+        .queue-tabs { display: flex; gap: 8px; margin: 24px 0 18px; border-bottom: 1px solid var(--line); }
+        .queue-tab { padding: 11px 14px; border: 1px solid transparent; border-bottom: 0; border-radius: 4px 4px 0 0; color: var(--muted); background: transparent; cursor: pointer; font: inherit; font-size: 12px; font-weight: 700; }
+        .queue-tab[aria-selected="true"] { border-color: var(--line); color: var(--forest); background: var(--white); box-shadow: 0 2px 0 var(--white); }
+        .queue-panel[hidden], .appeal-section[hidden] { display: none; }
+        .appeal-section { margin-top: 0; padding-top: 0; border-top: 0; }
+        .appeal-tools { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 12px 0; }
+        .appeal-tools input { flex: 1; min-width: 120px; max-width: 360px; min-height: 36px; padding: 0 10px; border: 1px solid var(--line); border-radius: 3px; font: inherit; font-size: 11px; }
+        .appeal-tools button { min-height: 36px; padding: 0 10px; border: 1px solid var(--ink); border-radius: 3px; color: var(--ink); background: var(--white); cursor: pointer; font: inherit; font-size: 11px; font-weight: 700; }
+        .appeal-section h2 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 25px; font-weight: 400; }
+        .appeal-intro { max-width: 700px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+        .appeal { display: grid; grid-template-columns: minmax(0, 1fr) 190px; gap: 18px; padding: 18px 0; border-top: 1px solid var(--line); }
+        .appeal h3 { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
+        .appeal-meta { margin: 6px 0 10px; color: var(--muted); font-size: 10px; }
+        .appeal-reason { margin: 0; font-size: 12px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .appeal-reference { margin: 9px 0 0; color: var(--muted); font-size: 11px; }
+        .appeal-activity { display: inline-flex; min-height: 34px; align-items: center; justify-content: center; padding: 0 9px; border: 1px solid var(--forest); border-radius: 3px; color: var(--forest); background: transparent; font-size: 11px; font-weight: 700; text-decoration: none; }
+        .appeal-form { display: grid; align-content: start; gap: 8px; }
+        .appeal-form label { display: grid; gap: 5px; color: var(--muted); font-size: 10px; }
+        .appeal-form select, .appeal-form button { min-height: 36px; padding: 7px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: var(--white); font: inherit; font-size: 11px; }
+        .appeal-form button { border-color: var(--ink); cursor: pointer; font-weight: 700; }
         @media (max-width: 680px) {
             .site-header { align-items: flex-start; padding: 12px 18px; }
             nav { justify-content: flex-end; gap: 10px; font-size: 10px; }
@@ -46,6 +73,7 @@
             .request-form { grid-template-columns: 1fr 1fr; }
             .request-form label:nth-child(2) { grid-column: 1 / -1; }
             .request-form button { grid-column: 1 / -1; }
+            .appeal { grid-template-columns: 1fr; }
         }
     </style>
     <link rel="stylesheet" href="/loading.css">
@@ -56,33 +84,76 @@
         <a class="brand" href="/marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Operations</span></a>
         <nav aria-label="Admin navigation">
             <a href="/admin/moderation">Moderation</a>
-            <a href="/admin/payouts">Payouts</a>
+            <a href="/admin/support">Support</a>
             <a href="/marketplace">Marketplace</a>
         </nav>
     </header>
     <main>
         <p class="eyebrow">Customer care</p>
-        <h1>Support inbox</h1>
-        <p class="intro">Review buyer requests tied to their orders. Update the case status and leave a response the buyer can see in their dashboard.</p>
-        <div class="queue-tools">
-            <label for="status-filter">Show
-                <select id="status-filter">
-                    <option value="all">All requests</option>
-                    <option value="open">Open</option>
-                    <option value="in_review">In review</option>
-                    <option value="resolved">Resolved</option>
-                </select>
-            </label>
-            <button id="reload-requests" type="button">Refresh</button>
+        <h1 id="queue-title">Support inbox</h1>
+        <p class="intro">Review marketplace support cases available to your role. Moderators can handle general requests only; financial and identity cases are restricted to the Super Admin. Update the status and leave a response the requester can see in their account.</p>
+        <div class="queue-tabs" id="queue-tabs" role="tablist" aria-label="Admin request queues" hidden>
+            <button class="queue-tab" id="support-tab" type="button" role="tab" aria-selected="true" aria-controls="support-panel">Support inbox</button>
+            <button class="queue-tab" id="appeals-tab" type="button" role="tab" aria-selected="false" aria-controls="appeal-section" tabindex="-1">Suspended requests</button>
         </div>
-        <div id="support-list" aria-live="polite"><p class="empty">Loading requests...</p></div>
-        <p class="queue-status" id="queue-status" role="status" aria-live="polite"></p>
+        <section class="queue-panel" id="support-panel" role="tabpanel" aria-labelledby="support-tab">
+            <div class="queue-tools">
+                <label for="status-filter">Show
+                    <select id="status-filter">
+                        <option value="all">All requests</option>
+                        <option value="open">Open</option>
+                        <option value="in_review">In review</option>
+                        <option value="resolved">Resolved</option>
+                    </select>
+                </label>
+                <input id="support-search" type="search" placeholder="Search support requests" aria-label="Search support requests">
+                <button id="reload-requests" type="button">Refresh</button>
+            </div>
+            <div id="support-list" aria-live="polite"><p class="empty">Loading requests...</p></div>
+            <p class="queue-status" id="queue-status" role="status" aria-live="polite"></p>
+        </section>
+        <section class="appeal-section" id="appeal-section" role="tabpanel" aria-labelledby="appeals-tab" hidden>
+            <h2 id="appeals-title">Suspension appeals · Super Admin</h2>
+            <p class="appeal-intro">Appeal submissions are private and visible only to the Super Admin. You can update the review status or resolve an appeal and reactivate the account from here.</p>
+            <div class="appeal-tools">
+                <input id="appeal-search" type="search" placeholder="Search suspended requests" aria-label="Search suspended requests">
+                <button id="reload-appeals" type="button">Refresh suspended requests</button>
+            </div>
+            <p class="queue-status" id="appeals-status" role="status" aria-live="polite">Checking account access...</p>
+            <div id="appeals-list" aria-live="polite"></div>
+        </section>
     </main>
     <script>
         const supportList = document.querySelector("#support-list");
         const queueStatus = document.querySelector("#queue-status");
         const statusFilter = document.querySelector("#status-filter");
+        const supportSearch = document.querySelector("#support-search");
         const requestsById = new Map();
+        let supportRequests = [];
+        const appealSection = document.querySelector("#appeal-section");
+        const queueTabs = document.querySelector("#queue-tabs");
+        const supportTab = document.querySelector("#support-tab");
+        const appealsTab = document.querySelector("#appeals-tab");
+        const supportPanel = document.querySelector("#support-panel");
+        const queueTitle = document.querySelector("#queue-title");
+        const appealsStatus = document.querySelector("#appeals-status");
+        const appealsList = document.querySelector("#appeals-list");
+        const appealSearch = document.querySelector("#appeal-search");
+        let suspensionAppeals = [];
+        let canViewAppeals = false;
+        let appealsLoaded = false;
+
+        function selectQueue(queue) {
+            const showAppeals = queue === "appeals" && canViewAppeals;
+            queueTitle.textContent = showAppeals ? "Suspended requests" : "Support inbox";
+            supportPanel.hidden = showAppeals;
+            appealSection.hidden = !showAppeals;
+            supportTab.setAttribute("aria-selected", String(!showAppeals));
+            appealsTab.setAttribute("aria-selected", String(showAppeals));
+            supportTab.tabIndex = showAppeals ? -1 : 0;
+            appealsTab.tabIndex = showAppeals ? 0 : -1;
+            if (showAppeals && !appealsLoaded) loadAppeals();
+        }
 
         async function requestJson(url, options) {
             const response = await fetch(url, options);
@@ -98,10 +169,10 @@
             const heading = document.createElement("div");
             heading.className = "request-heading";
             const title = document.createElement("h2");
-            title.textContent = `Order ${request.orderNumber} · ${request.topic.replaceAll("_", " ")}`;
+            title.textContent = `${request.orderNumber ? `Order ${request.orderNumber} · ` : ""}${request.topic.replaceAll("_", " ")}`;
             const status = document.createElement("span");
             status.className = "status-pill";
-            status.textContent = request.status.replaceAll("_", " ");
+            status.textContent = `${request.category} · ${request.status.replaceAll("_", " ")}`;
             heading.append(title, status);
             const metadata = document.createElement("p");
             metadata.className = "request-meta";
@@ -110,6 +181,23 @@
             message.className = "request-message";
             message.textContent = request.message;
             content.append(heading, metadata, message);
+            if (request.triage) {
+                const triage = document.createElement("section");
+                triage.className = "triage";
+                const triageHeading = document.createElement("div");
+                triageHeading.className = "triage-heading";
+                const likelyIssue = document.createElement("strong");
+                likelyIssue.textContent = `Likely issue: ${request.triage.likelyIssue}`;
+                const confidence = document.createElement("span");
+                confidence.className = "triage-confidence";
+                confidence.textContent = `${request.triage.confidenceLabel} · ${request.triage.confidence}%`;
+                triageHeading.append(likelyIssue, confidence);
+                const note = document.createElement("p");
+                note.className = "triage-note";
+                note.textContent = "Rule-based estimate from the selected topic and message, not a measured probability. Review the request before replying.";
+                triage.append(triageHeading, note);
+                content.append(triage);
+            }
             if (request.adminResponse) {
                 const response = document.createElement("div");
                 response.className = "request-response";
@@ -139,10 +227,19 @@
             responseInput.value = request.adminResponse || "";
             responseInput.placeholder = "Write an update or resolution...";
             responseLabel.append(responseInput);
+            const useDraft = document.createElement("button");
+            useDraft.type = "button";
+            useDraft.className = "use-draft";
+            useDraft.textContent = "Use suggested reply";
+            useDraft.disabled = !request.triage?.suggestedResponse;
+            useDraft.addEventListener("click", () => {
+                responseInput.value = request.triage.suggestedResponse;
+                responseInput.focus();
+            });
             const save = document.createElement("button");
             save.type = "submit";
             save.textContent = "Save update";
-            form.append(statusLabel, responseLabel, save);
+            form.append(statusLabel, responseLabel, useDraft, save);
             form.addEventListener("submit", async (event) => {
                 event.preventDefault();
                 save.disabled = true;
@@ -167,27 +264,201 @@
         async function loadRequests() {
             try {
                 const { requests } = await requestJson("/api/admin/support-requests");
+                supportRequests = requests;
                 requestsById.clear();
                 requests.forEach((request) => requestsById.set(request.id, request));
-                const visibleRequests = statusFilter.value === "all"
-                    ? requests
-                    : requests.filter((request) => request.status === statusFilter.value);
-                supportList.replaceChildren();
-                if (!visibleRequests.length) {
-                    const empty = document.createElement("p");
-                    empty.className = "empty";
-                    empty.textContent = statusFilter.value === "all" ? "No support requests yet." : "No requests in this status.";
-                    supportList.append(empty);
-                    return;
-                }
-                visibleRequests.forEach((request) => supportList.append(createRequestCard(request)));
+                renderRequests();
             } catch (error) {
                 supportList.textContent = error.message;
             }
         }
 
-        statusFilter.addEventListener("change", loadRequests);
+        function renderRequests() {
+            const query = supportSearch.value.trim().toLowerCase();
+            const visibleRequests = supportRequests.filter((request) => {
+                const matchesStatus = statusFilter.value === "all" || request.status === statusFilter.value;
+                const searchableText = [
+                    request.orderNumber, request.topic, request.buyer?.name, request.buyer?.email,
+                    request.message, request.adminResponse
+                ].filter(Boolean).join(" ").toLowerCase();
+                return matchesStatus && (!query || searchableText.includes(query));
+            });
+            supportList.replaceChildren();
+            if (!visibleRequests.length) {
+                const empty = document.createElement("p");
+                empty.className = "empty";
+                empty.textContent = supportRequests.length
+                    ? "No support requests match these filters."
+                    : "No support requests yet.";
+                supportList.append(empty);
+                return;
+            }
+            visibleRequests.forEach((request) => supportList.append(createRequestCard(request)));
+        }
+
+        async function loadAppeals() {
+            try {
+                const { appeals } = await requestJson("/api/admin/suspension-appeals");
+                suspensionAppeals = appeals;
+                appealsLoaded = true;
+                renderAppeals();
+            } catch (error) {
+                appealsLoaded = false;
+                appealsStatus.textContent = error.message;
+            }
+        }
+
+        function renderAppeals() {
+            const query = appealSearch.value.trim().toLowerCase();
+            const visibleAppeals = suspensionAppeals.filter((appeal) => [
+                appeal.accountEmail, appeal.reason, appeal.referenceId, appeal.status
+            ].filter(Boolean).join(" ").toLowerCase().includes(query));
+            appealsList.replaceChildren();
+            if (!visibleAppeals.length) {
+                appealsStatus.textContent = suspensionAppeals.length
+                    ? "No suspended requests match your search."
+                    : "No suspension appeals have been submitted.";
+                return;
+            }
+            appealsStatus.textContent = `${visibleAppeals.length} of ${suspensionAppeals.length} suspension appeal${suspensionAppeals.length === 1 ? "" : "s"} shown.`;
+            visibleAppeals.forEach((appeal) => appealsList.append(createAppealCard(appeal)));
+        }
+
+        function createAppealCard(appeal) {
+            const card = document.createElement("article");
+            card.className = "appeal";
+            const details = document.createElement("div");
+            const heading = document.createElement("h3");
+            heading.textContent = appeal.accountEmail;
+            const meta = document.createElement("p");
+            meta.className = "appeal-meta";
+            meta.textContent = `${appeal.status.replaceAll("_", " ")} · ${new Date(appeal.createdAt).toLocaleString()}`;
+            const reason = document.createElement("p");
+            reason.className = "appeal-reason";
+            reason.textContent = appeal.reason;
+            details.append(heading, meta, reason);
+            if (appeal.referenceId) {
+                const reference = document.createElement("p");
+                reference.className = "appeal-reference";
+                reference.textContent = `Reference: ${appeal.referenceId}`;
+                details.append(reference);
+            }
+            if (appeal.triage) {
+                const triage = document.createElement("section");
+                triage.className = "triage";
+                const triageHeading = document.createElement("div");
+                triageHeading.className = "triage-heading";
+                const likelyIssue = document.createElement("strong");
+                likelyIssue.textContent = `Likely issue: ${appeal.triage.likelyIssue}`;
+                const confidence = document.createElement("span");
+                confidence.className = "triage-confidence";
+                confidence.textContent = `${appeal.triage.confidenceLabel} · ${appeal.triage.confidence}%`;
+                triageHeading.append(likelyIssue, confidence);
+                const note = document.createElement("p");
+                note.className = "triage-note";
+                note.textContent = "Rule-based estimate from the appeal text, not a measured probability or reinstatement decision. Review the account history before acting.";
+                const suggestion = document.createElement("p");
+                suggestion.className = "triage-note";
+                suggestion.textContent = `Suggested reply: ${appeal.triage.suggestedResponse}`;
+                triage.append(triageHeading, note, suggestion);
+                details.append(triage);
+            }
+
+            const form = document.createElement("form");
+            form.className = "appeal-form";
+            const label = document.createElement("label");
+            label.textContent = "Appeal status";
+            const select = document.createElement("select");
+            [["open", "Open"], ["in_review", "In review"], ["resolved", "Resolved"]].forEach(([value, text]) => {
+                const option = document.createElement("option");
+                option.value = value;
+                option.textContent = text;
+                option.selected = value === appeal.status;
+                select.append(option);
+            });
+            label.append(select);
+            const save = document.createElement("button");
+            save.type = "submit";
+            save.textContent = "Save status";
+            if (appeal.accountId) {
+                const activity = document.createElement("a");
+                activity.className = "appeal-activity";
+                activity.href = `/admin/accounts/${encodeURIComponent(appeal.accountId)}/activity`;
+                activity.textContent = "View account activity";
+                form.append(activity);
+            }
+            form.append(label, save);
+            form.addEventListener("submit", async (event) => {
+                event.preventDefault();
+                save.disabled = true;
+                appealsStatus.textContent = "Saving appeal status...";
+                try {
+                    await requestJson(`/api/admin/suspension-appeals/${encodeURIComponent(appeal.id)}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ status: select.value })
+                    });
+                    appealsStatus.textContent = "Appeal status updated.";
+                    await loadAppeals();
+                } catch (error) {
+                    appealsStatus.textContent = error.message;
+                    save.disabled = false;
+                }
+            });
+            if (appeal.accountSuspended) {
+                const reactivate = document.createElement("button");
+                reactivate.type = "button";
+                reactivate.textContent = "Resolve & reactivate account";
+                reactivate.addEventListener("click", async () => {
+                    if (!window.confirm(`Resolve this appeal and restore sign-in access for ${appeal.accountEmail}?`)) return;
+                    reactivate.disabled = true;
+                    appealsStatus.textContent = "Resolving appeal and restoring account access...";
+                    try {
+                        const result = await requestJson(`/api/admin/suspension-appeals/${encodeURIComponent(appeal.id)}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ status: "resolved", reactivateAccount: true })
+                        });
+                        appealsStatus.textContent = result.accountReactivated
+                            ? "Appeal resolved and account reactivated. The user can sign in again."
+                            : "Appeal resolved. The account was already active.";
+                        await loadAppeals();
+                    } catch (error) {
+                        appealsStatus.textContent = error.message;
+                        reactivate.disabled = false;
+                    }
+                });
+                form.append(reactivate);
+            }
+            card.append(details, form);
+            return card;
+        }
+
+        supportTab.addEventListener("click", () => selectQueue("support"));
+        appealsTab.addEventListener("click", () => selectQueue("appeals"));
+        queueTabs.addEventListener("keydown", (event) => {
+            if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+            event.preventDefault();
+            const nextTab = document.activeElement === supportTab ? appealsTab : supportTab;
+            if (nextTab === appealsTab && !canViewAppeals) return;
+            nextTab.focus();
+            nextTab.click();
+        });
+        statusFilter.addEventListener("change", renderRequests);
+        supportSearch.addEventListener("input", renderRequests);
+        appealSearch.addEventListener("input", renderAppeals);
         document.querySelector("#reload-requests").addEventListener("click", loadRequests);
+        document.querySelector("#reload-appeals").addEventListener("click", loadAppeals);
+        fetch("/api/auth/me")
+            .then(async (response) => {
+                if (!response.ok) return;
+                const { user } = await response.json();
+                if (user?.isSuperAdmin) {
+                    canViewAppeals = true;
+                    queueTabs.hidden = false;
+                }
+            })
+            .catch((error) => console.error("Could not check account role for appeal inbox:", error));
         loadRequests();
     </script>
     <script src="/navigation.js" defer></script>

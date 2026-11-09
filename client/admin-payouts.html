@@ -129,7 +129,7 @@
                     : "Manual ledger only. This screen records a bank reference after a human completes the transfer; it does not initiate or verify the payment.";
                 rows.replaceChildren();
                 emptyState.hidden = entries.length > 0;
-                const eligibleEntries = entries.filter((entry) => entry.payoutStatus === "eligible");
+                const eligibleEntries = entries.filter((entry) => entry.payoutStatus === "eligible" && !entry.sellerRestricted);
                 const heldEntries = entries.filter((entry) => entry.payoutStatus === "held");
                 const paidEntries = entries.filter((entry) => entry.payoutStatus === "paid");
                 document.querySelector("#report-total").firstChild.textContent = money.format(eligibleEntries.reduce((total, entry) => total + entry.payoutNAD, 0)) + " ";
@@ -169,6 +169,13 @@
                         paid.className = "payout-waiting";
                         paid.textContent = `${entry.simulated ? "No real transfer" : "Transfer recorded"}${entry.payoutMarkedAt ? ` · ${new Date(entry.payoutMarkedAt).toLocaleString()}` : ""}${entry.payoutReference ? ` · ${entry.payoutReference}` : ""}`;
                         actionCell.append(paid);
+                    } else if (entry.sellerRestricted) {
+                        const waiting = document.createElement("span");
+                        waiting.className = "payout-waiting";
+                        waiting.textContent = entry.sellerRestrictedUntil
+                            ? `Seller access restricted until ${new Date(entry.sellerRestrictedUntil).toLocaleString()}; payout paused`
+                            : "Seller access restricted; payout paused";
+                        actionCell.append(waiting);
                     } else if (isSimulated) {
                         const waiting = document.createElement("span");
                         waiting.className = "payout-waiting";

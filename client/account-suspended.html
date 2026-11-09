@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f4f1e8">
+    <title>Account suspended | Z Namibia</title>
+    <style>
+        :root { color-scheme: light; --ink: #17231e; --forest: #18382e; --muted: #69736d; --paper: #f4f1e8; --white: #fffefa; --line: #d8d8ce; --orange: #b65b22; }
+        * { box-sizing: border-box; }
+        body { margin: 0; color: var(--ink); background: var(--paper); font-family: "Segoe UI", Arial, sans-serif; }
+        a { color: var(--forest); }
+        header { padding: 18px max(24px, calc((100% - 760px) / 2)); color: var(--white); background: var(--forest); }
+        .brand { display: inline-flex; align-items: center; gap: 10px; color: inherit; font-family: Georgia, "Times New Roman", serif; font-size: 19px; text-decoration: none; }
+        .brand-mark { display: grid; width: 34px; aspect-ratio: 1; place-items: center; border: 1px solid currentColor; border-radius: 50%; font-size: 20px; }
+        main { width: min(100% - 36px, 680px); margin: 0 auto; padding: 42px 0 70px; }
+        .panel { padding: clamp(22px, 5vw, 40px); border: 1px solid var(--line); background: var(--white); }
+        .eyebrow { margin: 0 0 10px; color: var(--orange); font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+        h1, h2 { font-family: Georgia, "Times New Roman", serif; font-weight: 400; }
+        h1 { margin: 0; font-size: clamp(32px, 7vw, 42px); }
+        .intro { margin: 12px 0 24px; color: var(--muted); font-size: 13px; line-height: 1.65; }
+        form { display: grid; gap: 16px; }
+        label { display: grid; gap: 7px; font-size: 12px; font-weight: 700; }
+        input, textarea { width: 100%; padding: 11px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: var(--white); font: inherit; font-size: 13px; }
+        input { min-height: 42px; }
+        textarea { min-height: 150px; resize: vertical; line-height: 1.55; }
+        .hint { margin: -10px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+        button { min-height: 44px; border: 1px solid var(--ink); border-radius: 3px; color: var(--white); background: var(--ink); cursor: pointer; font-size: 12px; font-weight: 700; }
+        button:disabled { opacity: .6; cursor: wait; }
+        .form-status { display: flex; align-items: flex-start; gap: 12px; margin: 0; padding: 14px; border: 1px solid transparent; border-radius: 3px; font-size: 12px; line-height: 1.6; }
+        .form-status[hidden] { display: none; }
+        .form-status.is-pending { border-color: #e5d7a8; color: #70551c; background: #fff8df; }
+        .form-status.is-success { border-color: #b7d4be; color: var(--forest); background: #edf7ee; }
+        .form-status.is-error { border-color: #e4b7b7; color: #8d2424; background: #fff0f0; }
+        .status-icon { display: grid; width: 23px; height: 23px; flex: 0 0 auto; place-items: center; border-radius: 50%; color: var(--white); background: var(--forest); font-size: 13px; font-weight: 800; }
+        .form-status.is-pending .status-icon { background: #70551c; }
+        .form-status.is-error .status-icon { background: #8d2424; }
+        .status-copy { min-width: 0; }
+        .status-title { display: block; margin-bottom: 2px; font-weight: 800; }
+        .status-check { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--line); background: #faf9f4; }
+        .status-check h2 { margin: 0; font-size: 19px; }
+        .status-check > p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+        .login-link { display: block; padding: 14px; border: 1px solid var(--ink); border-radius: 3px; color: var(--white); background: var(--ink); font-size: 12px; font-weight: 700; text-align: center; text-decoration: none; }
+        .appeal-progress { display: grid; gap: 0; margin: 16px 0 0; padding: 0; list-style: none; }
+        .appeal-progress li { position: relative; display: flex; align-items: flex-start; gap: 10px; min-height: 34px; color: var(--muted); font-size: 12px; }
+        .appeal-progress li:not(:last-child)::before { position: absolute; top: 20px; left: 9px; width: 1px; height: 18px; background: var(--line); content: ""; }
+        .appeal-progress li::after { display: grid; width: 19px; height: 19px; flex: 0 0 auto; place-items: center; border: 1px solid var(--line); border-radius: 50%; color: var(--muted); background: var(--white); content: ""; font-size: 11px; font-weight: 800; }
+        .appeal-progress li.is-complete { color: var(--forest); font-weight: 700; }
+        .appeal-progress li.is-complete::after { border-color: var(--forest); color: var(--white); background: var(--forest); content: "✓"; }
+        .appeal-progress li.is-current { color: #70551c; font-weight: 800; }
+        .appeal-progress li.is-current::after { border-color: #70551c; background: #fff8df; content: "…"; }
+        .form-status.is-success .appeal-progress { display: grid; }
+        .next-steps { margin-top: 20px; padding: 14px; border-left: 2px solid var(--orange); background: var(--paper); color: var(--muted); font-size: 11px; line-height: 1.6; }
+        .next-steps p { margin: 0; }
+        .next-steps p + p { margin-top: 8px; }
+        [hidden] { display: none !important; }
+    </style>
+</head>
+<body>
+    <header><a class="brand" href="/marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Namibia</span></a></header>
+    <main>
+        <section class="panel" aria-labelledby="appeal-title">
+            <p class="eyebrow">Account access</p>
+            <h1 id="appeal-title">Your account is suspended</h1>
+            <p class="intro">You cannot access your account while the suspension is active. Sign in with the suspended account to check an existing appeal or submit a new one. The appeal is reviewed by the Super Admin; submitting it does not automatically restore access.</p>
+            <form id="appeal-form">
+                <label for="account-email">Account email
+                    <input id="account-email" name="accountEmail" type="email" autocomplete="email" maxlength="254" required>
+                </label>
+                <section class="status-check" aria-labelledby="status-check-title">
+                    <h2 id="status-check-title">Verify it is your account</h2>
+                    <p>Enter your suspended account's email and password on the sign-in page. Once confirmed, we will check for an existing appeal and let you know if it is still awaiting review.</p>
+                    <a class="login-link" href="/login">Sign in to verify and continue</a>
+                    <div class="form-status" id="lookup-feedback" role="status" aria-live="polite" aria-atomic="true" hidden>
+                        <span class="status-icon" aria-hidden="true"></span>
+                        <span class="status-copy"><strong class="status-title"></strong><span class="status-message"></span></span>
+                    </div>
+                    <div class="form-status" id="lookup-result" role="status" aria-live="polite" aria-atomic="true" hidden>
+                        <span class="status-icon" aria-hidden="true"></span>
+                        <span class="status-copy"><strong class="status-title"></strong><span class="status-message"></span></span>
+                    </div>
+                </section>
+                <label for="appeal-reason">Reason for appeal
+                    <textarea id="appeal-reason" name="reason" minlength="20" maxlength="2000" required placeholder="Explain why you believe your account or storefront should be restored.">My account has been suspended. </textarea>
+                </label>
+                <label for="reference-id">Reference ID (optional)
+                    <input id="reference-id" name="referenceId" type="text" maxlength="100" autocomplete="off" placeholder="Order number or shop identifier">
+                </label>
+                <p class="hint">Sign in with the suspended account first. This verifies you own the account, lets us check for an existing request, and prevents duplicate appeals. Do not include your password, full bank or card numbers, or identity documents in the appeal.</p>
+                <button id="submit-appeal" type="submit" disabled>Sign in to continue</button>
+                <div class="form-status" id="form-status" role="status" aria-live="polite" aria-atomic="true" hidden>
+                    <span class="status-icon" aria-hidden="true"></span>
+                    <span class="status-copy">
+                        <strong class="status-title"></strong><span class="status-message"></span>
+                        <ol class="appeal-progress" aria-label="Appeal progress" hidden>
+                            <li class="is-complete">Request received</li>
+                            <li class="is-current">Super Admin review</li>
+                            <li>Decision recorded</li>
+                        </ol>
+                    </span>
+                </div>
+            </form>
+            <div class="next-steps">
+                <p>Appeal status is available after you sign in with the suspended account. You can also review the <a href="/support#account-suspension">account suspension FAQ</a>.</p>
+                <p>Do not create another account to bypass a suspension. Wait for the account review before trying to sign in again.</p>
+            </div>
+        </section>
+    </main>
+    <script>
+        const appealForm = document.querySelector("#appeal-form");
+        const appealStatus = document.querySelector("#form-status");
+        const appealSubmit = document.querySelector("#submit-appeal");
+        const appealStatusIcon = appealStatus.querySelector(".status-icon");
+        const appealStatusTitle = appealStatus.querySelector(".status-title");
+        const appealStatusMessage = appealStatus.querySelector(".status-message");
+        const appealProgress = appealStatus.querySelector(".appeal-progress");
+        const accountEmailInput = appealForm.elements.accountEmail;
+        const lookupFeedback = document.querySelector("#lookup-feedback");
+        const lookupResult = document.querySelector("#lookup-result");
+        let statusVerificationToken = sessionStorage.getItem("suspendedAppealAccessToken") || "";
+        let verifiedAccountEmail = "";
+
+        const suspendedAccountEmail = sessionStorage.getItem("suspendedAccountEmail");
+        if (suspendedAccountEmail) {
+            accountEmailInput.value = suspendedAccountEmail;
+            sessionStorage.removeItem("suspendedAccountEmail");
+        }
+        sessionStorage.removeItem("suspendedAppealAccessToken");
+
+        function showAppealStatus(state, title, message, showProgress = false) {
+            appealStatus.className = `form-status is-${state}`;
+            appealStatusIcon.textContent = state === "success" ? "✓" : state === "error" ? "!" : "…";
+            appealStatusTitle.textContent = title;
+            appealStatusMessage.textContent = message;
+            appealProgress.hidden = !showProgress;
+            appealStatus.hidden = false;
+        }
+
+        function showLookupMessage(element, state, title, message) {
+            element.className = `form-status is-${state}`;
+            element.querySelector(".status-icon").textContent = state === "success" ? "✓" : state === "error" ? "!" : "…";
+            element.querySelector(".status-title").textContent = title;
+            element.querySelector(".status-message").textContent = message;
+            element.hidden = false;
+        }
+
+        accountEmailInput.addEventListener("input", () => {
+            statusVerificationToken = "";
+            verifiedAccountEmail = "";
+            lookupFeedback.hidden = true;
+            lookupResult.hidden = true;
+            appealForm.elements.reason.disabled = false;
+            appealForm.elements.referenceId.disabled = false;
+            appealSubmit.disabled = true;
+            appealSubmit.textContent = "Sign in to continue";
+            appealStatus.hidden = true;
+        });
+
+        async function loadAppealStatus() {
+            if (!statusVerificationToken || !accountEmailInput.value) {
+                showLookupMessage(lookupFeedback, "pending", "Sign-in required", "Sign in with the suspended account above. We will automatically check for an existing appeal after your password is confirmed.");
+                return;
+            }
+
+            verifiedAccountEmail = accountEmailInput.value.trim().toLowerCase();
+            showLookupMessage(lookupFeedback, "pending", "Checking appeal status", "Your suspended-account sign-in was confirmed. Checking for an existing request.");
+            try {
+                const response = await fetch("/api/suspension-appeals/status", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        accountEmail: accountEmailInput.value,
+                        verificationToken: statusVerificationToken
+                    })
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || "Could not check appeal status.");
+                if (!result.hasAppeal) {
+                    showLookupMessage(lookupResult, "success", "No appeal found", "There is no appeal on file for this account. You can submit one below.");
+                    appealSubmit.disabled = false;
+                    appealSubmit.textContent = "Submit appeal";
+                } else {
+                    const createdAt = new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(result.appeal.createdAt));
+                    const status = result.appeal.status.replaceAll("_", " ");
+                    const active = result.appeal.status !== "resolved";
+                    const message = active
+                        ? `Your request was submitted ${createdAt} and is still awaiting review. You do not need to submit it again.`
+                        : `Submitted ${createdAt}. This appeal is resolved; you may submit a new request if needed.`;
+                    showLookupMessage(lookupResult, "success", `Appeal status: ${status}`, message);
+                    appealForm.elements.reason.disabled = active;
+                    appealForm.elements.referenceId.disabled = active;
+                    appealSubmit.disabled = active;
+                    appealSubmit.textContent = active ? "Appeal already submitted" : "Submit a new appeal";
+                }
+                lookupResult.hidden = false;
+                lookupFeedback.hidden = true;
+            } catch (error) {
+                statusVerificationToken = "";
+                showLookupMessage(lookupFeedback, "error", "Sign in again to continue", error.message || "Could not check appeal status.");
+            }
+        }
+
+        loadAppealStatus();
+
+        appealForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            if (!statusVerificationToken || verifiedAccountEmail !== accountEmailInput.value.trim().toLowerCase()) {
+                showAppealStatus("error", "Sign in to verify your account", "Enter the suspended account's password on the sign-in page before submitting an appeal.");
+                return;
+            }
+            if (!appealForm.reportValidity()) return;
+            appealSubmit.disabled = true;
+            showAppealStatus("pending", "Submitting appeal", "Please wait while we securely send your appeal for review.");
+            try {
+                const response = await fetch("/api/suspension-appeals", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        accountEmail: appealForm.elements.accountEmail.value,
+                        reason: appealForm.elements.reason.value,
+                        referenceId: appealForm.elements.referenceId.value,
+                        verificationToken: statusVerificationToken
+                    })
+                });
+                const result = await response.json();
+                if (response.status === 409) {
+                    statusVerificationToken = "";
+                    showAppealStatus(
+                        "pending",
+                        "Appeal already awaiting review",
+                        result.error || "Your existing request is still in the review queue. No second request was submitted.",
+                        true
+                    );
+                    appealForm.elements.reason.disabled = true;
+                    appealForm.elements.referenceId.disabled = true;
+                    appealSubmit.disabled = true;
+                    appealSubmit.textContent = "Appeal already submitted";
+                    return;
+                }
+                if (!response.ok) {
+                    if (response.status === 403) statusVerificationToken = "";
+                    throw new Error(result.error || "Could not submit your appeal.");
+                }
+                statusVerificationToken = "";
+                showAppealStatus(
+                    "success",
+                    "Appeal submitted — awaiting review",
+                    result.message || "Your request is in the review queue. It has not been approved, and your account remains suspended until a decision changes its status.",
+                    true
+                );
+                appealForm.elements.reason.disabled = true;
+                appealForm.elements.referenceId.disabled = true;
+                appealSubmit.disabled = true;
+                appealSubmit.textContent = "Appeal submitted";
+            } catch (error) {
+                showAppealStatus("error", "Appeal not submitted", error.message || "Could not submit your appeal. Please try again.");
+                appealSubmit.disabled = !statusVerificationToken
+                    || verifiedAccountEmail !== accountEmailInput.value.trim().toLowerCase();
+            } finally {
+                if (statusVerificationToken
+                    && verifiedAccountEmail === accountEmailInput.value.trim().toLowerCase()
+                    && !appealStatus.classList.contains("is-success")) {
+                    appealSubmit.disabled = false;
+                }
+            }
+        });
+    </script>
+</body>
+</html>

@@ -39,6 +39,7 @@
         .account-action.is-seller { border-color: var(--warning); color: var(--warning); background: transparent; }
         .account-action.is-seller:hover { color: var(--white); background: var(--warning); }
         .account-action:disabled { opacity: .55; cursor: wait; }
+        .account-action.is-activity { color: var(--forest); background: transparent; text-decoration: none; display: inline-flex; align-items: center; }
         .queue-status { min-height: 20px; margin: 10px 0; color: var(--forest); font-size: 11px; }
         .queue-status.is-error { color: var(--warning); }
         .empty { padding: 24px 0; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
@@ -46,6 +47,11 @@
         .pagination button { min-height: 34px; padding: 0 10px; border: 1px solid var(--ink); border-radius: 3px; color: var(--ink); background: transparent; cursor: pointer; font-size: 11px; font-weight: 700; }
         .pagination button:disabled { opacity: .45; cursor: default; }
         .pagination span { color: var(--muted); font-size: 11px; }
+        .audit-list { border-top: 1px solid var(--line); }
+        .audit-event { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px 16px; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 11px; }
+        .audit-event strong { text-transform: capitalize; }
+        .audit-event span, .audit-event time { color: var(--muted); overflow-wrap: anywhere; }
+        .audit-event .audit-actor { grid-column: 1 / -1; }
         @media (max-width: 650px) {
             .site-header { align-items: flex-start; padding: 12px 18px; }
             nav { gap: 9px; }
@@ -63,18 +69,19 @@
 <body>
     <header class="site-header">
         <div class="header-left"><a class="back-button" href="/marketplace" aria-label="Go to marketplace">←</a><a class="brand" href="/marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Operations</span></a></div>
-        <nav aria-label="Admin navigation"><a href="/admin/moderation">Moderation</a><a href="/admin/payouts">Payouts</a><a href="/admin/kyc">Business verification</a><a href="/admin/support">Support</a></nav>
+        <nav aria-label="Super-admin navigation"><a href="/admin/moderation">Moderation</a><a href="/admin/platform">Platform controls</a><a href="/admin/payouts">Payouts</a><a href="/admin/kyc">Business verification</a><a href="/admin/support">Support</a></nav>
     </header>
     <main>
         <p class="eyebrow">Trust and safety</p>
         <h1>User accounts</h1>
-        <p class="intro">Find buyer and seller accounts by name or email. Suspending an account prevents sign-in, ends active sessions, and blocks its buyer and seller actions; it does not delete the user's profile or order history.</p>
+        <p class="intro">Find buyer and seller accounts by name or email. Grant moderator access only to verified helper accounts (up to three). Moderators can review shops, listings, and listing reports, but cannot access account management, payouts, KYC, support, or platform controls. Suspending an account ends active sessions without deleting its profile or order history.</p>
         <form class="filters" id="account-filters">
             <input id="account-search" type="search" maxlength="100" placeholder="Search name or email" aria-label="Search users by name or email">
             <select id="account-type" aria-label="Filter by account type">
                 <option value="all">All account types</option>
                 <option value="buyer">Buyer accounts</option>
                 <option value="seller">Seller accounts</option>
+                <option value="moderator">Moderators</option>
             </select>
             <select id="account-status" aria-label="Filter by account status">
                 <option value="all">All account statuses</option>
@@ -91,6 +98,10 @@
             <span id="page-label"></span>
             <button type="button" id="next-page">Next</button>
         </div>
+        <section aria-labelledby="account-audit-title">
+            <h2 id="account-audit-title">Recent account and seller access actions</h2>
+            <div class="audit-list" id="account-audit-list" aria-live="polite">Loading audit history...</div>
+        </section>
     </main>
     <script>
         const accountList = document.querySelector("#account-list");
@@ -100,6 +111,7 @@
         const typeFilter = document.querySelector("#account-type");
         const statusFilter = document.querySelector("#account-status");
         const pagination = document.querySelector("#pagination");
+        const accountAuditList = document.querySelector("#account-audit-list");
         let currentPage = 1;
         let pageCount = 1;
 
@@ -131,12 +143,29 @@
                 sellerStatus.className = `badge${account.sellerSuspended ? " is-suspended" : ""}`;
                 sellerStatus.textContent = account.sellerSuspended ? "Seller access suspended" : "Seller access active";
                 badges.append(sellerStatus);
+                if (account.sellerRestrictionStatus === "temp_hold" && account.sellerRestrictedUntil && new Date(account.sellerRestrictedUntil) > new Date()) {
+                    const holdBadge = document.createElement("span");
+                    holdBadge.className = "badge is-suspended";
+                    holdBadge.textContent = `Auto hold until ${new Date(account.sellerRestrictedUntil).toLocaleString()}`;
+                    badges.append(holdBadge);
+                } else if (account.sellerRestrictionStatus === "banned") {
+                    const bannedBadge = document.createElement("span");
+                    bannedBadge.className = "badge is-suspended";
+                    bannedBadge.textContent = "Seller access permanently restricted";
+                    badges.append(bannedBadge);
+                }
             }
-            if (account.isModerator) {
+            if (account.role === "moderator") {
                 const moderatorBadge = document.createElement("span");
                 moderatorBadge.className = "badge";
                 moderatorBadge.textContent = "Moderator";
                 badges.append(moderatorBadge);
+            }
+            if (account.isSuperAdmin) {
+                const ownerBadge = document.createElement("span");
+                ownerBadge.className = "badge";
+                ownerBadge.textContent = "Super admin";
+                badges.append(ownerBadge);
             }
             if (account.emailVerified) {
                 const verifiedBadge = document.createElement("span");
@@ -156,12 +185,17 @@
 
             const actions = document.createElement("div");
             actions.className = "account-actions";
+            const activityLink = document.createElement("a");
+            activityLink.className = "account-action is-activity";
+            activityLink.href = `/admin/accounts/${encodeURIComponent(account.id)}/activity`;
+            activityLink.textContent = "Activity";
+            actions.append(activityLink);
             if (account.accountType === "seller") {
                 const sellerButton = document.createElement("button");
                 sellerButton.type = "button";
                 sellerButton.className = `account-action is-seller${account.sellerSuspended ? " is-reactivate" : ""}`;
                 sellerButton.textContent = account.sellerSuspended ? "Reactivate seller" : "Suspend seller";
-                sellerButton.disabled = account.isModerator;
+                sellerButton.disabled = account.isSuperAdmin || account.isOwnerIdentity;
                 sellerButton.title = "Seller suspension hides the shop and listings but keeps buyer access.";
                 sellerButton.addEventListener("click", () => updateSellerStatus(account, sellerButton));
                 actions.append(sellerButton);
@@ -171,10 +205,18 @@
             accountButton.type = "button";
             accountButton.className = `account-action${account.isSuspended ? " is-reactivate" : ""}`;
             accountButton.textContent = account.isSuspended ? "Reactivate account" : "Suspend entire account";
-            accountButton.disabled = account.isModerator;
-            if (account.isModerator) accountButton.title = "The configured moderation account cannot be changed.";
+            accountButton.disabled = account.isSuperAdmin || account.isOwnerIdentity;
+            if (account.isSuperAdmin || account.isOwnerIdentity) accountButton.title = "The configured super-admin account cannot be changed.";
             accountButton.addEventListener("click", () => updateAccountStatus(account, accountButton));
             actions.append(accountButton);
+            if (!account.isSuperAdmin && !account.isOwnerIdentity && account.role !== "sandbox" && account.emailVerified) {
+                const roleButton = document.createElement("button");
+                roleButton.type = "button";
+                roleButton.className = "account-action is-reactivate";
+                roleButton.textContent = account.role === "moderator" ? "Remove moderator" : "Make moderator";
+                roleButton.addEventListener("click", () => updateRole(account, roleButton));
+                actions.append(roleButton);
+            }
             row.append(actions);
             return row;
         }
@@ -231,6 +273,7 @@
                 });
                 queueStatus.textContent = result.message;
                 await loadAccounts(true);
+                await loadAccountAudit();
             } catch (error) {
                 button.disabled = false;
                 queueStatus.classList.add("is-error");
@@ -256,6 +299,7 @@
                 });
                 queueStatus.textContent = result.message;
                 await loadAccounts(true);
+                await loadAccountAudit();
             } catch (error) {
                 button.disabled = false;
                 queueStatus.classList.add("is-error");
@@ -263,10 +307,63 @@
             }
         }
 
+        async function updateRole(account, button) {
+            const role = account.role === "moderator" ? "customer" : "moderator";
+            if (!window.confirm(`${role === "moderator" ? "Grant moderator access to" : "Remove moderator access from"} ${account.name || account.email}?`)) return;
+            button.disabled = true;
+            queueStatus.classList.remove("is-error");
+            queueStatus.textContent = "Updating account role...";
+            try {
+                await requestJson(`/api/admin/users/${encodeURIComponent(account.id)}/role`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ role })
+                });
+                queueStatus.textContent = role === "moderator" ? "Moderator access granted." : "Moderator access removed.";
+                await loadAccounts(true);
+            } catch (error) {
+                button.disabled = false;
+                queueStatus.classList.add("is-error");
+                queueStatus.textContent = error.message || "Account role could not be updated.";
+            }
+        }
+
+        async function loadAccountAudit() {
+            try {
+                const { events } = await requestJson("/api/admin/account-audit");
+                accountAuditList.replaceChildren();
+                if (!events.length) {
+                    accountAuditList.textContent = "No account or seller access actions recorded yet.";
+                    return;
+                }
+                for (const event of events) {
+                    const row = document.createElement("article");
+                    row.className = "audit-event";
+                    const action = document.createElement("strong");
+                    action.textContent = event.action.replaceAll("_", " ");
+                    const timestamp = document.createElement("time");
+                    timestamp.dateTime = event.createdAt;
+                    timestamp.textContent = new Date(event.createdAt).toLocaleString();
+                    const target = document.createElement("span");
+                    target.textContent = `${event.targetLabel || "Account"} · ID ${event.targetId}`;
+                    const actor = document.createElement("span");
+                    actor.className = "audit-actor";
+                    actor.textContent = event.actor.type === "system"
+                        ? "Automated system"
+                        : `Administrator: ${event.actor.name} (${event.actor.email || "email unavailable"}) · ID ${event.actor.id}`;
+                    row.append(action, timestamp, target, actor);
+                    accountAuditList.append(row);
+                }
+            } catch (error) {
+                accountAuditList.textContent = error.message || "Account audit history could not be loaded.";
+            }
+        }
+
         document.querySelector("#account-filters").addEventListener("submit", (event) => {
             event.preventDefault();
             currentPage = 1;
             loadAccounts();
+            loadAccountAudit();
         });
         statusFilter.addEventListener("change", () => {
             currentPage = 1;

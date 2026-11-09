@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f4f1e8">
+    <title>Help & support | Z Namibia</title>
+    <style>
+        :root { color-scheme: light; --ink: #17231e; --forest: #18382e; --muted: #69736d; --paper: #f4f1e8; --white: #fffefa; --lime: #d8f36a; --line: #d8d8ce; --orange: #b65b22; }
+        * { box-sizing: border-box; }
+        body { margin: 0; color: var(--ink); background: var(--paper); font-family: "Segoe UI", Arial, sans-serif; }
+        a { color: var(--forest); }
+        .site-header { display: flex; min-height: 68px; align-items: center; justify-content: space-between; gap: 20px; padding: 12px max(24px, calc((100% - 1120px) / 2)); color: var(--white); background: var(--forest); }
+        .brand { display: flex; align-items: center; gap: 10px; color: var(--white); font-family: Georgia, "Times New Roman", serif; font-size: 19px; text-decoration: none; }
+        .brand-mark { display: grid; width: 34px; aspect-ratio: 1; place-items: center; border: 1px solid currentColor; border-radius: 50%; font-size: 20px; }
+        nav { display: flex; flex-wrap: wrap; gap: 18px; }
+        nav a { color: var(--white); font-size: 12px; font-weight: 700; text-decoration: none; }
+        nav a:hover { text-decoration: underline; }
+        main { width: min(100% - 48px, 1000px); margin: 0 auto; padding: 46px 0 72px; }
+        .eyebrow { margin: 0 0 10px; color: var(--orange); font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+        h1, h2 { font-family: Georgia, "Times New Roman", serif; font-weight: 400; }
+        h1 { margin: 0; font-size: 42px; }
+        .intro { max-width: 650px; margin: 12px 0 34px; color: var(--muted); font-size: 14px; line-height: 1.65; }
+        .support-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, .85fr); gap: 34px; align-items: start; }
+        .faq, .contact { padding: 24px; border: 1px solid var(--line); background: var(--white); }
+        h2 { margin: 0 0 18px; font-size: 26px; }
+        details { padding: 14px 0; border-top: 1px solid var(--line); }
+        summary { color: var(--forest); cursor: pointer; font-size: 13px; font-weight: 700; }
+        details p { margin: 10px 0 0; color: var(--muted); font-size: 12px; line-height: 1.65; }
+        .contact > p { margin: -7px 0 18px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+        form { display: grid; gap: 13px; }
+        label { display: grid; gap: 6px; color: var(--ink); font-size: 12px; font-weight: 700; }
+        select, textarea, input[type="text"] { width: 100%; min-height: 40px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: var(--white); font: inherit; font-size: 12px; }
+        textarea { min-height: 118px; resize: vertical; }
+        button { min-height: 42px; border: 1px solid var(--ink); border-radius: 3px; color: var(--white); background: var(--ink); cursor: pointer; font-size: 12px; font-weight: 700; }
+        button:disabled { opacity: .6; cursor: wait; }
+        .form-status, .ticket-status { min-height: 18px; margin: 0; color: var(--forest); font-size: 12px; line-height: 1.6; }
+        .form-status.is-error { color: #a12727; }
+        .sign-in-note { padding: 12px; border-left: 2px solid var(--orange); background: var(--paper); color: var(--muted); font-size: 12px; line-height: 1.6; }
+        .tickets { margin-top: 22px; }
+        .tickets h3 { margin: 0 0 10px; font-size: 14px; }
+        .ticket { padding: 11px 0; border-top: 1px solid var(--line); }
+        .ticket-heading { display: flex; justify-content: space-between; gap: 10px; font-size: 11px; font-weight: 700; text-transform: capitalize; }
+        .ticket p { margin: 6px 0 0; color: var(--muted); font-size: 11px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .ticket time { color: var(--muted); font-size: 10px; font-weight: 400; text-transform: none; }
+        [hidden] { display: none !important; }
+        @media (max-width: 720px) {
+            .site-header { align-items: flex-start; padding: 12px 18px; }
+            nav { justify-content: flex-end; gap: 10px; }
+            main { width: calc(100% - 36px); padding-top: 32px; }
+            h1 { font-size: 34px; }
+            .support-layout { grid-template-columns: 1fr; gap: 18px; }
+            .faq, .contact { padding: 19px; }
+        }
+    </style>
+</head>
+<body>
+    <header class="site-header">
+        <a class="brand" href="/marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Namibia</span></a>
+        <nav aria-label="Main navigation"><a href="/marketplace">Marketplace</a><a href="/shops">Shops</a><a href="/dashboard">My account</a></nav>
+    </header>
+    <main>
+        <p class="eyebrow">Help centre</p>
+        <h1>How can we help?</h1>
+        <p class="intro">Find answers to common questions or send the Z team a support request. Financial and identity cases are visible only to the Super Admin; general marketplace questions are handled by the moderator team.</p>
+        <div class="support-layout">
+            <section class="faq" aria-labelledby="faq-title">
+                <h2 id="faq-title">Frequently asked questions</h2>
+                <details>
+                    <summary>Where is my order?</summary>
+                    <p>Sign in and open Orders in your account to review the latest order information. For a delivery delay or an order issue, submit a request under Order & delivery or General buyer dispute.</p>
+                </details>
+                <details>
+                    <summary>How do I update a listing or my shop?</summary>
+                    <p>Use your seller dashboard to manage product details and storefront information. If you have trouble uploading pictures or editing a listing, choose Listing & storefront help.</p>
+                </details>
+                <details>
+                    <summary>Who can help with a payout, fee, or payment problem?</summary>
+                    <p>Choose the matching financial topic in the form. These requests are routed to the Super Admin and are not available in the moderator inbox.</p>
+                </details>
+                <details>
+                    <summary>Where should I ask about verification or a suspended shop?</summary>
+                    <p>Choose the relevant verification or account topic. These requests are private to the Super Admin. Do not include passwords or full payment-card details in a support message.</p>
+                </details>
+                <details id="account-suspension">
+                    <summary>What should I do if my whole account is suspended?</summary>
+                    <p>You cannot access your account while the suspension is active. Use the <a href="/account-suspended">suspension appeal page</a> and sign in with the suspended account to verify ownership. The page checks for an existing request and tells you if it is still awaiting review, so you do not need to submit it again. Receipt is not approval and does not restore access.</p>
+                </details>
+                <details>
+                    <summary>How can I check a previous support request?</summary>
+                    <p>Sign in with the account used to submit it. Your requests and any response from Z appear below the support form.</p>
+                </details>
+            </section>
+            <section class="contact" aria-labelledby="contact-title">
+                <h2 id="contact-title">Contact support</h2>
+                <p>Choose the topic that best describes your issue so it reaches the right team. Do not include passwords, full bank or card numbers, or identity documents in your message.</p>
+                <p class="sign-in-note" id="sign-in-note" hidden>Sign in to send a request and view your support history. <a id="sign-in-link" href="/login?returnTo=%2Fsupport">Sign in</a></p>
+                <form id="support-form">
+                    <label for="support-order">Order number (optional)
+                        <input id="support-order" name="orderNumber" maxlength="40" autocomplete="off" type="text">
+                    </label>
+                    <label for="support-topic">Support topic
+                        <select id="support-topic" name="topic" required>
+                            <optgroup label="General marketplace support">
+                                <option value="delivery">Order & delivery tracking</option>
+                                <option value="listing_storefront">Listing & storefront help</option>
+                                <option value="platform_navigation">Platform navigation or account settings</option>
+                                <option value="item_issue">General buyer dispute (wrong item, size, or color)</option>
+                                <option value="other">Other general marketplace question</option>
+                            </optgroup>
+                            <optgroup label="Financial & payout support — Super Admin only">
+                                <option value="delayed_payout">Delayed vendor payout</option>
+                                <option value="banking_details">Payout bank detail update</option>
+                                <option value="fee_commission">Fee or commission inquiry</option>
+                                <option value="transaction_failure">Payment failure or checkout timeout</option>
+                            </optgroup>
+                            <optgroup label="Verification & identity support — Super Admin only">
+                                <option value="rejected_business_application">Rejected business application</option>
+                                <option value="document_upload_failure">Business document upload failure</option>
+                                <option value="account_reinstatement">Suspended account reinstatement appeal</option>
+                            </optgroup>
+                        </select>
+                    </label>
+                    <label for="support-message">Describe the issue
+                        <textarea id="support-message" name="message" minlength="10" maxlength="1500" required placeholder="Include helpful details, but never send passwords or full card details."></textarea>
+                    </label>
+                    <button id="support-submit" type="submit">Send support request</button>
+                    <p class="form-status" id="form-status" role="status" aria-live="polite"></p>
+                </form>
+                <section class="tickets" id="tickets-section" aria-labelledby="tickets-title" hidden>
+                    <h3 id="tickets-title">Your requests</h3>
+                    <p class="ticket-status" id="ticket-status" role="status" aria-live="polite"></p>
+                    <div id="ticket-list"></div>
+                </section>
+            </section>
+        </div>
+    </main>
+    <script>
+        const form = document.querySelector("#support-form");
+        const formStatus = document.querySelector("#form-status");
+        const submitButton = document.querySelector("#support-submit");
+        const signInNote = document.querySelector("#sign-in-note");
+        const ticketsSection = document.querySelector("#tickets-section");
+        const ticketStatus = document.querySelector("#ticket-status");
+        const ticketList = document.querySelector("#ticket-list");
+        let isSignedIn = false;
+
+        function renderRequests(requests) {
+            ticketList.replaceChildren();
+            if (!requests.length) {
+                ticketStatus.textContent = "You have not sent a support request yet.";
+                return;
+            }
+            ticketStatus.textContent = "";
+            requests.forEach((request) => {
+                const ticket = document.createElement("article");
+                ticket.className = "ticket";
+                const heading = document.createElement("div");
+                heading.className = "ticket-heading";
+                const topic = document.createElement("span");
+                topic.textContent = `${request.orderNumber ? `Order ${request.orderNumber} · ` : ""}${request.topic.replaceAll("_", " ")}`;
+                const status = document.createElement("span");
+                status.textContent = request.status.replaceAll("_", " ");
+                const created = document.createElement("time");
+                created.dateTime = request.createdAt;
+                created.textContent = new Date(request.createdAt).toLocaleString();
+                heading.append(topic, status, created);
+                const message = document.createElement("p");
+                message.textContent = request.message;
+                ticket.append(heading, message);
+                if (request.adminResponse) {
+                    const response = document.createElement("p");
+                    response.textContent = `Z support: ${request.adminResponse}`;
+                    ticket.append(response);
+                }
+                ticketList.append(ticket);
+            });
+        }
+
+        async function loadRequests() {
+            const response = await fetch("/api/support/requests/mine");
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || "Could not load your support requests.");
+            renderRequests(result.requests || []);
+        }
+
+        fetch("/api/auth/me")
+            .then(async (response) => {
+                if (response.status === 401) return null;
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || "Could not check your account.");
+                return result.user;
+            })
+            .then(async (user) => {
+                isSignedIn = Boolean(user);
+                if (!isSignedIn) {
+                    signInNote.hidden = false;
+                    form.querySelectorAll("select, textarea, input, button").forEach((control) => { control.disabled = true; });
+                    return;
+                }
+                ticketsSection.hidden = false;
+                try {
+                    await loadRequests();
+                } catch (error) {
+                    ticketStatus.textContent = error.message;
+                }
+            })
+            .catch((error) => {
+                formStatus.textContent = error.message;
+                formStatus.classList.add("is-error");
+            });
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            if (!isSignedIn) return;
+            submitButton.disabled = true;
+            formStatus.classList.remove("is-error");
+            formStatus.textContent = "Sending request...";
+            try {
+                const response = await fetch("/api/support/requests", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        topic: form.elements.topic.value,
+                        message: form.elements.message.value,
+                        orderNumber: form.elements.orderNumber.value
+                    })
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || "Could not send your request.");
+                form.reset();
+                formStatus.textContent = result.notificationWarning || "Your request was sent. You can follow its status below.";
+                if (result.notificationWarning) formStatus.classList.add("is-error");
+                try {
+                    await loadRequests();
+                } catch (error) {
+                    ticketStatus.textContent = error.message;
+                }
+            } catch (error) {
+                formStatus.textContent = error.message;
+                formStatus.classList.add("is-error");
+            } finally {
+                submitButton.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
