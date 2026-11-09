@@ -24,10 +24,14 @@
         .profile { padding-top: 20px; border-top: 1px solid var(--ink); }
         .profile-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; }
         .shop-name { margin: 0; font-family: Georgia, serif; font-size: 25px; font-weight: 400; overflow-wrap: anywhere; }
-        .cover-photo { margin-top: 20px; padding: 16px; border: 1px solid var(--line); background: var(--white); }
-        .cover-photo h3 { margin: 0 0 10px; font-family: Georgia, serif; font-size: 18px; font-weight: 400; }
-        .cover-photo-preview { display: block; width: 100%; max-height: 300px; aspect-ratio: 16 / 9; object-fit: cover; background: #e4ecc9; }
-        .cover-photo-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 12px; }
+        .cover-photo { display: flex; align-items: center; gap: 18px; margin-top: 18px; padding: 18px 22px; border: 1px solid var(--line); background: var(--white); }
+        .cover-photo-avatar { position: relative; display: grid; width: 88px; height: 88px; flex: 0 0 88px; overflow: hidden; place-items: center; border: 1px solid var(--line); border-radius: 50%; color: var(--lime); background: var(--forest); font-family: Georgia, serif; font-size: 40px; }
+        .cover-photo-preview { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
+        .cover-photo-preview[hidden] { display: none; }
+        .cover-photo-content { min-width: 0; flex: 1 1 auto; }
+        .cover-photo h3 { margin: 0; font-family: Georgia, serif; font-size: 19px; font-weight: 400; }
+        .cover-photo-hint { margin: 5px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+        .cover-photo-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 10px; }
         .cover-photo-input { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
         .cover-photo-button { display: inline-flex; min-height: 40px; align-items: center; padding: 0 12px; border: 1px solid var(--ink); border-radius: 3px; color: var(--white); background: var(--ink); cursor: pointer; font-size: 10px; font-weight: 700; }
         .cover-photo-button:hover { color: var(--ink); background: var(--lime); }
@@ -48,6 +52,10 @@
         .verification-status.verified::before { background: #39804e; }
         .verification-status.pending { color: #805a24; }
         .verification-status.pending::before { background: #d99a1b; }
+        .verification-status.not-verified { color: var(--warning); font-weight: 700; }
+        .verification-status.not-verified::before { background: var(--warning); }
+        .verification-status.rejected { color: var(--warning); font-weight: 700; }
+        .verification-status.rejected::before { background: var(--warning); }
         .profile-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
         .profile-actions a { display: inline-flex; min-height: 40px; align-items: center; padding: 0 12px; border: 1px solid var(--ink); border-radius: 3px; font-size: 10px; font-weight: 700; text-decoration: none; }
         .profile-actions a.primary { color: var(--white); background: var(--ink); }
@@ -56,7 +64,65 @@
         .loading, .error { color: var(--muted); font-size: 12px; }
         .error { color: var(--warning); }
         [hidden] { display: none !important; }
-        @media (max-width: 540px) { .site-header { min-height: 64px; padding: 10px 18px; } .header-links { gap: 12px; font-size: 10px; } main { width: calc(100% - 36px); padding-top: 33px; } h1 { font-size: 34px; } .profile-fields { grid-template-columns: 1fr; } .profile-fields .wide { grid-column: auto; } }
+        main { width: min(1920px, calc(100% - clamp(48px, 5vw, 120px))); padding: 46px 0 80px; }
+        main > .eyebrow, main > h1, main > .intro, main > .loading, main > .error, .profile { width: min(1120px, 100%); margin-right: auto; margin-left: auto; }
+        h1 { font-size: clamp(38px, 4vw, 52px); letter-spacing: -0.035em; }
+        main > .intro { max-width: 720px; margin-top: 12px; margin-bottom: 30px; font-size: 14px; }
+        .loading, .error { padding: 18px 20px; border: 1px solid var(--line); background: var(--white); line-height: 1.6; }
+        .profile { padding: 0; border: 0; }
+        .profile-header { min-height: 104px; padding: 22px 26px; border: 1px solid var(--line); background: var(--white); }
+        .profile-identity { min-width: 0; }
+        .profile-identity .eyebrow { margin-bottom: 6px; }
+        .shop-name { font-size: clamp(26px, 3vw, 34px); }
+        .verified-badge { border-radius: 999px; padding: 8px 12px; }
+        .profile-header-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+        .profile-header-actions a { display: inline-flex; min-height: 40px; align-items: center; padding: 0 14px; border: 1px solid var(--line); border-radius: 3px; font-size: 11px; font-weight: 700; text-decoration: none; }
+        .profile-header-actions a:hover { border-color: var(--forest); background: #edf2e2; }
+        .profile-header-actions a:focus-visible { outline: 2px solid #397d54; outline-offset: 3px; }
+        .cover-photo { margin-top: 18px; padding: 18px 22px; }
+        .cover-photo-avatar { width: 88px; height: 88px; }
+        .cover-photo-button { min-height: 36px; border-radius: 3px; font-size: 11px; }
+        .cover-photo-message { flex: 1 1 220px; }
+        .profile-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 18px 0 0; }
+        .profile-fields div { min-height: 86px; padding: 16px 18px; border: 1px solid var(--line); background: var(--white); }
+        .profile-fields dt { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+        .profile-fields dd { margin-top: 8px; font-size: 14px; }
+        .profile-fields .wide { min-height: 110px; grid-column: 1 / -1; }
+        .profile-fields .wide dd { max-width: 900px; color: var(--muted); line-height: 1.75; }
+        .verification-status { padding: 6px 9px; border-radius: 999px; background: #f1f2ed; font-size: 10px; }
+        .verification-status.verified { background: #e8efdf; }
+        .verification-status.pending { background: #fbf1d9; }
+        .verification-status.not-verified,
+        .verification-status.rejected { background: #f8e8e4; }
+        .profile-fields dd a { color: var(--forest); font-weight: 700; text-underline-offset: 3px; }
+        .profile-actions { gap: 12px; margin-top: 18px; }
+        .profile-actions a { min-height: 44px; padding: 0 16px; border-radius: 3px; font-size: 11px; }
+        .profile-actions a:not(.primary) { border-color: var(--line); background: var(--white); }
+        .profile-actions a:not(.primary):hover { border-color: var(--forest); background: #edf2e2; }
+        @media (max-width: 760px) {
+            main { width: calc(100% - 36px); padding-top: 34px; }
+            .profile-header { padding: 18px; }
+            .cover-photo { padding: 14px; }
+            .cover-photo-avatar { width: 72px; height: 72px; flex-basis: 72px; font-size: 34px; }
+            .profile-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @media (max-width: 540px) {
+            .site-header { flex-wrap: wrap; padding: 12px 18px; }
+            .header-links { width: 100%; justify-content: flex-start; }
+            main { width: calc(100% - 32px); padding-top: 28px; }
+            h1 { font-size: 36px; }
+            main > .intro { font-size: 12px; }
+            .profile-header { align-items: flex-start; flex-direction: column; padding: 16px; }
+            .profile-header-actions { width: 100%; }
+            .cover-photo { padding: 10px; }
+            .cover-photo { align-items: flex-start; gap: 12px; padding: 13px; }
+            .cover-photo-avatar { width: 62px; height: 62px; flex-basis: 62px; font-size: 30px; }
+            .cover-photo-controls { align-items: flex-start; gap: 8px; }
+            .profile-fields { grid-template-columns: 1fr; gap: 9px; }
+            .profile-fields .wide { grid-column: auto; }
+            .profile-actions { display: grid; grid-template-columns: 1fr; }
+            .profile-actions a { justify-content: center; }
+        }
     </style>
     <link rel="stylesheet" href="/loading.css">
     <script src="/loading.js"></script>
@@ -73,29 +139,39 @@
         <p class="loading" id="loading" role="status">Loading seller profile...</p>
         <section class="profile" id="profile" hidden aria-labelledby="shop-name">
             <div class="profile-header">
-                <h2 class="shop-name" id="shop-name"></h2>
-                <span class="verified-badge" id="verified-badge" hidden><span aria-hidden="true">&#10003;</span> Business verified</span>
+                <div class="profile-identity">
+                    <p class="eyebrow">Storefront identity</p>
+                    <h2 class="shop-name" id="shop-name"></h2>
+                </div>
+                <div class="profile-header-actions">
+                    <span class="verified-badge" id="verified-badge" hidden><span aria-hidden="true">&#10003;</span> Business verified</span>
+                    <a id="public-shop-link" href="/shops">View public storefront</a>
+                </div>
             </div>
             <section class="cover-photo" aria-labelledby="cover-photo-title">
-                <h3 id="cover-photo-title">Storefront cover photo</h3>
-                <img class="cover-photo-preview" id="cover-photo-preview" src="/z-storefront.png" alt="Storefront cover preview">
-                <div class="cover-photo-controls">
-                    <input class="cover-photo-input" id="cover-photo-input" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose a new storefront cover photo">
-                    <label class="cover-photo-button" for="cover-photo-input" id="cover-photo-button">Change cover photo</label>
-                    <p class="cover-photo-message" id="cover-photo-message" role="status" aria-live="polite"></p>
+                <span class="cover-photo-avatar" role="img" aria-label="Business profile photo">
+                    Z
+                    <img class="cover-photo-preview" id="cover-photo-preview" alt="" hidden>
+                </span>
+                <div class="cover-photo-content">
+                    <h3 id="cover-photo-title">Business profile photo</h3>
+                    <p class="cover-photo-hint">This round photo represents your shop in the seller navigation.</p>
+                    <div class="cover-photo-controls">
+                        <input class="cover-photo-input" id="cover-photo-input" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose a new business profile photo">
+                        <label class="cover-photo-button" for="cover-photo-input" id="cover-photo-button">Change photo</label>
+                        <p class="cover-photo-message" id="cover-photo-message" role="status" aria-live="polite"></p>
+                    </div>
                 </div>
-                <p class="intro">Choose a JPG, PNG, or WebP image up to 5 MB.</p>
             </section>
             <dl class="profile-fields">
                 <div><dt>Business town</dt><dd id="shop-town"></dd></div>
                 <div><dt>On Z since</dt><dd id="member-since"></dd></div>
-                <div class="wide"><dt>About the shop</dt><dd id="shop-description"></dd></div>
                 <div><dt>Business verification</dt><dd><span class="verification-status" id="verification-status">Not submitted</span></dd></div>
-                <div><dt>Public storefront</dt><dd><a id="public-shop-link" href="/shops">View shop</a></dd></div>
+                <div class="wide"><dt>About the shop</dt><dd id="shop-description"></dd></div>
             </dl>
             <div class="profile-actions">
                 <a class="primary" href="/sell/dashboard">Manage seller dashboard</a>
-                <a href="/sell/verification">Business verification</a>
+                <a id="business-verification-link" href="/sell/verification">Business verification</a>
             </div>
         </section>
         <p class="error" id="error-message" role="alert" hidden></p>
@@ -107,10 +183,14 @@
         const coverPhotoInput = document.querySelector("#cover-photo-input");
         const coverPhotoButton = document.querySelector("#cover-photo-button");
         const coverPhotoPreview = document.querySelector("#cover-photo-preview");
+        const coverPhotoFallback = document.querySelector(".cover-photo-avatar");
         const coverPhotoMessage = document.querySelector("#cover-photo-message");
 
-        async function requestJson(url) {
-            const response = await fetch(url);
+        coverPhotoPreview.addEventListener("load", () => { coverPhotoPreview.hidden = false; });
+        coverPhotoPreview.addEventListener("error", () => { coverPhotoPreview.hidden = true; });
+
+        async function requestJson(url, options) {
+            const response = await fetch(url, options);
             let result;
             try { result = await response.json(); } catch { throw new Error("The server returned an invalid response."); }
             if (!response.ok) throw new Error(result.error || "Could not load seller profile.");
@@ -125,7 +205,8 @@
                 const shop = shopResult.shop;
                 const verification = verificationResult.verification;
                 if (typeof shop.coverImageUrl === "string" && shop.coverImageUrl) coverPhotoPreview.src = shop.coverImageUrl;
-                coverPhotoPreview.alt = `${shop.name} storefront cover`;
+                else coverPhotoFallback.firstChild.textContent = shop.name.trim().charAt(0).toLocaleUpperCase();
+                coverPhotoFallback.setAttribute("aria-label", `${shop.name} business profile photo`);
                 document.querySelector("#shop-name").textContent = shop.name;
                 document.querySelector("#shop-town").textContent = `${shop.town}, Namibia`;
                 document.querySelector("#member-since").textContent = shop.createdAt ? new Date(shop.createdAt).getUTCFullYear() : "—";
@@ -134,15 +215,19 @@
                 publicShopLink.href = `/shops/${encodeURIComponent(shop.slug)}`;
                 const status = document.querySelector("#verification-status");
                 const labels = {
-                    not_submitted: "Not submitted",
+                    not_submitted: "Not verified",
                     pending: "Under review",
                     verified: "Business verified",
                     rejected: "Action needed"
                 };
-                status.textContent = labels[verification.kycStatus] || "Not submitted";
+                status.textContent = labels[verification.kycStatus] || "Not verified";
                 status.classList.toggle("verified", verification.kycStatus === "verified");
                 status.classList.toggle("pending", verification.kycStatus === "pending");
-                document.querySelector("#verified-badge").hidden = verification.kycStatus !== "verified";
+                status.classList.toggle("not-verified", !["verified", "pending", "rejected"].includes(verification.kycStatus));
+                status.classList.toggle("rejected", verification.kycStatus === "rejected");
+                const isVerified = verification.kycStatus === "verified";
+                document.querySelector("#verified-badge").hidden = !isVerified;
+                document.querySelector("#business-verification-link").hidden = isVerified;
                 profile.hidden = false;
             } catch (error) {
                 if (error.message.includes("Sign in")) {
@@ -171,7 +256,7 @@
             }
 
             coverPhotoButton.classList.add("is-disabled");
-            coverPhotoButton.textContent = "Uploading cover...";
+            coverPhotoButton.textContent = "Uploading photo...";
             coverPhotoMessage.textContent = "";
             try {
                 const upload = new FormData();
@@ -191,14 +276,18 @@
                     body: JSON.stringify({ coverImageUrl: uploadResult.imageUrl })
                 });
                 coverPhotoPreview.src = uploadResult.imageUrl;
-                coverPhotoMessage.textContent = "Storefront cover photo saved.";
+                coverPhotoPreview.hidden = false;
+                document.querySelectorAll(".seller-account-avatar img").forEach((avatarImage) => {
+                    avatarImage.src = uploadResult.imageUrl;
+                });
+                coverPhotoMessage.textContent = "Business profile photo saved.";
                 coverPhotoMessage.classList.add("success");
             } catch (error) {
-                coverPhotoMessage.textContent = error.message || "Could not save the storefront photo.";
+                coverPhotoMessage.textContent = error.message || "Could not save the business profile photo.";
             } finally {
                 coverPhotoInput.value = "";
                 coverPhotoButton.classList.remove("is-disabled");
-                coverPhotoButton.textContent = "Change cover photo";
+                coverPhotoButton.textContent = "Change photo";
             }
         });
 

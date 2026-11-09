@@ -13,40 +13,63 @@
         button, input, select { font: inherit; }
         .site-header { display: flex; min-height: 72px; align-items: center; justify-content: space-between; gap: 18px; padding: 12px max(24px, calc((100vw - 1040px) / 2)); border-bottom: 1px solid var(--line); }
         .header-left, .header-links { display: flex; align-items: center; gap: 14px; }
+        .back-link { display: inline-grid; width: 28px; height: 28px; place-items: center; border: 1px solid var(--ink); border-radius: 50%; text-decoration: none; font-size: 18px; }
         .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
         .brand-mark { display: grid; width: 36px; aspect-ratio: 1; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; font-family: Georgia, serif; font-size: 22px; }
         .header-links { gap: 18px; font-size: 11px; font-weight: 700; }
         .header-links a { text-decoration: none; }
-        main { width: min(680px, calc(100% - 40px)); margin: 0 auto; padding: 42px 0 70px; }
+        main { width: min(1920px, calc(100% - clamp(48px, 5vw, 120px))); margin: 0 auto; padding: 46px 0 80px; }
+        main > .eyebrow, main > h1, main > .intro, main > .loading, main > .error, .verification-card { width: min(1120px, 100%); margin-right: auto; margin-left: auto; }
         .eyebrow { margin: 0 0 10px; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
         h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 38px; font-weight: 400; line-height: 1.1; }
-        .intro { margin: 10px 0 26px; color: var(--muted); font-size: 12px; line-height: 1.65; }
-        .verification-card { padding-top: 20px; border-top: 1px solid var(--ink); }
-        .shop-name { margin: 0 0 18px; font-family: Georgia, serif; font-size: 20px; font-weight: 400; }
-        .status { margin: 0 0 20px; padding: 12px 14px; border-left: 3px solid var(--forest); background: #e8ebdd; font-size: 11px; line-height: 1.6; }
-        .status.error { border-color: var(--warning); background: #f6e8e2; color: #54281f; }
-        .field { margin-bottom: 17px; }
-        label { display: block; margin-bottom: 7px; font-size: 11px; font-weight: 700; }
+        .intro { max-width: 720px; margin: 12px auto 30px; color: var(--muted); font-size: 14px; line-height: 1.65; }
+        h1 { font-size: clamp(38px, 4vw, 52px); letter-spacing: -0.035em; }
+        .verification-card { padding: 0; border: 0; }
+        .verification-header { display: flex; min-height: 104px; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; padding: 22px 26px; border: 1px solid var(--line); background: var(--white); }
+        .verification-identity { min-width: 0; }
+        .verification-identity .eyebrow { margin-bottom: 6px; }
+        .shop-name { margin: 0; font-family: Georgia, serif; font-size: clamp(26px, 3vw, 34px); font-weight: 400; overflow-wrap: anywhere; }
+        .status { max-width: 520px; margin: 0; padding: 8px 12px; border: 1px solid #d9d9cf; border-radius: 999px; color: var(--muted); background: #f1f2ed; font-size: 10px; line-height: 1.5; }
+        .status.verified { border-color: #8da78f; color: #285b3a; background: #e8efdf; }
+        .status.pending { border-color: #e2c987; color: #805a24; background: #fbf1d9; }
+        .status.error { border-color: #dfb2a7; color: #54281f; background: #f6e8e2; }
+        #verification-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 18px; padding: 22px; border: 1px solid var(--line); background: var(--white); }
+        .field { min-width: 0; margin: 0; padding: 16px 18px; border: 1px solid var(--line); background: #fffefa; }
+        .field:last-of-type, .privacy-note, .consent, #verification-form > .submit { grid-column: 1 / -1; }
+        label { display: block; margin-bottom: 7px; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
         input, select { display: block; width: 100%; min-height: 43px; padding: 10px 11px; border: 1px solid var(--line); border-radius: 2px; color: var(--ink); background: var(--white); font-size: 12px; }
         input:focus, select:focus { outline: 2px solid rgba(24, 56, 46, 0.25); border-color: var(--forest); }
+        .document-input { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+        .document-upload { display: flex; min-height: 76px; align-items: center; gap: 12px; margin: 0; padding: 12px; border: 1px dashed #b9c3b4; border-radius: 6px; background: #f7f8f2; cursor: pointer; text-transform: none; letter-spacing: 0; transition: border-color 0.18s ease, background 0.18s ease; }
+        .document-upload:hover, .document-input:focus-visible + .document-upload { border-color: var(--forest); background: #edf2e2; }
+        .document-upload-icon { display: grid; width: 42px; height: 42px; flex: 0 0 42px; place-items: center; border: 1px solid #dce2d2; border-radius: 5px; color: var(--forest); background: var(--white); font-size: 22px; font-weight: 400; }
+        .document-upload-copy { min-width: 0; flex: 1 1 auto; }
+        .document-upload-copy strong, .document-upload-copy span { display: block; }
+        .document-upload-copy strong { color: var(--ink); font-size: 11px; }
+        .document-upload-copy span { margin-top: 4px; color: var(--muted); font-size: 9px; font-weight: 400; line-height: 1.4; }
+        .document-upload-action { display: inline-flex; min-height: 34px; flex: 0 0 auto; align-items: center; justify-content: center; padding: 0 11px; border: 1px solid var(--forest); border-radius: 4px; color: var(--white); background: var(--forest); font-size: 10px; font-weight: 700; }
+        .document-file-name { min-height: 15px; margin: 7px 0 0; color: var(--muted); font-size: 10px; overflow-wrap: anywhere; }
+        .document-file-name.has-file { color: var(--forest); font-weight: 700; }
         .hint { margin: 7px 0 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
-        .privacy-note { margin: 18px 0; padding: 12px 14px; border-left: 3px solid var(--lime); background: #e9edda; color: #3c4741; font-size: 10px; line-height: 1.6; }
-        .consent { display: flex; align-items: flex-start; gap: 9px; margin: 18px 0; font-size: 10px; line-height: 1.5; }
+        .privacy-note { margin: 0; padding: 16px 18px; border: 1px solid #dce2d2; background: #e9edda; color: #3c4741; font-size: 10px; line-height: 1.6; }
+        .consent { display: flex; align-items: flex-start; gap: 9px; margin: 4px 0; font-size: 10px; line-height: 1.5; }
         .consent input { width: 16px; height: 16px; min-height: 16px; flex: 0 0 auto; margin: 0; accent-color: var(--forest); }
-        .submit { min-height: 42px; padding: 0 14px; border: 1px solid var(--ink); border-radius: 3px; color: var(--white); background: var(--ink); cursor: pointer; font-size: 11px; font-weight: 700; }
+        .submit { justify-self: start; min-height: 44px; padding: 0 16px; border: 1px solid var(--ink); border-radius: 3px; color: var(--white); background: var(--ink); cursor: pointer; font-size: 11px; font-weight: 700; }
         .submit:hover { color: var(--ink); background: var(--lime); }
         .submit:disabled { opacity: 0.55; cursor: wait; }
-        .feedback { min-height: 18px; margin: 12px 0 0; color: var(--forest); font-size: 11px; }
-        .loading { color: var(--muted); font-size: 12px; }
+        .feedback { grid-column: 1 / -1; min-height: 18px; margin: 0; color: var(--forest); font-size: 11px; }
+        .loading { width: min(1120px, 100%); margin-right: auto; margin-left: auto; padding: 18px 20px; border: 1px solid var(--line); color: var(--muted); background: var(--white); font-size: 12px; line-height: 1.6; }
+        .error { width: min(1120px, 100%); margin: 0 auto; padding: 18px 20px; border: 1px solid #dfb2a7; color: var(--warning); background: #f6e8e2; font-size: 12px; line-height: 1.6; }
         [hidden] { display: none !important; }
-        @media (max-width: 540px) { .site-header { min-height: 64px; padding: 10px 18px; } .header-links { gap: 12px; font-size: 10px; } main { width: calc(100% - 36px); padding-top: 32px; } h1 { font-size: 33px; } }
+        @media (max-width: 760px) { .verification-header { padding: 18px; } #verification-form { padding: 16px; } }
+        @media (max-width: 540px) { .site-header { min-height: 64px; padding: 10px 18px; } .header-links { gap: 12px; font-size: 10px; } main { width: calc(100% - 36px); padding-top: 34px; } h1 { font-size: 33px; } .verification-header { align-items: flex-start; flex-direction: column; padding: 16px; } #verification-form { grid-template-columns: 1fr; gap: 9px; padding: 12px; } .field, .field:last-of-type, .privacy-note, .consent, #verification-form > .submit, .feedback { grid-column: 1; } .field { padding: 14px; } .status { border-radius: 10px; } }
     </style>
     <link rel="stylesheet" href="/loading.css">
     <script src="/loading.js"></script>
 </head>
 <body>
     <header class="site-header">
-        <div class="header-left"><a href="/sell/dashboard" aria-label="Back to seller dashboard">←</a><a class="brand" href="/marketplace" aria-label="Z Namibia marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Namibia</span></a></div>
+        <div class="header-left"><a class="back-link" href="/sell/dashboard" aria-label="Back to seller dashboard">←</a><a class="brand" href="/marketplace" aria-label="Z Namibia marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Namibia</span></a></div>
         <nav class="header-links" aria-label="Seller navigation"><a href="/sell/profile">Seller profile</a><a href="/sell/dashboard">Seller dashboard</a><a href="/dashboard">Buyer profile</a></nav>
     </header>
     <main>
@@ -55,8 +78,13 @@
         <p class="intro">Submit an official business document for review. Z displays a public verified-business badge only after an administrator approves the submission.</p>
         <p class="loading" id="loading" role="status">Loading verification status...</p>
         <section class="verification-card" id="verification-card" hidden aria-labelledby="shop-name">
-            <h2 class="shop-name" id="shop-name"></h2>
-            <p class="status" id="verification-status" role="status" aria-live="polite"></p>
+            <header class="verification-header">
+                <div class="verification-identity">
+                    <p class="eyebrow">Storefront identity</p>
+                    <h2 class="shop-name" id="shop-name"></h2>
+                </div>
+                <p class="status" id="verification-status" role="status" aria-live="polite"></p>
+            </header>
             <form id="verification-form" hidden>
                 <div class="field">
                     <label for="business-name">Registered business name</label>
@@ -73,7 +101,13 @@
                 </div>
                 <div class="field">
                     <label for="document">Business document</label>
-                    <input id="document" name="document" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" required>
+                    <input class="document-input" id="document" name="document" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" required>
+                    <label class="document-upload" for="document">
+                        <span class="document-upload-icon" aria-hidden="true">&#8593;</span>
+                        <span class="document-upload-copy"><strong>Choose a business document</strong><span>PDF, JPG, PNG, or WebP · up to 10 MB</span></span>
+                        <span class="document-upload-action" id="document-upload-action">Browse files</span>
+                    </label>
+                    <p class="document-file-name" id="document-file-name" role="status" aria-live="polite">No file selected</p>
                     <p class="hint">PDF, JPG, PNG, or WebP. Maximum 10 MB. Do not upload bank/card details or personal identity documents for this business-verification flow.</p>
                 </div>
                 <p class="privacy-note">The document is encrypted on Z’s server and visible only to authorized reviewers. Z deletes the document after a decision; your business name and review status remain on file. Do not submit a document unless you are authorized to share it.</p>
@@ -93,6 +127,16 @@
         const feedback = document.querySelector("#feedback");
         const errorMessage = document.querySelector("#error-message");
         const submitButton = document.querySelector("#submit-button");
+        const documentInput = document.querySelector("#document");
+        const documentFileName = document.querySelector("#document-file-name");
+        const documentUploadAction = document.querySelector("#document-upload-action");
+
+        documentInput.addEventListener("change", () => {
+            const file = documentInput.files?.[0];
+            documentFileName.textContent = file ? file.name : "No file selected";
+            documentFileName.classList.toggle("has-file", Boolean(file));
+            documentUploadAction.textContent = file ? "Change file" : "Browse files";
+        });
 
         async function requestJson(url, options = {}) {
             const response = await fetch(url, options);
@@ -103,6 +147,8 @@
         }
 
         function presentStatus(verification, storageConfigured) {
+            status.classList.toggle("verified", verification.kycStatus === "verified");
+            status.classList.toggle("pending", verification.kycStatus === "pending");
             if (verification.kycStatus === "verified") {
                 status.textContent = "Business verified. The public shop now displays the verified-business badge.";
                 return;

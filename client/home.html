@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#f4f1e8">
     <title>Sign in | Z</title>
+    <link rel="stylesheet" href="/navigation.css">
     <style>
         :root {
             color-scheme: light;
@@ -110,6 +111,20 @@
             font-size: 15px;
             line-height: 1.7;
         }
+
+        .product-stories { position: relative; z-index: 1; width: 100%; max-width: 600px; margin: -24px 0 34px; }
+        .product-stories-heading { margin: 0 0 12px; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+        .product-stories-list { display: flex; gap: 16px; overflow-x: auto; overflow-anchor: none; padding: 3px 2px 8px; scrollbar-width: none; -ms-overflow-style: none; }
+        .product-stories-list::-webkit-scrollbar { display: none; }
+        .product-story { display: grid; flex: 0 0 76px; justify-items: center; gap: 7px; color: var(--ink); text-align: center; text-decoration: none; }
+        .product-story-ring { display: grid; width: 68px; height: 68px; flex: 0 0 68px; padding: 3px; place-items: center; overflow: hidden; border-radius: 50%; background: conic-gradient(from 25deg, var(--forest), var(--lime), #f3a347, var(--forest)); transition: transform 180ms ease; }
+        .product-story:hover .product-story-ring { transform: scale(1.06); }
+        .product-story img, .product-story-fallback { display: block; width: 100%; height: 100%; border: 2px solid var(--lime); border-radius: 50%; object-fit: cover; background: var(--white); }
+        .product-story-fallback { display: grid; place-items: center; }
+        .product-story-fallback { font-family: Georgia, "Times New Roman", serif; font-size: 24px; }
+        .product-story-title { width: 100%; overflow: hidden; font-size: 9px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+        .product-stories-status { margin: 0; font-size: 11px; }
+        .product-story:focus-visible { outline: 2px solid var(--forest); outline-offset: 3px; }
 
         .brand-footer {
             display: flex;
@@ -270,11 +285,17 @@
         }
 
         @media (max-width: 640px) {
-            .page { display: block; }
-            .brand-panel { display: none; }
-            .form-panel { min-height: 100vh; padding: 34px 24px; }
+            .page { display: flex; flex-direction: column; }
+            .brand-panel { min-height: 0; padding: 24px 24px 18px; }
+            .brand-copy { max-width: none; margin: 24px 0 0; padding: 0; }
+            .brand-copy .eyebrow { margin-bottom: 12px; }
+            .brand-copy h1 { font-size: clamp(42px, 11vw, 58px); }
+            .brand-copy p { margin-top: 14px; font-size: 13px; }
+            .product-stories { margin: 22px 0 14px; }
+            .brand-footer { font-size: 9px; }
+            .form-panel { min-height: auto; padding: 34px 24px 80px; }
             .form-wrap { max-width: 430px; }
-            .mobile-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 50px; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+            .mobile-brand { display: none; }
             .mobile-brand .brand-mark { width: 34px; font-size: 21px; }
             .form-wrap h2 { font-size: 38px; }
             .legal { margin-top: 30px; }
@@ -294,6 +315,12 @@
                 <h1>Make space for <span>something</span> good.</h1>
                 <p>Meet Z. Thoughtfully made for the way you want to live, every day.</p>
             </div>
+            <section class="product-stories" aria-label="Featured local products">
+                <h2 class="product-stories-heading">A few good finds</h2>
+                <div class="product-stories-list" id="product-stories-list" aria-live="polite">
+                    <p class="product-stories-status">Finding good things from local shops...</p>
+                </div>
+            </section>
             <div class="brand-footer"><span>New day. New Z.</span><span>Est. for what’s next</span></div>
         </section>
 
@@ -337,6 +364,120 @@
         </section>
     </main>
     <script>
+        const productStoriesList = document.querySelector("#product-stories-list");
+        let productStoriesAnimationFrame = null;
+        let productStoriesLastFrame = null;
+        let productStoriesMotion = 0;
+        let productStoriesPauseTimer = null;
+        let productStoriesPaused = false;
+
+        productStoriesList.addEventListener("pointerenter", () => { productStoriesPaused = true; });
+        productStoriesList.addEventListener("pointerleave", () => {
+            productStoriesPaused = productStoriesList.contains(document.activeElement);
+        });
+        productStoriesList.addEventListener("focusin", () => { productStoriesPaused = true; });
+        productStoriesList.addEventListener("focusout", (event) => {
+            if (!productStoriesList.contains(event.relatedTarget) && !productStoriesList.matches(":hover")) {
+                productStoriesPaused = false;
+            }
+        });
+        productStoriesList.addEventListener("pointerdown", () => {
+            productStoriesPaused = true;
+            window.clearTimeout(productStoriesPauseTimer);
+        });
+        productStoriesList.addEventListener("pointerup", () => {
+            window.clearTimeout(productStoriesPauseTimer);
+            productStoriesPauseTimer = window.setTimeout(() => {
+                productStoriesPaused = productStoriesList.matches(":hover")
+                    || productStoriesList.contains(document.activeElement);
+            }, 4500);
+        });
+
+        function startProductStoriesAutoScroll() {
+            if (productStoriesAnimationFrame || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+            const animate = (timestamp) => {
+                if (productStoriesPaused || document.hidden) {
+                    productStoriesLastFrame = null;
+                } else if (productStoriesList.scrollWidth > productStoriesList.clientWidth) {
+                    if (productStoriesLastFrame !== null) {
+                        productStoriesMotion += Math.min(timestamp - productStoriesLastFrame, 50) * 0.024;
+                        const wholePixels = Math.floor(productStoriesMotion);
+                        if (wholePixels) {
+                            productStoriesList.scrollLeft += wholePixels;
+                            productStoriesMotion -= wholePixels;
+                        }
+                    }
+                    const firstStory = productStoriesList.firstElementChild;
+                    const nextStory = firstStory?.nextElementSibling;
+                    if (firstStory && nextStory) {
+                        const step = nextStory.getBoundingClientRect().left
+                            - firstStory.getBoundingClientRect().left;
+                        if (step > 0 && productStoriesList.scrollLeft >= step) {
+                            productStoriesList.append(firstStory);
+                            productStoriesList.scrollLeft = Math.max(0, productStoriesList.scrollLeft - step);
+                        }
+                    }
+                }
+                productStoriesLastFrame = productStoriesPaused || document.hidden ? null : timestamp;
+                productStoriesAnimationFrame = window.requestAnimationFrame(animate);
+            };
+            productStoriesAnimationFrame = window.requestAnimationFrame(animate);
+        }
+
+        async function loadProductStories() {
+            try {
+                const response = await fetch("/api/products");
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || "Could not load featured products.");
+                const products = (Array.isArray(result.products) ? result.products : [])
+                    .filter((product) => product.imageUrl && product.id && product.title);
+                for (let index = products.length - 1; index > 0; index -= 1) {
+                    const randomIndex = Math.floor(Math.random() * (index + 1));
+                    [products[index], products[randomIndex]] = [products[randomIndex], products[index]];
+                }
+                productStoriesList.replaceChildren();
+                if (!products.length) {
+                    const empty = document.createElement("p");
+                    empty.className = "product-stories-status";
+                    empty.textContent = "Local finds are on their way.";
+                    productStoriesList.append(empty);
+                    return;
+                }
+                products.slice(0, 10).forEach((product) => {
+                    const link = document.createElement("a");
+                    link.className = "product-story";
+                    link.href = `/product/${encodeURIComponent(product.id)}`;
+                    link.setAttribute("aria-label", `View ${product.title}`);
+                    const ring = document.createElement("span");
+                    ring.className = "product-story-ring";
+                    const image = document.createElement("img");
+                    image.src = product.imageUrl;
+                    image.alt = "";
+                    image.loading = "lazy";
+                    image.addEventListener("error", () => {
+                        const fallback = document.createElement("span");
+                        fallback.className = "product-story-fallback";
+                        fallback.setAttribute("aria-hidden", "true");
+                        fallback.textContent = product.title.charAt(0).toUpperCase();
+                        image.replaceWith(fallback);
+                    }, { once: true });
+                    ring.append(image);
+                    const title = document.createElement("span");
+                    title.className = "product-story-title";
+                    title.textContent = product.title;
+                    link.append(ring, title);
+                    productStoriesList.append(link);
+                });
+                startProductStoriesAutoScroll();
+            } catch (error) {
+                console.error("Login product showcase could not be loaded:", error);
+                const failure = document.createElement("p");
+                failure.className = "product-stories-status";
+                failure.textContent = "Product highlights are temporarily unavailable.";
+                productStoriesList.replaceChildren(failure);
+            }
+        }
+
         const form = document.querySelector("#login-form");
         const message = document.querySelector("#form-message");
         const password = document.querySelector("#password");
@@ -357,6 +498,47 @@
         const legal = document.querySelector(".legal");
         let isCreatingAccount = false;
         let isRequestingReset = false;
+        let focusedInputScrollTimer = null;
+
+        function scrollLegalIntoView() {
+            if (!window.matchMedia("(max-width: 640px)").matches) return;
+            window.scrollTo({
+                top: document.documentElement.scrollHeight,
+                behavior: "smooth"
+            });
+        }
+
+        function scheduleLegalScroll() {
+            window.setTimeout(scrollLegalIntoView, 100);
+            window.setTimeout(scrollLegalIntoView, 350);
+        }
+
+        form.addEventListener("focusin", (event) => {
+            if (!(event.target instanceof HTMLInputElement)) return;
+            window.clearTimeout(focusedInputScrollTimer);
+            focusedInputScrollTimer = window.setTimeout(scrollLegalIntoView, 350);
+        });
+        document.querySelectorAll(".form-wrap button").forEach((button) => {
+            button.addEventListener("click", scheduleLegalScroll);
+        });
+        window.addEventListener("resize", () => {
+            if (document.activeElement instanceof HTMLInputElement && form.contains(document.activeElement)) {
+                window.clearTimeout(focusedInputScrollTimer);
+                focusedInputScrollTimer = window.setTimeout(scrollLegalIntoView, 350);
+            }
+        });
+
+        function getLoginReturnPath() {
+            const requestedPath = new URLSearchParams(window.location.search).get("returnTo");
+            if (!requestedPath || !requestedPath.startsWith("/") || requestedPath.startsWith("//") || requestedPath.includes("\\")) {
+                return "/dashboard";
+            }
+            const destination = new URL(requestedPath, window.location.origin);
+            if (destination.origin !== window.location.origin || destination.pathname === "/login" || destination.pathname.startsWith("/login/")) {
+                return "/dashboard";
+            }
+            return `${destination.pathname}${destination.search}${destination.hash}`;
+        }
 
         function updateFormMode() {
             nameField.hidden = !isCreatingAccount;
@@ -424,8 +606,13 @@
                     if (!response.ok) throw new Error(result.error || "Could not request a password reset.");
                     message.textContent = result.message || "If an account exists for that email, password reset instructions will be sent.";
                     if (result.resetUrl) {
+                        const resetUrl = new URL(result.resetUrl, window.location.origin);
+                        const token = resetUrl.searchParams.get("token");
+                        if (!/^[a-f0-9]{64}$/.test(token || "")) {
+                            throw new Error("The server returned an invalid password reset link.");
+                        }
                         const link = document.createElement("a");
-                        link.href = result.resetUrl;
+                        link.href = `/reset-password?token=${encodeURIComponent(token)}`;
                         link.textContent = "Open the reset link";
                         message.append(document.createElement("br"), link);
                     }
@@ -447,21 +634,17 @@
                 const result = await response.json();
                 if (!response.ok) throw new Error(result.error || "Something went wrong. Please try again.");
                 if (isCreatingAccount) {
-                    message.textContent = result.message || "Your account has been created. Verify your email before placing an order.";
-                    if (result.verificationUrl) {
-                        const verificationLink = document.createElement("a");
-                        verificationLink.href = result.verificationUrl;
-                        verificationLink.textContent = "Open verification link";
-                        message.append(document.createElement("br"), verificationLink);
-                    }
-                    const accountLink = document.createElement("a");
-                    accountLink.href = "/dashboard?section=profile";
-                    accountLink.textContent = "Go to your account";
-                    message.append(document.createElement("br"), accountLink);
-                    message.classList.add("success");
+                    const verificationUrl = result.verificationUrl
+                        ? new URL(result.verificationUrl, window.location.origin)
+                        : null;
+                    const token = verificationUrl?.searchParams.get("token");
+                    const verificationPage = token
+                        ? `/verify-email?token=${encodeURIComponent(token)}&confirm=1`
+                        : "/verify-email?pending=1";
+                    window.location.assign(verificationPage);
                     return;
                 }
-                window.location.assign("/dashboard");
+                window.location.assign(getLoginReturnPath());
             } catch (error) {
                 message.textContent = error.message || "Could not reach Z. Check that the server is running and try again.";
             } finally {
@@ -477,6 +660,7 @@
             updateFormMode();
         }
 
+        void loadProductStories();
     </script>
 </body>
 </html>

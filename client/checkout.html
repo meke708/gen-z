@@ -125,6 +125,7 @@
             Your cart is empty or its products are no longer available. <a href="/marketplace">Return to the marketplace.</a>
         </section>
     </main>
+    <script src="/cart-sync.js"></script>
     <script>
         const cartKey = "z_cart";
         const priceFormat = new Intl.NumberFormat("en-NA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -140,12 +141,7 @@
         let quoteRequest = 0;
 
         function readCart() {
-            try {
-                const items = JSON.parse(localStorage.getItem(cartKey) || "[]");
-                return Array.isArray(items) ? items.filter((item) => typeof item.id === "string" && Number.isInteger(item.quantity) && item.quantity > 0 && item.quantity <= 99) : [];
-            } catch {
-                return [];
-            }
+            return window.ZCartSync.readCart();
         }
 
         function money(amount) {
@@ -178,7 +174,7 @@
             const available = products.filter(Boolean);
             if (available.length !== cart.length) {
                 cart = available.map(({ id, quantity }) => ({ id, quantity }));
-                localStorage.setItem(cartKey, JSON.stringify(cart));
+                cart = window.ZCartSync.saveCart(cart);
                 checkoutMessage.textContent = "Unavailable items were removed from your cart. Review the updated cart before continuing.";
             }
             if (!cart.length) {
@@ -302,7 +298,7 @@
             confirmPaymentButton.disabled = true;
             try {
                 const result = await requestJson(`/api/orders/${encodeURIComponent(activeOrder.orderNumber)}/mock-payment`, { method: "POST" });
-                localStorage.removeItem(cartKey);
+                window.ZCartSync.saveCart([]);
                 confirmPaymentButton.hidden = true;
                 paymentMessage.textContent = `${result.message} Your order is recorded for demonstration only.`;
                 paymentMessage.classList.add("success");
@@ -315,7 +311,7 @@
             }
         });
 
-        loadCart().catch((error) => {
+        window.ZCartSync.initialize().then(loadCart).catch((error) => {
             document.querySelector("#empty-state").hidden = false;
             checkoutMessage.textContent = error.message;
         });

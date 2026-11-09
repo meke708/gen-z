@@ -23,28 +23,40 @@
         a { color: inherit; }
 
         .site-header {
+            position: relative;
+            z-index: 20;
             display: flex;
-            min-height: 76px;
+            min-height: 74px;
             align-items: center;
             justify-content: space-between;
-            gap: 20px;
-            padding: 14px max(24px, calc((100vw - 1120px) / 2));
-            border-bottom: 1px solid var(--line);
+            gap: 24px;
+            padding: 12px max(24px, calc((100vw - 1180px) / 2));
+            color: var(--white);
+            border-bottom: 0;
+            background: var(--forest);
         }
 
-        .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
-        .brand-mark { display: grid; width: 36px; aspect-ratio: 1; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; font-family: Georgia, serif; font-size: 22px; letter-spacing: 0; }
-        .header-nav { display: flex; align-items: center; gap: 18px; margin-left: auto; font-size: 12px; font-weight: 700; }
+        .brand { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 10px; color: var(--white); text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+        .brand-mark { display: grid; width: 36px; aspect-ratio: 1; place-items: center; border: 1.5px solid currentColor; border-radius: 50%; font-family: Georgia, serif; font-size: 22px; letter-spacing: 0; }
+        .header-search { display: flex; width: min(440px, 42vw); margin: 0 auto; }
+        .header-search input { width: 100%; min-width: 0; height: 42px; padding: 0 13px; border: 1px solid rgba(255, 254, 250, 0.4); border-right: 0; border-radius: 3px 0 0 3px; outline: none; color: var(--ink); background: var(--white); font: inherit; font-size: 12px; }
+        .header-search input:focus { border-color: var(--lime); }
+        .header-search button { min-width: 74px; border: 1px solid var(--lime); border-radius: 0 3px 3px 0; color: var(--ink); background: var(--lime); cursor: pointer; font-size: 12px; font-weight: 700; }
+        .header-nav { display: flex; flex: 0 0 auto; align-items: center; gap: 18px; font-size: 12px; font-weight: 700; }
         .header-nav a { text-decoration: none; }
         .header-nav a:hover { text-decoration: underline; text-underline-offset: 4px; }
-        .header-nav #my-shop-link { padding: 9px 12px; border: 1px solid var(--ink); border-radius: 3px; }
+        .header-nav #my-shop-link { padding: 9px 12px; border: 1px solid rgba(255, 254, 250, 0.65); border-radius: 3px; }
+        .header-nav .sign-out { min-height: 40px; padding: 0 10px; border: 1px solid rgba(255, 254, 250, 0.65); border-radius: 3px; color: var(--white); background: transparent; cursor: pointer; font-family: "DM Sans", "Trebuchet MS", "Segoe UI", sans-serif; font-size: 13px; font-weight: 600; }
+        .header-nav .sign-out:hover { color: var(--ink); background: var(--lime); }
         .cart-count { display: inline-grid; min-width: 18px; height: 18px; margin-left: 3px; padding: 0 4px; place-items: center; border-radius: 50%; background: var(--lime); font-size: 10px; }
         .header-nav a:focus-visible { outline: 2px solid #397d54; outline-offset: 4px; }
-        .header-account { display: flex; align-items: center; gap: 20px; }
-        .sign-out { padding: 9px 13px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: transparent; cursor: pointer; font-size: 12px; font-weight: 700; }
-        .sign-out:hover { border-color: var(--ink); }
-        .sign-out:focus-visible, .hero-link:focus-visible { outline: 2px solid #397d54; outline-offset: 3px; }
-        .mobile-nav-toggle { display: none; }
+        .header-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 12px; }
+        .cart-icon-link { position: relative; display: grid; width: 40px; height: 40px; place-items: center; color: var(--white); text-decoration: none; }
+        .cart-icon-link svg { width: 22px; height: 22px; }
+        .cart-icon-link .cart-count { position: absolute; top: -2px; right: -4px; margin: 0; color: var(--ink); }
+        .mobile-nav-toggle { display: none; width: 40px; height: 40px; padding: 10px; border: 1px solid rgba(255, 254, 250, 0.4); border-radius: 3px; color: var(--white); background: transparent; cursor: pointer; }
+        .mobile-nav-toggle span { display: block; height: 2px; margin: 3px 0; background: currentColor; }
+        .mobile-nav-toggle:focus-visible, .sign-out:focus-visible, .hero-link:focus-visible { outline: 2px solid var(--lime); outline-offset: 3px; }
 
         main { width: min(1120px, calc(100% - 48px)); margin: 0 auto; }
         .welcome { padding: 52px 0 28px; }
@@ -67,6 +79,7 @@
         .sidebar-nav button:disabled { color: #858b86; cursor: not-allowed; }
         .sidebar-nav button:disabled:hover { background: transparent; }
         .sidebar-nav button span:first-child { width: 20px; color: var(--forest); text-align: center; }
+        .sidebar-nav .notification-count { display: inline-grid; min-width: 20px; height: 20px; margin-left: auto; padding: 0 6px; place-items: center; border-radius: 999px; color: var(--white); background: #b65b22; font-size: 10px; font-weight: 700; line-height: 1; }
         .sidebar-nav button:disabled span:first-child { color: #858b86; }
         .sidebar-nav .nav-note { width: auto !important; margin-left: auto; color: var(--muted); font-size: 10px; font-weight: 400; text-align: right; }
         .sidebar-admin-tools { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
@@ -93,6 +106,8 @@
         .verification-status .account-action { min-height: 36px; }
         .account-feedback { min-height: 20px; margin: 0; color: var(--forest); font-size: 13px; }
         .account-feedback.is-error { color: #8b3b2f; }
+        .seller-access-notice { margin: 14px 0 18px !important; padding: 12px; border-left: 3px solid #d9772f; color: var(--ink) !important; background: #f7f5ee; font-size: 13px; line-height: 1.6; }
+        .seller-access-notice[hidden] { display: none; }
         .referral-card { max-width: 620px; padding: 20px; border: 1px solid var(--line); background: #f7f5ee; }
         .referral-card label { display: block; margin: 14px 0 7px; font-size: 12px; font-weight: 700; }
         .referral-controls { display: flex; gap: 8px; }
@@ -101,6 +116,23 @@
         .feature-unavailable { max-width: 600px; padding: 18px; border-left: 3px solid #d9772f; background: #f7f5ee; }
         .feature-unavailable p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.7; }
         .overview-links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+        .login-activity { margin-top: 22px; padding: 18px; border: 1px solid var(--line); background: #f7f5ee; }
+        .login-activity-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+        .login-activity-header h3 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 20px; font-weight: 400; }
+        .login-activity-status { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+        .login-activity-status.has-unread { color: #805a24; font-weight: 700; }
+        .login-activity-list { display: grid; gap: 8px; margin: 14px 0 0; padding: 0 4px 0 0; list-style: none; }
+        .login-activity-list.is-scrollable { overflow-y: auto; scrollbar-gutter: stable; }
+        .login-activity-list.is-scrollable { scrollbar-color: #9aa79a #f1f0e9; scrollbar-width: thin; }
+        .login-activity-list.is-scrollable::-webkit-scrollbar { width: 8px; }
+        .login-activity-list.is-scrollable::-webkit-scrollbar-track { border-radius: 999px; background: #f1f0e9; }
+        .login-activity-list.is-scrollable::-webkit-scrollbar-thumb { border: 2px solid #f1f0e9; border-radius: 999px; background: #9aa79a; }
+        .login-activity-list.is-scrollable::-webkit-scrollbar-thumb:hover { background: var(--forest); }
+        .login-activity-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px 14px; padding: 10px 12px; border: 1px solid var(--line); background: var(--white); font-size: 12px; }
+        .login-activity-list li.is-new { border-left: 3px solid #d99a1b; }
+        .login-activity-list time { grid-column: 2; grid-row: 1; color: var(--muted); font-size: 11px; }
+        .login-activity-network { grid-column: 1 / -1; color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
+        .login-activity .account-action { min-height: 34px; font-size: 11px; }
 
         .hero { display: grid; min-height: 270px; grid-template-columns: 1.1fr 0.9fr; }
         .hero-copy { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 32px 40px; color: var(--white); background: var(--forest); }
@@ -201,6 +233,17 @@
             border-color: #aab4a8;
             box-shadow: 0 6px 20px rgba(23, 35, 30, 0.08);
         }
+        .wishlist-products { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; margin-top: 18px; }
+        .wishlist-card { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 10px; min-width: 0; padding: 10px; border: 1px solid var(--line); background: var(--white); }
+        .wishlist-card-image { display: grid; width: 76px; aspect-ratio: 1; overflow: hidden; place-items: center; color: var(--forest); background: #e5ecc9; font-family: Georgia, serif; font-size: 32px; text-decoration: none; }
+        .wishlist-card-image img { width: 100%; height: 100%; object-fit: cover; }
+        .wishlist-card-details { display: grid; min-width: 0; align-content: start; gap: 4px; }
+        .wishlist-card-title { overflow: hidden; color: var(--ink); font-size: 12px; font-weight: 700; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
+        .wishlist-card-shop, .wishlist-card-town { overflow: hidden; color: var(--muted); font-size: 10px; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
+        .wishlist-card-price { color: var(--forest); font-family: Georgia, serif; font-size: 14px; }
+        .wishlist-remove { justify-self: start; margin-top: 3px; padding: 4px 0; border: 0; color: #8b3b2f; background: transparent; cursor: pointer; font-size: 10px; font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
+        .wishlist-remove:hover { color: var(--ink); }
+        .wishlist-status { margin-top: 12px; color: var(--muted); font-size: 12px; }
         .order-support { margin: 0 16px 14px; border-top: 1px solid var(--line); }
         .order-support > summary { padding: 13px 0 3px; color: var(--forest); cursor: pointer; font-size: 12px; font-weight: 700; }
         .support-case { margin-top: 9px; padding: 9px; border-left: 2px solid #d9772f; background: #f7f5ee; font-size: 12px; line-height: 1.5; }
@@ -378,15 +421,20 @@
         .cancel-order { margin: 0 16px 16px; padding: 9px 12px; border: 1px solid #b0453a; border-radius: 3px; color: #8b3b2f; background: var(--white); cursor: pointer; font-size: 11px; font-weight: 700; }
         .cancel-order:hover { color: var(--white); background: #b0453a; }
 
-        @media (max-width: 680px) {
-            .site-header { min-height: 68px; padding: 12px 18px; }
-            .header-nav { font-size: 11px; }
-            .mobile-nav-toggle { display: inline-grid; width: 40px; height: 40px; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: transparent; cursor: pointer; }
-            .mobile-nav-toggle svg { width: 20px; height: 20px; }
-            .site-header:not(.mobile-menu-open) > .header-nav { display: contents; }
-            .site-header:not(.mobile-menu-open) > .header-nav > a:not(.cart-icon-link) { display: none; }
-            .site-header.mobile-menu-open > .header-nav { display: flex; flex-basis: 100%; justify-content: flex-start; padding-top: 8px; border-top: 1px solid var(--line); }
-            .header-account { margin-left: auto; }
+        @media (max-width: 1100px) {
+            .site-header { flex-wrap: wrap; }
+            .header-search { order: 3; width: 100%; }
+        }
+
+        @media (max-width: 620px) {
+            .site-header { gap: 12px; padding: 12px 18px; }
+            .header-actions { order: 2; margin-left: auto; }
+            .mobile-nav-toggle { display: block; }
+            .site-header > .header-nav { display: none; order: 4; flex: 1 0 100%; align-items: stretch; gap: 0; padding: 4px 0; border-top: 1px solid rgba(255, 254, 250, 0.3); font-size: 13px; }
+            .site-header > .header-nav.is-open { display: flex; flex-wrap: wrap; }
+            .header-nav > a, .header-nav .sign-out { padding: 12px 8px; }
+            .header-nav #my-shop-link { padding: 8px 9px; }
+            .header-search { order: 3; width: 100%; }
             main { width: calc(100% - 36px); }
             .welcome { padding: 39px 0 24px; }
             .welcome h1 { font-size: 38px; }
@@ -397,10 +445,16 @@
             .sidebar-nav button { min-height: 42px; flex: 0 0 auto; padding: 0 10px; font-size: 12px; }
             .account-view { padding: 20px 16px; }
             .account-view h2 { font-size: 27px; }
+            #account-view-overview > .eyebrow,
+            #account-view-overview > #overview-title,
+            #account-view-overview > #overview-title + p { display: none; }
             .hero { grid-template-columns: 1fr; }
             .hero-copy { min-height: 0; padding: 24px; }
             .hero-copy h2 { font-size: 30px; }
+            .hero-actions { width: 100%; flex-direction: column; }
+            .hero-link { width: 100%; justify-content: space-between; }
             .product-art { display: none; }
+            .hero.has-promoted-products .product-art { display: grid; min-height: 220px; }
             .order-card { grid-template-columns: 62px minmax(0, 1fr); gap: 12px; padding: 13px; }
             .order-thumb { width: 62px; height: 62px; }
             .order-entry h3 { align-items: flex-start; gap: 8px; }
@@ -422,16 +476,24 @@
 <body>
     <header class="site-header">
         <a class="brand" href="/dashboard" aria-label="Z home"><span class="brand-mark" aria-hidden="true">Z</span><span>Your Z</span></a>
+        <form class="header-search" action="/marketplace" method="get" role="search">
+            <input name="q" type="search" placeholder="Search products or shops" aria-label="Search products or shops">
+            <button type="submit">Search</button>
+        </form>
         <nav class="header-nav" id="dashboard-nav" aria-label="Dashboard navigation">
             <a href="/marketplace">Browse marketplace</a>
-            <a class="cart-icon-link" href="/cart" aria-label="View cart, 0 items"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h2l2.2 11.2a2 2 0 0 0 2 1.6h8.9a2 2 0 0 0 1.9-1.5L22 8H6"></path><circle cx="10" cy="20" r="1"></circle><circle cx="18" cy="20" r="1"></circle></svg><span class="cart-count" id="cart-count">0</span></a>
-            <a id="my-shop-link" href="/sell/profile" hidden>Seller profile</a>
-        </nav>
-        <button class="mobile-nav-toggle" id="mobile-nav-toggle" type="button" aria-label="Open navigation menu" aria-controls="dashboard-nav" aria-expanded="false">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="12" cy="19" r="1.8"></circle></svg>
-        </button>
-        <div class="header-account">
+            <a href="/shops">Shops</a>
+            <a id="my-shop-link" href="/sell/dashboard" hidden>My shop</a>
             <button class="sign-out" id="sign-out" type="button">Sign out</button>
+        </nav>
+        <div class="header-actions">
+            <a class="cart-icon-link" href="/cart" aria-label="View cart, 0 items">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h2l2.2 11.2a2 2 0 0 0 2 1.6h8.9a2 2 0 0 0 1.9-1.5L22 8H6"></path><circle cx="10" cy="20" r="1"></circle><circle cx="18" cy="20" r="1"></circle></svg>
+                <span class="cart-count" id="cart-count">0</span>
+            </a>
+            <button class="mobile-nav-toggle" id="mobile-nav-toggle" type="button" aria-label="Open navigation menu" aria-controls="dashboard-nav" aria-expanded="false">
+                <span></span><span></span><span></span>
+            </button>
         </div>
     </header>
 
@@ -450,6 +512,8 @@
                 </div>
                 <nav class="sidebar-nav" aria-label="Account menu">
                     <button type="button" data-account-target="overview" aria-current="page"><span aria-hidden="true">⌂</span>Overview</button>
+                    <button type="button" data-account-target="notifications"><span aria-hidden="true">♧</span>Notifications<span class="notification-count" id="notification-count" aria-label="Unread notifications" hidden></span></button>
+                    <button type="button" data-account-target="wishlist"><span aria-hidden="true">♡</span>Wishlist</button>
                     <button type="button" data-account-target="orders"><span aria-hidden="true">▤</span>Orders</button>
                     <button type="button" data-account-target="profile"><span aria-hidden="true">○</span>Profile</button>
                     <button type="button" data-account-target="balance"><span aria-hidden="true">N$</span>Z balance<span class="nav-note">Soon</span></button>
@@ -457,12 +521,9 @@
                     <button type="button" data-account-target="referrals"><span aria-hidden="true">↗</span>Referrals</button>
                 </nav>
                 <section class="sidebar-admin-tools" id="admin-tools-section" aria-labelledby="admin-tools-title" hidden>
-                    <h2 id="admin-tools-title">Moderator tools</h2>
-                    <nav aria-label="Moderator tools">
-                        <a id="admin-moderation-link" href="/admin/moderation">Moderation</a>
-                        <a id="admin-support-link" href="/admin/support">Support requests</a>
-                        <a href="/admin/kyc">Business verification</a>
-                        <a href="/admin/payouts">Payouts</a>
+                    <h2 id="admin-tools-title">Admin</h2>
+                    <nav aria-label="Admin portal">
+                        <a href="/admin/moderation">Admin portal</a>
                     </nav>
                 </section>
             </aside>
@@ -495,6 +556,26 @@
                     </div>
                 </section>
 
+                <section class="account-view" id="account-view-notifications" data-account-view="notifications" aria-labelledby="notifications-title" hidden>
+                    <p class="eyebrow">Account activity</p>
+                    <h2 id="notifications-title">Notifications</h2>
+                    <section class="login-activity" aria-labelledby="login-activity-title">
+                        <div class="login-activity-header">
+                            <h3 id="login-activity-title">Sign-in activity</h3>
+                        </div>
+                        <p class="login-activity-status" id="login-activity-status" role="status" aria-live="polite">Loading recent sign-ins...</p>
+                        <ol class="login-activity-list" id="login-activity-list"></ol>
+                    </section>
+                </section>
+
+                <section class="account-view" id="account-view-wishlist" data-account-view="wishlist" aria-labelledby="wishlist-title" hidden>
+                    <p class="eyebrow">Saved for later</p>
+                    <h2 id="wishlist-title">Your wishlist</h2>
+                    <p>Keep track of products you’d like to come back to.</p>
+                    <p class="wishlist-status" id="wishlist-status" role="status" aria-live="polite">Loading your wishlist...</p>
+                    <div class="wishlist-products" id="wishlist-products"></div>
+                </section>
+
                 <section class="account-view" id="account-view-orders" data-account-view="orders" aria-labelledby="orders-title" hidden>
                     <p class="eyebrow">Your activity</p>
                     <h2 id="orders-title">Orders</h2>
@@ -504,6 +585,7 @@
                 <section class="account-view" id="account-view-profile" data-account-view="profile" aria-labelledby="profile-title" hidden>
                     <p class="eyebrow">Personal account</p>
                     <h2 id="profile-title">Profile details</h2>
+                    <p class="seller-access-notice" id="seller-access-notice" hidden>Seller access is suspended. You can still use your buyer account, but your shop and listings are hidden until seller access is restored.</p>
                     <p>Keep your contact details current so Z can help with your orders.</p>
                     <div class="verification-status" id="email-verification-status" role="status" aria-live="polite"></div>
                     <p class="account-feedback" id="verification-feedback" aria-live="polite"></p>
@@ -550,6 +632,8 @@
         </section>
     </main>
 
+    <script src="/wishlist-sync.js"></script>
+    <script src="/promotion-analytics.js"></script>
     <script>
         const customerName = document.querySelector("#customer-name");
         const sidebarName = document.querySelector("#sidebar-name");
@@ -560,6 +644,15 @@
         const pageStatus = document.querySelector("#page-status");
         const signOutButton = document.querySelector("#sign-out");
         const mobileNavToggle = document.querySelector("#mobile-nav-toggle");
+        const loginActivityStatus = document.querySelector("#login-activity-status");
+        const loginActivityList = document.querySelector("#login-activity-list");
+        const notificationCountBadge = document.querySelector("#notification-count");
+        const wishlistStatus = document.querySelector("#wishlist-status");
+        const wishlistProductsContainer = document.querySelector("#wishlist-products");
+        let loginActivityRefreshTimer = null;
+        let loginActivityRequestInFlight = false;
+        let hasPromotedDashboardProducts = false;
+        let wishlistProducts = [];
         const buyerOrders = document.querySelector("#buyer-orders");
         const profileForm = document.querySelector("#profile-form");
         const profileNameInput = document.querySelector("#profile-name");
@@ -580,7 +673,7 @@
         const artCaptionDetail = document.querySelector("#art-caption-detail");
         const myShopLink = document.querySelector("#my-shop-link");
         const sellerProfileLink = document.querySelector("#seller-profile-link");
-        function updateHeroButtons({ hasShop }) {
+        function updateHeroButtons({ hasShop, emailVerified = true }) {
             const marketplaceButton = document.querySelector('.hero-link.secondary');
             const shopButton = document.querySelector('.hero-link:not(.secondary)');
             if (!marketplaceButton || !shopButton) return;
@@ -589,7 +682,11 @@
             const marketplaceLabel = marketplaceButton.querySelector("span");
             if (marketplaceLabel) marketplaceLabel.textContent = "Browse marketplace";
 
-            if (hasShop) {
+            if (!emailVerified) {
+                shopButton.href = "/verify-email?returnTo=%2Fsell%2Fsetup";
+                const shopLabel = shopButton.querySelector("span");
+                if (shopLabel) shopLabel.textContent = "Verify email to start selling";
+            } else if (hasShop) {
                 shopButton.href = "/sell/dashboard";
                 const shopLabel = shopButton.querySelector("span");
                 if (shopLabel) shopLabel.textContent = "Manage my shop";
@@ -648,7 +745,7 @@
             timer = window.setTimeout(finish, duration);
         }
 
-        function showPromoCard({ href, title, detail, imageUrl = "", badge = "" }) {
+        function showPromoCard({ href, title, detail, imageUrl = "", badge = "", campaignId = "" }) {
             productShowcaseStage.replaceChildren();
             productShowcaseStage.classList.remove("is-promo-visible");
             productShowcaseStage.classList.add("is-promo");
@@ -678,6 +775,10 @@
             action.textContent = detail;
             link.append(heading, action);
             productShowcaseStage.append(link);
+            if (campaignId) {
+                window.ZPromotionAnalytics.observeImpression(link, campaignId, "dashboard");
+                window.ZPromotionAnalytics.trackClick(link, campaignId, "dashboard");
+            }
         }
 
         async function loadMarketplaceProduct() {
@@ -716,6 +817,7 @@
 
         function showSellingPromo() {
             window.setTimeout(() => {
+                if (hasPromotedDashboardProducts) return;
                 showPromoCard({
                     href: "/sell",
                     title: "Bring your shop to Z.",
@@ -726,6 +828,7 @@
         }
 
         function showShopProducts(products) {
+            if (hasPromotedDashboardProducts) return;
             const featuredProducts = products.filter((product) => product?.status === "active");
             if (!featuredProducts.length) {
                 showShoppingPromo(() => {});
@@ -772,6 +875,7 @@
                 productShowcaseStage.setAttribute("aria-label", `Featured shop products: ${visibleProducts.map((product) => product.title || "Shop product").join(", ")}`);
                 if (featuredProducts.length > 2) startIndex = (startIndex + 2) % featuredProducts.length;
                 animateShowcase(() => {
+                    if (hasPromotedDashboardProducts) return;
                     groupsSincePromo += 1;
                     if (groupsSincePromo >= 2) {
                         groupsSincePromo = 0;
@@ -822,6 +926,44 @@
             setEmailVerificationStatus(user);
         }
 
+        function showPromotedDashboardProducts(products, index = 0) {
+            if (!products.length) return;
+            const product = products[index];
+            const productUrl = `/product/${encodeURIComponent(product.id)}`;
+            productArt.setAttribute("aria-label", `Sponsored listing: ${product.title}`);
+            artCaptionTitle.textContent = "Sponsored listing";
+            artCaptionDetail.textContent = product.shopName || "Promoted by a local seller";
+            showPromoCard({
+                href: productUrl,
+                title: product.title,
+                detail: `N$ ${Number(product.priceNAD).toFixed(2)} · View product →`,
+                imageUrl: product.imageUrl || "",
+                badge: "Promoted",
+                campaignId: product.campaignId
+            });
+            animateShowcase(() => {
+                window.setTimeout(() => {
+                    showPromotedDashboardProducts(products, (index + 1) % products.length);
+                }, 8000);
+            }, 1200);
+        }
+
+        async function loadPromotedDashboardProducts() {
+            try {
+                const response = await fetch("/api/promotions/active");
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || "Could not load promoted products.");
+                const products = Array.isArray(result.products) ? result.products : [];
+                hasPromotedDashboardProducts = products.length > 0;
+                if (hasPromotedDashboardProducts) {
+                    document.querySelector("#about-z").classList.add("has-promoted-products");
+                    showPromotedDashboardProducts(products);
+                }
+            } catch (error) {
+                console.error("Promoted dashboard products could not be loaded:", error);
+            }
+        }
+
         function activateAccountSection(section) {
             const target = document.querySelector(`[data-account-view="${CSS.escape(section)}"]`);
             if (!target) return false;
@@ -833,7 +975,83 @@
                 if (isCurrent) button.setAttribute("aria-current", "page");
                 else button.removeAttribute("aria-current");
             });
+            if (section === "notifications") void loadLoginActivity();
+            if (section === "wishlist") void loadWishlist();
             return true;
+        }
+
+        function renderWishlist() {
+            wishlistProductsContainer.replaceChildren();
+            if (!wishlistProducts.length) {
+                wishlistStatus.textContent = "Your wishlist is empty. Save products from the marketplace to find them here.";
+                return;
+            }
+
+            wishlistStatus.textContent = `${wishlistProducts.length} saved ${wishlistProducts.length === 1 ? "product" : "products"}.`;
+            wishlistProducts.forEach((product) => {
+                const card = document.createElement("article");
+                card.className = "wishlist-card";
+                const imageLink = document.createElement("a");
+                imageLink.className = "wishlist-card-image";
+                imageLink.href = `/product/${encodeURIComponent(product.id)}`;
+                if (product.imageUrl) {
+                    const image = document.createElement("img");
+                    image.src = product.imageUrl;
+                    image.alt = product.title;
+                    image.loading = "lazy";
+                    imageLink.append(image);
+                } else {
+                    imageLink.textContent = "Z";
+                    imageLink.setAttribute("aria-label", product.title);
+                }
+
+                const details = document.createElement("div");
+                details.className = "wishlist-card-details";
+                const title = document.createElement("a");
+                title.className = "wishlist-card-title";
+                title.href = imageLink.href;
+                title.textContent = product.title;
+                const shop = document.createElement("a");
+                shop.className = "wishlist-card-shop";
+                shop.href = `/shops/${encodeURIComponent(product.shopSlug)}`;
+                shop.textContent = product.shopName;
+                const price = document.createElement("strong");
+                price.className = "wishlist-card-price";
+                price.textContent = `N$ ${Number(product.priceNAD).toFixed(2)}`;
+                const town = document.createElement("span");
+                town.className = "wishlist-card-town";
+                town.textContent = product.town;
+                const remove = document.createElement("button");
+                remove.className = "wishlist-remove";
+                remove.type = "button";
+                remove.textContent = "Remove";
+                remove.setAttribute("aria-label", `Remove ${product.title} from wishlist`);
+                remove.addEventListener("click", () => {
+                    try {
+                        window.ZWishlistSync.toggle(product.id);
+                        wishlistProducts = wishlistProducts.filter((entry) => entry.id !== product.id);
+                        renderWishlist();
+                    } catch (error) {
+                        wishlistStatus.textContent = error.message || "Could not update your wishlist.";
+                    }
+                });
+                details.append(title, shop, price, town, remove);
+                card.append(imageLink, details);
+                wishlistProductsContainer.append(card);
+            });
+        }
+
+        async function loadWishlist() {
+            wishlistStatus.textContent = "Loading your wishlist...";
+            try {
+                const response = await fetch("/api/account/wishlist");
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || "Could not load your wishlist.");
+                wishlistProducts = Array.isArray(result.products) ? result.products : [];
+                renderWishlist();
+            } catch (error) {
+                wishlistStatus.textContent = error.message || "Could not load your wishlist.";
+            }
         }
 
         async function loadReferralInfo() {
@@ -849,10 +1067,81 @@
             }
         }
 
-        async function updateSellerCallout({ isModerator = false } = {}) {
+        async function loadLoginActivity() {
+            if (loginActivityRequestInFlight) return;
+            loginActivityRequestInFlight = true;
+            try {
+                const response = await fetch("/api/account/login-activity");
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || "Could not load sign-in activity.");
+
+                loginActivityList.replaceChildren();
+                (result.activities || []).forEach((activity) => {
+                    const item = document.createElement("li");
+                    if (!activity.readAt) item.classList.add("is-new");
+                    const device = document.createElement("strong");
+                    device.textContent = activity.device;
+                    const network = document.createElement("span");
+                    network.className = "login-activity-network";
+                    const location = [activity.city, activity.country_code].filter(Boolean).join(", ");
+                    network.textContent = [
+                        activity.client_ip && `IP ${activity.client_ip}`,
+                        location,
+                        activity.isp_provider
+                    ].filter(Boolean).join(" · ") || "Location and network details unavailable";
+                    const date = document.createElement("time");
+                    date.dateTime = activity.createdAt;
+                    date.textContent = new Date(activity.createdAt).toLocaleString();
+                    item.append(device, date, network);
+                    loginActivityList.append(item);
+                });
+                const activityItems = Array.from(loginActivityList.children);
+                const shouldScroll = activityItems.length > 5;
+                loginActivityList.classList.toggle("is-scrollable", shouldScroll);
+                loginActivityList.style.maxHeight = shouldScroll
+                    ? `${activityItems.slice(0, 5).reduce((height, item) => height + item.getBoundingClientRect().height, 0) + (parseFloat(getComputedStyle(loginActivityList).rowGap) || 0) * 4}px`
+                    : "";
+
+                let unreadCount = Number(result.unreadCount) || 0;
+                if (unreadCount && !document.querySelector('[data-account-view="notifications"]').hidden) {
+                    const readResponse = await fetch("/api/account/login-activity/read", { method: "POST" });
+                    const readResult = await readResponse.json();
+                    if (!readResponse.ok) throw new Error(readResult.error || "Could not mark sign-in notifications as viewed.");
+                    unreadCount = 0;
+                    loginActivityList.querySelectorAll(".is-new").forEach((item) => item.classList.remove("is-new"));
+                }
+                notificationCountBadge.hidden = unreadCount === 0;
+                notificationCountBadge.textContent = unreadCount > 99 ? "99+" : String(unreadCount);
+                notificationCountBadge.setAttribute("aria-label", `${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}`);
+                loginActivityStatus.classList.toggle("has-unread", unreadCount > 0);
+                loginActivityStatus.textContent = unreadCount
+                    ? `${unreadCount} new sign-in${unreadCount === 1 ? "" : "s"}. If you don't recognize one, change your password.`
+                    : result.activities?.length
+                        ? "No new sign-ins. Recent account activity is listed below."
+                        : "No recent sign-ins recorded.";
+            } catch (error) {
+                notificationCountBadge.hidden = true;
+                loginActivityStatus.classList.remove("has-unread");
+                loginActivityStatus.textContent = error.message || "Could not load sign-in activity.";
+            } finally {
+                loginActivityRequestInFlight = false;
+            }
+        }
+
+        async function updateSellerCallout({ isModerator = false, emailVerified = true } = {}) {
             if (adminToolsSection) {
                 adminToolsSection.hidden = !isModerator;
                 adminToolsSection.setAttribute("aria-hidden", String(!isModerator));
+            }
+            if (!emailVerified) {
+                accountRole.textContent = isModerator ? "Buyer + Moderator" : "Buyer";
+                if (myShopLink) myShopLink.hidden = true;
+                if (sellerProfileLink) sellerProfileLink.hidden = true;
+                if (heroTitle) heroTitle.textContent = "Verify your email to start selling.";
+                if (heroCopy) heroCopy.textContent = "Verify your email address before creating a storefront or using seller tools.";
+                updateHeroButtons({ hasShop: false, emailVerified: false });
+                showSellingPromo();
+                return;
             }
             try {
                 const response = await fetch("/api/seller/shop");
@@ -869,6 +1158,17 @@
 
                 const result = await response.json();
                 const hasShop = Boolean(result.shop);
+                if (result.shop?.sellerSuspended) {
+                    accountRole.textContent = isModerator ? "Buyer + Suspended Seller + Moderator" : "Buyer + Suspended Seller";
+                    if (myShopLink) myShopLink.hidden = true;
+                    if (sellerProfileLink) sellerProfileLink.hidden = true;
+                    if (heroTitle) heroTitle.textContent = "Seller access suspended.";
+                    if (heroCopy) heroCopy.textContent = "Your buyer account is still available. Your shop and listings are hidden until seller access is restored.";
+                    updateHeroButtons({ hasShop: true });
+                    const shopButton = document.querySelector('.hero-link:not(.secondary)');
+                    if (shopButton) shopButton.hidden = true;
+                    return;
+                }
                 accountRole.textContent = isModerator
                     ? (hasShop ? "Buyer + Seller + Moderator" : "Buyer + Moderator")
                     : (hasShop ? "Buyer + Seller" : "Buyer");
@@ -890,8 +1190,8 @@
                 if (myShopLink) {
                     myShopLink.hidden = false;
                     myShopLink.setAttribute("aria-hidden", "false");
-                    myShopLink.href = "/sell/profile";
-                    myShopLink.textContent = "Seller profile";
+                    myShopLink.href = "/sell/dashboard";
+                    myShopLink.textContent = "My shop";
                 }
                 if (sellerProfileLink) sellerProfileLink.hidden = false;
                 if (heroTitle) heroTitle.textContent = "Your shop is ready.";
@@ -1299,10 +1599,18 @@
             .then(async (result) => {
                 if (!result) return;
                 updateProfileForm(result.user);
-                await updateSellerCallout({ isModerator: result.user.isModerator });
+                await updateSellerCallout({ isModerator: result.user.isModerator, emailVerified: result.user.emailVerified });
+                await loadPromotedDashboardProducts();
+                await window.ZWishlistSync.initialize();
+                await loadLoginActivity();
+                loginActivityRefreshTimer = window.setInterval(() => {
+                    if (!document.hidden) void loadLoginActivity();
+                }, 60000);
                 await loadReferralInfo();
                 await loadBuyerOrders();
-                const requestedSection = new URLSearchParams(window.location.search).get("section");
+                const params = new URLSearchParams(window.location.search);
+                document.querySelector("#seller-access-notice").hidden = params.get("sellerSuspended") !== "1";
+                const requestedSection = params.get("section");
                 if (requestedSection) activateAccountSection(requestedSection);
             })
             .catch(() => {
@@ -1310,20 +1618,20 @@
             });
 
         mobileNavToggle.addEventListener("click", () => {
-            const isOpen = document.querySelector(".site-header").classList.toggle("mobile-menu-open");
+            const isOpen = document.querySelector("#dashboard-nav").classList.toggle("is-open");
             mobileNavToggle.setAttribute("aria-expanded", String(isOpen));
             mobileNavToggle.setAttribute("aria-label", isOpen ? "Close navigation menu" : "Open navigation menu");
         });
         document.querySelector("#dashboard-nav").addEventListener("click", (event) => {
-            if (event.target.closest("a")) {
-                document.querySelector(".site-header").classList.remove("mobile-menu-open");
+            if (event.target.closest("a, button")) {
+                document.querySelector("#dashboard-nav").classList.remove("is-open");
                 mobileNavToggle.setAttribute("aria-expanded", "false");
                 mobileNavToggle.setAttribute("aria-label", "Open navigation menu");
             }
         });
         document.addEventListener("keydown", (event) => {
             if (event.key === "Escape") {
-                document.querySelector(".site-header").classList.remove("mobile-menu-open");
+                document.querySelector("#dashboard-nav").classList.remove("is-open");
                 mobileNavToggle.setAttribute("aria-expanded", "false");
                 mobileNavToggle.setAttribute("aria-label", "Open navigation menu");
             }
@@ -1346,6 +1654,16 @@
             const url = new URL(window.location.href);
             url.searchParams.set("section", section);
             window.history.replaceState({}, "", url);
+        });
+        window.addEventListener("storage", (event) => {
+            if (event.key === "z_wishlist" && !document.querySelector('[data-account-view="wishlist"]').hidden) {
+                void loadWishlist();
+            }
+        });
+        document.addEventListener("visibilitychange", () => {
+            if (!document.hidden && !document.querySelector('[data-account-view="wishlist"]').hidden) {
+                void loadWishlist();
+            }
         });
 
         profileForm.addEventListener("submit", async (event) => {

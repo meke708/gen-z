@@ -19,6 +19,9 @@
         if (path === "/sell/profile") return "your seller profile";
         if (path === "/sell/verification") return "business verification status";
         if (path === "/sell/assistant") return "your shop assistant settings";
+        if (path === "/sell/orders") return "your shop orders";
+        if (path === "/sell/listings") return "your product listings";
+        if (path === "/sell/transactions") return "your payout transactions";
         if (path === "/sell/dashboard" || path === "/sell") return "your seller dashboard";
         if (path === "/admin/kyc") return "verification submissions";
         if (path === "/admin/support") return "support requests";

@@ -36,7 +36,7 @@
         .header-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 12px; }
         .header-cart { position: relative; display: grid; width: 40px; height: 40px; place-items: center; color: var(--white); text-decoration: none; }
         .header-cart svg { width: 22px; height: 22px; }
-        .header-cart .cart-count { position: absolute; top: -2px; right: -4px; margin: 0; }
+        .header-cart .cart-count { position: absolute; top: -2px; right: -4px; margin: 0; color: var(--ink); }
         .menu-toggle { display: none; width: 40px; height: 40px; padding: 10px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: var(--white); cursor: pointer; }
         .menu-toggle span { display: block; height: 2px; margin: 3px 0; background: currentColor; }
         .cart-count { display: inline-grid; min-width: 18px; height: 18px; margin-left: 3px; padding: 0 4px; place-items: center; border-radius: 50%; background: var(--lime); font-size: 10px; }
@@ -74,15 +74,30 @@
         .shop-heading h2 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 34px; font-weight: 400; letter-spacing: 0; }
         .shop-heading p { margin: 7px 0 0; color: var(--muted); font-size: 12px; }
         .location-label { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+        .filter-dropdown > summary { display: none; }
+        .filter-dropdown > #filter-form { display: grid; }
         .filters { display: grid; grid-template-columns: minmax(200px, 1fr) 190px 190px auto; gap: 10px; padding: 15px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
         .filters input, .filters select { width: 100%; min-width: 0; height: 42px; padding: 0 12px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: var(--white); font-size: 12px; }
         .filters button { height: 42px; padding: 0 15px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: transparent; cursor: pointer; font-size: 12px; font-weight: 700; }
         .filters button:hover { border-color: var(--ink); }
 
         .market-layout { display: block; }
+        .promoted-section { margin: 24px 0 10px; }
+        .promoted-section[hidden] { display: none; }
+        .promoted-heading { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+        .promoted-heading h2 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 25px; font-weight: 400; }
+        .promoted-heading p { margin: 0; color: var(--muted); font-size: 10px; }
+        .products.promoted-products { display: flex; gap: 15px; overflow-x: auto; overscroll-behavior-inline: contain; padding: 0 2px 20px; scroll-snap-type: x mandatory; scrollbar-color: #9aa79a #f1f0e9; scrollbar-width: thin; }
+        .promoted-products::-webkit-scrollbar { height: 8px; }
+        .promoted-products::-webkit-scrollbar-track { border-radius: 999px; background: #f1f0e9; }
+        .promoted-products::-webkit-scrollbar-thumb { border: 2px solid #f1f0e9; border-radius: 999px; background: #9aa79a; }
+        .promoted-products::-webkit-scrollbar-thumb:hover { background: var(--forest); }
+        .promoted-products > .product { flex: 0 0 clamp(190px, 24vw, 260px); scroll-snap-align: start; }
+        .promoted-label { position: absolute; z-index: 1; bottom: 10px; left: 10px; padding: 5px 7px; color: var(--white); background: var(--forest); font-size: 9px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
         .results-line { display: flex; min-height: 44px; align-items: center; justify-content: space-between; color: var(--muted); font-size: 11px; }
         .products { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px 15px; padding-bottom: 56px; }
         .product {
+            position: relative;
             display: flex;
             flex-direction: column;
             min-width: 0;
@@ -96,6 +111,9 @@
         .product-media img { width: 100%; height: 100%; object-fit: cover; }
         .product-fallback { color: var(--forest); font-family: Georgia, serif; font-size: 62px; }
         .product-category { position: absolute; top: 10px; left: 10px; padding: 6px 8px; color: var(--ink); background: var(--lime); font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+        .wishlist-toggle { position: absolute; z-index: 2; top: 8px; right: 8px; display: grid; width: 36px; height: 36px; place-items: center; padding: 0; border: 1px solid rgba(23, 35, 30, 0.2); border-radius: 50%; color: var(--ink); background: var(--white); box-shadow: 0 2px 8px rgba(23, 35, 30, 0.12); cursor: pointer; font-size: 21px; line-height: 1; }
+        .wishlist-toggle:hover, .wishlist-toggle[aria-pressed="true"] { border-color: var(--forest); color: var(--white); background: var(--forest); }
+        .wishlist-toggle:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }
         .product-info {
             display: flex;
             flex: 1 1 auto;
@@ -141,14 +159,23 @@
             .sell-link { padding: 8px 9px; }
             .header-search { order: 3; }
             main { width: calc(100% - 36px); }
-            .hero { grid-template-columns: 1fr; margin: 20px 0 35px; }
-            .hero-copy { padding: 32px 25px; }
-            .hero h1 { font-size: 43px; }
-            .hero-art { min-height: 205px; }
+            .hero { height: 360px; min-height: 360px; grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) 140px; margin: 20px 0 35px; }
+            .hero-copy { align-self: stretch; height: 100%; min-height: 0; overflow: hidden; padding: 18px 25px 38px; }
+            .hero h1 { display: -webkit-box; overflow: hidden; font-size: 38px; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+            .hero-copy > p:last-child { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+            .hero-art { min-height: 0; }
             .art-letter { width: 135px; font-size: 100px; }
             .shop-heading { align-items: start; flex-direction: column; }
             .shop-heading h2 { font-size: 30px; }
-            .filters { grid-template-columns: 1fr 1fr; gap: 8px; }
+            .filter-dropdown { margin: 0 0 12px; border: 1px solid var(--line); background: var(--white); }
+            .filter-dropdown > summary { display: flex; min-height: 46px; align-items: center; justify-content: space-between; gap: 12px; padding: 0 13px; cursor: pointer; font-size: 12px; font-weight: 700; list-style: none; }
+            .filter-dropdown > summary::-webkit-details-marker { display: none; }
+            .filter-dropdown > summary::after { width: 8px; height: 8px; flex: 0 0 auto; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; content: ""; transform: rotate(45deg) translateY(-2px); transition: transform 160ms ease; }
+            .filter-dropdown[open] > summary::after { transform: rotate(225deg) translate(-2px, -1px); }
+            .filter-dropdown > #filter-form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 12px 12px; border: 0; }
+            .filter-dropdown:not([open]) > #filter-form { display: none; }
+            .filter-dropdown > #filter-form input { grid-column: 1 / -1; }
+            .filter-dropdown > #filter-form button { grid-column: 1 / -1; }
             .products { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 9px; }
             .product-info { padding: 11px; }
             .product-info h3 { font-size: 12px; }
@@ -159,6 +186,9 @@
         @media (max-width: 380px) {
             .brand { font-size: 10px; }
             .header-actions { gap: 8px; }
+            .hero { height: 350px; min-height: 350px; grid-template-rows: minmax(0, 1fr) 130px; }
+            .hero-copy { padding: 16px 20px 34px; }
+            .hero h1 { font-size: 32px; }
             .filters { grid-template-columns: 1fr; }
             .products { grid-template-columns: 1fr; }
         }
@@ -218,30 +248,39 @@
             <div class="shop-heading">
                 <span class="location-label">Prices in Namibian dollars</span>
             </div>
-            <form class="filters" id="filter-form">
-                <input id="filter-query" type="search" placeholder="What are you looking for?" aria-label="Search listings">
-                <select id="filter-category" aria-label="Filter by category">
-                    <option value="">All categories</option>
-                    <option>Art &amp; Crafts</option>
-                    <option>Beauty</option>
-                    <option>Electronics</option>
-                    <option>Fashion</option>
-                    <option>Food</option>
-                    <option>Home</option>
-                </select>
-                <select id="filter-town" aria-label="Filter by town">
-                    <option value="">All towns</option>
-                    <option>Windhoek</option>
-                    <option>Swakopmund</option>
-                    <option>Walvis Bay</option>
-                    <option>Oshakati</option>
-                    <option>Rundu</option>
-                    <option>Otjiwarongo</option>
-                    <option>Other</option>
-                </select>
-                <button type="button" id="clear-filters">Clear</button>
-            </form>
+            <details class="filter-dropdown">
+                <summary>Search and filters</summary>
+                <form class="filters" id="filter-form">
+                    <input id="filter-query" type="search" placeholder="What are you looking for?" aria-label="Search listings">
+                    <select id="filter-category" aria-label="Filter by category">
+                        <option value="">All categories</option>
+                        <option>Art &amp; Crafts</option>
+                        <option>Beauty</option>
+                        <option>Electronics</option>
+                        <option>Fashion</option>
+                        <option>Food</option>
+                        <option>Home</option>
+                    </select>
+                    <select id="filter-town" aria-label="Filter by town">
+                        <option value="">All towns</option>
+                        <option>Windhoek</option>
+                        <option>Swakopmund</option>
+                        <option>Walvis Bay</option>
+                        <option>Oshakati</option>
+                        <option>Rundu</option>
+                        <option>Otjiwarongo</option>
+                        <option>Other</option>
+                    </select>
+                    <button type="button" id="clear-filters">Clear filters</button>
+                </form>
+            </details>
             <div class="market-layout">
+                <section class="promoted-section" id="promoted-section" aria-labelledby="promoted-heading" hidden>
+                    <div class="promoted-heading">
+                        <div><h2 id="promoted-heading">Promoted by local sellers</h2><p>Sponsored listings</p></div>
+                    </div>
+                    <div class="products promoted-products" id="promoted-products"></div>
+                </section>
                 <section class="catalog-column" aria-label="Product listings">
                     <div class="results-line"><span id="result-count" aria-live="polite">Loading listings...</span><span>Supporting local sellers</span></div>
                     <div class="products" id="products" aria-live="polite"></div>
@@ -252,8 +291,13 @@
 
     <footer><span>Z Namibia</span><span>Independent shops. Right here at home.</span></footer>
 
+    <script src="/cart-sync.js"></script>
+    <script src="/wishlist-sync.js"></script>
+    <script src="/promotion-analytics.js"></script>
     <script>
         const productGrid = document.querySelector("#products");
+        const promotedSection = document.querySelector("#promoted-section");
+        const promotedGrid = document.querySelector("#promoted-products");
         const resultCount = document.querySelector("#result-count");
         const queryInput = document.querySelector("#filter-query");
         const categorySelect = document.querySelector("#filter-category");
@@ -361,8 +405,25 @@
                 addText(media, "span", "product-fallback", "Z");
             }
             addText(media, "span", "product-category", product.category);
+            if (product.promoted) addText(media, "span", "promoted-label", "Promoted");
+            const wishlistButton = document.createElement("button");
+            wishlistButton.type = "button";
+            wishlistButton.className = "wishlist-toggle";
+            wishlistButton.dataset.wishlistProductId = product.id;
+            wishlistButton.addEventListener("click", (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                try {
+                    window.ZWishlistSync.toggle(product.id);
+                    updateWishlistButtons();
+                } catch (error) {
+                    wishlistButton.title = error.message;
+                }
+            });
             imageLink.append(media);
             card.append(imageLink);
+            card.append(wishlistButton);
+            updateWishlistButton(wishlistButton);
 
             const info = document.createElement("div");
             info.className = "product-info";
@@ -383,7 +444,24 @@
             addText(bottom, "span", "product-town", product.town);
             info.append(bottom);
             card.append(info);
+            if (product.promoted && product.campaignId) {
+                window.ZPromotionAnalytics.observeImpression(card, product.campaignId, "marketplace");
+                window.ZPromotionAnalytics.trackClick(imageLink, product.campaignId, "marketplace");
+                window.ZPromotionAnalytics.trackClick(titleLink, product.campaignId, "marketplace");
+            }
             return card;
+        }
+
+        function updateWishlistButton(button) {
+            const isSaved = window.ZWishlistSync.has(button.dataset.wishlistProductId);
+            button.textContent = isSaved ? "♥" : "♡";
+            button.setAttribute("aria-pressed", String(isSaved));
+            button.setAttribute("aria-label", isSaved ? "Remove from wishlist" : "Add to wishlist");
+            button.title = isSaved ? "Remove from wishlist" : "Add to wishlist";
+        }
+
+        function updateWishlistButtons() {
+            document.querySelectorAll("[data-wishlist-product-id]").forEach(updateWishlistButton);
         }
 
         function updateHeroCopy(product, slideNumber) {
@@ -479,14 +557,7 @@
         }
 
         function readCart() {
-            try {
-                const cart = JSON.parse(localStorage.getItem(cartKey) || "[]");
-                return Array.isArray(cart)
-                    ? cart.filter((item) => typeof item.id === "string" && Number.isInteger(item.quantity) && item.quantity > 0 && item.quantity <= 99).slice(0, 100)
-                    : [];
-            } catch {
-                return [];
-            }
+            return window.ZCartSync.readCart();
         }
 
         function updateCartCount() {
@@ -510,6 +581,7 @@
 
                 accountLink.href = "/dashboard";
                 accountLink.textContent = "My account";
+                accountLink.classList.add("sell-link");
 
                 const sellerResponse = await fetch("/api/seller/shop");
                 if (!sellerResponse.ok) {
@@ -569,6 +641,25 @@
             }
         }
 
+        async function loadPromotedProducts() {
+            try {
+                const response = await fetch("/api/promotions/active");
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || "Could not load promoted listings.");
+                promotedGrid.replaceChildren();
+                const products = Array.isArray(result.products) ? [...result.products] : [];
+                for (let index = products.length - 1; index > 0; index--) {
+                    const randomIndex = Math.floor(Math.random() * (index + 1));
+                    [products[index], products[randomIndex]] = [products[randomIndex], products[index]];
+                }
+                products.forEach((product) => promotedGrid.append(renderProduct({ ...product, promoted: true })));
+                promotedSection.hidden = !products.length;
+            } catch (error) {
+                promotedSection.hidden = true;
+                console.error("Promoted listings could not be loaded:", error);
+            }
+        }
+
         document.querySelector("#filter-form").addEventListener("submit", (event) => {
             event.preventDefault();
             loadProducts();
@@ -576,6 +667,10 @@
         document.querySelector("#search-form").addEventListener("submit", (event) => {
             event.preventDefault();
             queryInput.value = searchInput.value;
+            const url = new URL(window.location.href);
+            if (queryInput.value.trim()) url.searchParams.set("q", queryInput.value.trim());
+            else url.searchParams.delete("q");
+            window.history.replaceState({}, "", url);
             loadProducts();
         });
         categorySelect.addEventListener("change", loadProducts);
@@ -585,18 +680,31 @@
             searchInput.value = "";
             categorySelect.value = "";
             townSelect.value = "";
+            const url = new URL(window.location.href);
+            url.searchParams.delete("q");
+            window.history.replaceState({}, "", url);
             loadProducts();
         });
 
         async function initMarketplace() {
             const startedAt = performance.now();
+            const initialQuery = new URLSearchParams(window.location.search).get("q") || "";
+            queryInput.value = initialQuery;
+            searchInput.value = initialQuery;
             let maximumWait;
-            const initialContent = Promise.all([
-                updateSellerStatus(),
-                updateCartCount(),
-                loadFeaturedProduct(),
-                loadProducts()
-            ]);
+            const initialContent = (async () => {
+                await Promise.all([
+                    window.ZCartSync.initialize(),
+                    window.ZWishlistSync.initialize()
+                ]);
+                await Promise.all([
+                    updateSellerStatus(),
+                    updateCartCount(),
+                    loadFeaturedProduct(),
+                    loadPromotedProducts(),
+                    loadProducts()
+                ]);
+            })();
             const maximumWaitReached = new Promise((resolve) => {
                 maximumWait = window.setTimeout(() => {
                     console.warn("Marketplace initial content took longer than expected.");
@@ -619,6 +727,8 @@
         window.addEventListener("storage", (event) => {
             if (event.key === cartKey) updateCartCount();
         });
+        window.addEventListener("z-cart-updated", updateCartCount);
+        window.addEventListener("z-wishlist-updated", updateWishlistButtons);
         window.addEventListener("focus", updateCartCount);
         initMarketplace();
     </script>

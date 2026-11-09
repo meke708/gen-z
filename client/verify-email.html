@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#f4f1e8">
     <title>Verify email | Z Namibia</title>
+    <link rel="stylesheet" href="/navigation.css">
     <style>
         :root { color-scheme: light; --ink: #17231e; --muted: #69736d; --paper: #f4f1e8; --white: #fffefa; --forest: #18382e; }
         * { box-sizing: border-box; }
@@ -14,7 +15,11 @@
         .brand-mark { display: grid; width: 36px; aspect-ratio: 1; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; font-family: Georgia, serif; font-size: 22px; }
         h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 36px; font-weight: 400; }
         p { color: var(--muted); line-height: 1.6; }
-        a { display: inline-flex; min-height: 44px; align-items: center; margin-top: 16px; padding: 0 16px; color: var(--white); background: var(--forest); font-size: 13px; font-weight: 700; text-decoration: none; }
+        .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px;}
+        .actions a, .actions button { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; margin: 0; padding: 0 16px; border: 1px solid var(--forest); color: var(--white); background: var(--forest); font: inherit; font-size: 13px; font-weight: 700; text-decoration: none; cursor: pointer;}
+        .actions .secondary { color: var(--forest); background: transparent; }
+        .actions [hidden] { display: none; }
+        #verification-link { color: var(--forest); }
         #verification-status { min-height: 24px; }
         @media (max-width: 480px) { main { padding: 26px; } }
     </style>
@@ -23,26 +28,131 @@
     <main>
         <div class="brand"><span class="brand-mark" aria-hidden="true">Z</span><span>Your Z account</span></div>
         <h1>Email verification</h1>
-        <p id="verification-status" role="status" aria-live="polite">Checking your verification link...</p>
-        <a href="/dashboard">Go to your account</a>
+        <p id="verification-status" role="status" aria-live="polite">Checking your verification status...</p>
+        <p id="account-email"></p>
+        <div class="actions">
+            <button id="verify-email" type="button" hidden>Verify email</button>
+            <button id="resend-verification" class="secondary" type="button" hidden>Resend verification email</button>
+            <a id="verification-link" href="#" hidden>Open verification link</a>
+            <a id="skip-verification" class="secondary" href="/dashboard" hidden>Skip for now</a>
+            <a id="sign-in" href="/login" hidden>Sign in</a>
+        </div>
     </main>
     <script>
         const status = document.querySelector("#verification-status");
+        const accountEmail = document.querySelector("#account-email");
+        const verifyButton = document.querySelector("#verify-email");
+        const resendButton = document.querySelector("#resend-verification");
+        const verificationLink = document.querySelector("#verification-link");
+        const skipLink = document.querySelector("#skip-verification");
+        const signInLink = document.querySelector("#sign-in");
         const token = new URLSearchParams(window.location.search).get("token") || "";
-        if (!/^[a-f0-9]{64}$/.test(token)) {
-            status.textContent = "This verification link is invalid. Sign in to your account to request a new one.";
-        } else {
-            fetch("/api/auth/verify-email", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ token })
-            }).then(async (response) => {
+        const confirmOnPage = new URLSearchParams(window.location.search).get("confirm") === "1";
+        const requestedReturnTo = new URLSearchParams(window.location.search).get("returnTo") || "";
+        const sellerReturnPaths = new Set([
+            "/sell",
+            "/sell/setup",
+            "/sell/dashboard",
+            "/sell/orders",
+            "/sell/listings",
+            "/sell/transactions",
+            "/sell/profile",
+            "/sell/assistant",
+            "/sell/verification"
+        ]);
+        let continueUrl = "/dashboard";
+        try {
+            const target = new URL(requestedReturnTo, window.location.origin);
+            if (target.origin === window.location.origin && sellerReturnPaths.has(target.pathname)) {
+                continueUrl = `${target.pathname}${target.search}`;
+            }
+        } catch {
+            continueUrl = "/dashboard";
+        }
+        const continueLabel = continueUrl.startsWith("/sell") ? "Continue to selling" : "Continue to your account";
+
+        async function verifyEmail() {
+            verifyButton.disabled = true;
+            status.textContent = "Verifying your email...";
+            try {
+                const response = await fetch("/api/auth/verify-email", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ token })
+                });
                 const result = await response.json();
                 if (!response.ok) throw new Error(result.error || "Could not verify this email address.");
                 status.textContent = result.message;
-            }).catch((error) => {
+                verifyButton.hidden = true;
+                resendButton.hidden = true;
+                verificationLink.hidden = true;
+                skipLink.hidden = false;
+                skipLink.href = continueUrl;
+                skipLink.textContent = continueLabel;
+            } catch (error) {
                 status.textContent = error.message || "Could not verify this email address.";
-            });
+                verifyButton.disabled = false;
+            }
+        }
+
+        async function loadVerificationStatus() {
+            try {
+                const response = await fetch("/api/auth/me");
+                if (!response.ok) throw new Error("Sign in to verify your email or continue to your account.");
+                const result = await response.json();
+                accountEmail.textContent = result.user.email;
+                if (result.user.emailVerified) {
+                    status.textContent = "Your email is already verified.";
+                    skipLink.hidden = false;
+                    skipLink.href = continueUrl;
+                    skipLink.textContent = continueLabel;
+                    return;
+                }
+                status.textContent = "Check your inbox for a verification link. You can also resend it, or skip verification for now.";
+                resendButton.hidden = false;
+                skipLink.hidden = false;
+            } catch (error) {
+                status.textContent = error.message || "Sign in to verify your email or continue to your account.";
+                signInLink.hidden = false;
+            }
+        }
+
+        resendButton.addEventListener("click", async () => {
+            resendButton.disabled = true;
+            verificationLink.hidden = true;
+            status.textContent = "Sending a new verification email...";
+            try {
+                const response = await fetch("/api/auth/verify-email/resend", { method: "POST" });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || "Could not send a verification email.");
+                status.textContent = result.message;
+                if (result.verificationUrl) {
+                    const verificationTarget = new URL(result.verificationUrl, window.location.origin);
+                    if (continueUrl.startsWith("/sell")) {
+                        verificationTarget.searchParams.set("returnTo", continueUrl);
+                    }
+                    verificationLink.href = verificationTarget.href;
+                    verificationLink.hidden = false;
+                }
+            } catch (error) {
+                status.textContent = error.message || "Could not send a verification email.";
+            } finally {
+                resendButton.disabled = false;
+            }
+        });
+
+        if (token && !/^[a-f0-9]{64}$/.test(token)) {
+            status.textContent = "This verification link is invalid. Request a new one or skip verification for now.";
+            loadVerificationStatus();
+        } else if (token && confirmOnPage) {
+            status.textContent = "Verify your email now, or skip and do it later.";
+            verifyButton.hidden = false;
+            skipLink.hidden = false;
+            verifyButton.addEventListener("click", verifyEmail);
+        } else if (token) {
+            verifyEmail();
+        } else {
+            loadVerificationStatus();
         }
     </script>
 </body>

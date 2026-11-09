@@ -136,6 +136,7 @@ async function requestShopAssistantAnswer({
         model,
         messages: buildAssistantMessages({ shop, products, ratingSummary, history, question }),
         stream: false,
+        think: false,
         options: { temperature: 0.2, num_predict: 350 }
       }),
       signal: AbortSignal.timeout(timeoutMs)

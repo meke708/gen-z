@@ -13,6 +13,7 @@ const { rateLimit } = require('express-rate-limit');
 const { createPaymentAdapter } = require('./payment-adapter');
 const { isAssistantModelReady, requestShopAssistantAnswer } = require('./shop-assistant');
 const { decryptKycDocument, detectKycDocumentMime, encryptKycDocument, getKycEncryptionKey, isKycStorageConfigured } = require('./kyc-storage');
+const { resolveLoginNetwork } = require('./login-activity');
 const app = express();
 const kycStorageDirectory = process.env.KYC_STORAGE_DIR || path.join(__dirname, 'private', 'kyc');
 const trustProxyHops = Number(process.env.TRUST_PROXY_HOPS || 0);
@@ -23,6 +24,8 @@ app.set('trust proxy', trustProxyHops);
 const scryptAsync = promisify(scrypt);
 const sessionCookie = 'z_session';
 const sessionDuration = 7 * 24 * 60 * 60 * 1000;
+const promotionPriceNAD = 50;
+const promotionDurationDays = 7;
 const paymentAdapter = createPaymentAdapter(process.env.PAYMENT_MODE || 'mock');
 const authRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -30,6 +33,34 @@ const authRateLimit = rateLimit({
   standardHeaders: 'draft-8',
   legacyHeaders: false,
   message: { error: 'Too many authentication attempts. Try again in 15 minutes.' }
+});
+const cartWriteRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 120,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { error: 'Your cart is updating too often. Please wait a moment and try again.' }
+});
+const wishlistWriteRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 120,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { error: 'Your wishlist is updating too often. Please wait a moment and try again.' }
+});
+const promotionWriteRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { error: 'Promotion requests are limited. Please try again later.' }
+});
+const promotionEngagementRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 120,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { error: 'Promotion tracking requests are limited. Please try again later.' }
 });
 const supportRateLimit = rateLimit({
   windowMs: 60 * 60 * 1000,
@@ -96,6 +127,19 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true, maxlength: 80 },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true, maxlength: 254 },
   emailVerified: { type: Boolean, default: false },
+  isSuspended: { type: Boolean, default: false, index: true },
+  cartItems: {
+    type: [{
+      _id: false,
+      productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+      quantity: { type: Number, required: true, min: 1, max: 99 }
+    }],
+    default: []
+  },
+  wishlistProductIds: {
+    type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
+    default: []
+  },
   phone: { type: String, trim: true, maxlength: 24, default: '' },
   town: { type: String, trim: true, default: '' },
   referralCode: { type: String, unique: true, sparse: true, index: true },
@@ -108,6 +152,17 @@ const sessionSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   expiresAt: { type: Date, required: true, expires: 0 }
 }, { timestamps: true });
+const loginActivitySchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  device: { type: String, required: true, maxlength: 80 },
+  client_ip: { type: String, default: '', maxlength: 45 },
+  country_code: { type: String, default: '', maxlength: 2 },
+  city: { type: String, default: '', maxlength: 120 },
+  isp_provider: { type: String, default: '', maxlength: 200 },
+  readAt: { type: Date, default: null },
+  expiresAt: { type: Date, required: true, expires: 0 }
+}, { timestamps: true });
+loginActivitySchema.index({ userId: 1, createdAt: -1 });
 const passwordResetSchema = new mongoose.Schema({
   tokenHash: { type: String, required: true, unique: true },
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
@@ -120,6 +175,7 @@ const emailVerificationSchema = new mongoose.Schema({
 }, { timestamps: true });
 const shopSchema = new mongoose.Schema({
   ownerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
+  sellerSuspended: { type: Boolean, default: false, index: true },
   name: { type: String, required: true, trim: true, maxlength: 80 },
   nameKey: { type: String, select: false },
   slug: { type: String, required: true, unique: true },
@@ -165,6 +221,36 @@ const productSchema = new mongoose.Schema({
 productSchema.index(
   { shopId: 1, duplicateKey: 1 },
   { unique: true, partialFilterExpression: { duplicateKey: { $type: 'string' } } }
+);
+const promotionCampaignSchema = new mongoose.Schema({
+  productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+  sellerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  shopId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', required: true, index: true },
+  amountNAD: { type: Number, required: true, min: 0.01 },
+  durationDays: { type: Number, required: true, min: 1 },
+  status: { type: String, enum: ['pending', 'active', 'expired', 'cancelled'], default: 'pending', index: true },
+  paymentReference: { type: String, required: true, unique: true },
+  paymentExpiresAt: { type: Date, required: true },
+  paidAt: { type: Date, default: null },
+  startsAt: { type: Date, default: null },
+  expiresAt: { type: Date, default: null }
+}, { timestamps: true });
+const promotionEngagementSchema = new mongoose.Schema({
+  campaignId: { type: mongoose.Schema.Types.ObjectId, ref: 'PromotionCampaign', required: true },
+  shopId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', required: true },
+  eventType: { type: String, enum: ['impression', 'click'], required: true },
+  placement: { type: String, enum: ['marketplace', 'dashboard'], required: true },
+  date: { type: Date, required: true },
+  visitorHash: { type: String, required: true }
+}, { versionKey: false });
+promotionEngagementSchema.index(
+  { campaignId: 1, placement: 1, eventType: 1, date: 1, visitorHash: 1 },
+  { unique: true }
+);
+promotionEngagementSchema.index({ shopId: 1, date: 1 });
+promotionCampaignSchema.index(
+  { productId: 1 },
+  { name: 'active_promotion_product_unique', unique: true, partialFilterExpression: { status: 'active' } }
 );
 const listingReportSchema = new mongoose.Schema({
   productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
@@ -238,10 +324,13 @@ const supportRequestSchema = new mongoose.Schema({
 supportRequestSchema.index({ status: 1, createdAt: 1 });
 const User = mongoose.model('User', userSchema);
 const Session = mongoose.model('Session', sessionSchema);
+const LoginActivity = mongoose.model('LoginActivity', loginActivitySchema);
 const PasswordReset = mongoose.model('PasswordReset', passwordResetSchema);
 const EmailVerification = mongoose.model('EmailVerification', emailVerificationSchema);
 const Shop = mongoose.model('Shop', shopSchema);
 const Product = mongoose.model('Product', productSchema);
+const PromotionCampaign = mongoose.model('PromotionCampaign', promotionCampaignSchema);
+const PromotionEngagement = mongoose.model('PromotionEngagement', promotionEngagementSchema);
 const ListingReport = mongoose.model('ListingReport', listingReportSchema);
 const ShopReview = mongoose.model('ShopReview', shopReviewSchema);
 const Order = mongoose.model('Order', orderSchema);
@@ -268,9 +357,11 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       scriptSrc: ["'self'", "'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
       imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
       connectSrc: ["'self'"],
+      frameSrc: ["'self'", 'https://www.google.com'],
       objectSrc: ["'none'"],
       frameAncestors: ["'none'"],
       upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null
@@ -285,41 +376,94 @@ app.get(['/dashboard', '/dashboard.html'], async (req, res) => {
   return res.sendFile(path.join(__dirname, '..', 'client', 'dashboard.html'));
 });
 
+app.use('/sell', async (req, res, next) => {
+  const user = await getSessionUser(req);
+  if (!user || isEmailVerified(user)) return next();
+  return res.redirect(`/verify-email?returnTo=${encodeURIComponent(req.originalUrl)}`);
+});
+
 app.get('/sell', async (req, res) => {
   const user = await getSessionUser(req);
   if (!user) return res.redirect('/login');
-  const shop = await Shop.exists({ ownerId: user._id });
+  const shop = await Shop.findOne({ ownerId: user._id }).select('sellerSuspended').lean();
+  if (shop?.sellerSuspended) return res.redirect('/dashboard?section=profile&sellerSuspended=1');
   return res.redirect(shop ? '/sell/dashboard' : '/sell/setup');
 });
 
 app.get('/sell/setup', async (req, res) => {
   const user = await getSessionUser(req);
   if (!user) return res.redirect('/login');
-  if (await Shop.exists({ ownerId: user._id })) return res.redirect('/sell/dashboard');
+  const shop = await Shop.findOne({ ownerId: user._id });
+  if (shop?.sellerSuspended) return res.redirect('/dashboard?section=profile&sellerSuspended=1');
+  if (shop) return res.redirect('/sell/dashboard');
   return res.sendFile(path.join(__dirname, '..', 'client', 'sell-setup.html'));
 });
 
 app.get('/sell/dashboard', async (req, res) => {
   const user = await getSessionUser(req);
   if (!user) return res.redirect('/login');
-  if (!await Shop.exists({ ownerId: user._id })) return res.redirect('/sell/setup');
+  const shop = await Shop.findOne({ ownerId: user._id });
+  if (shop?.sellerSuspended) return res.redirect('/dashboard?section=profile&sellerSuspended=1');
+  if (!shop) return res.redirect('/sell/setup');
   return res.sendFile(path.join(__dirname, '..', 'client', 'sell.html'));
+});
+
+app.get('/sell/orders', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.redirect('/login');
+  const shop = await Shop.findOne({ ownerId: user._id });
+  if (shop?.sellerSuspended) return res.redirect('/dashboard?section=profile&sellerSuspended=1');
+  if (!shop) return res.redirect('/sell/setup');
+  return res.sendFile(path.join(__dirname, '..', 'client', 'sell.html'));
+});
+
+app.get('/sell/listings', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.redirect('/login');
+  const shop = await Shop.findOne({ ownerId: user._id });
+  if (shop?.sellerSuspended) return res.redirect('/dashboard?section=profile&sellerSuspended=1');
+  if (!shop) return res.redirect('/sell/setup');
+  return res.sendFile(path.join(__dirname, '..', 'client', 'sell.html'));
+});
+
+app.get('/sell/promotions', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.redirect('/login');
+  const shop = await Shop.findOne({ ownerId: user._id });
+  if (shop?.sellerSuspended) return res.redirect('/dashboard?section=profile&sellerSuspended=1');
+  if (!shop) return res.redirect('/sell/setup');
+  return res.sendFile(path.join(__dirname, '..', 'client', 'sell.html'));
+});
+
+app.get('/sell/transactions', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.redirect('/login');
+  const shop = await Shop.findOne({ ownerId: user._id });
+  if (shop?.sellerSuspended) return res.redirect('/dashboard?section=profile&sellerSuspended=1');
+  if (!shop) return res.redirect('/sell/setup');
+  return res.sendFile(path.join(__dirname, '..', 'client', 'sell-transactions.html'));
 });
 
 app.get('/sell/profile', async (req, res) => {
   const user = await getSessionUser(req);
   if (!user) return res.redirect('/login');
-  if (!await Shop.exists({ ownerId: user._id })) return res.redirect('/sell/setup');
+  const shop = await Shop.findOne({ ownerId: user._id });
+  if (shop?.sellerSuspended) return res.redirect('/dashboard?section=profile&sellerSuspended=1');
+  if (!shop) return res.redirect('/sell/setup');
   return res.sendFile(path.join(__dirname, '..', 'client', 'sell-profile.html'));
 });
 
 app.get('/sell/assistant', async (req, res) => {
-  if (!await getSessionUser(req)) return res.redirect('/login');
+  const user = await getSessionUser(req);
+  if (!user) return res.redirect('/login');
+  if (await isSellerSuspended(user)) return res.redirect('/dashboard?section=profile&sellerSuspended=1');
   return res.sendFile(path.join(__dirname, '..', 'client', 'sell-assistant.html'));
 });
 
 app.get('/sell/verification', async (req, res) => {
-  if (!await getSessionUser(req)) return res.redirect('/login');
+  const user = await getSessionUser(req);
+  if (!user) return res.redirect('/login');
+  if (await isSellerSuspended(user)) return res.redirect('/dashboard?section=profile&sellerSuspended=1');
   return res.sendFile(path.join(__dirname, '..', 'client', 'sell-verification.html'));
 });
 
@@ -351,12 +495,18 @@ app.get('/admin/kyc', async (req, res) => {
   return res.sendFile(path.join(__dirname, '..', 'client', 'admin-kyc.html'));
 });
 
+app.get('/admin/accounts', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user || !isAdminUser(user)) return res.status(403).send('Admin access is not configured for this account.');
+  return res.sendFile(path.join(__dirname, '..', 'client', 'admin-accounts.html'));
+});
+
 app.get('/cart', (req, res) => {
   return res.sendFile(path.join(__dirname, '..', 'client', 'cart.html'));
 });
 
 app.get('/checkout', async (req, res) => {
-  if (!await getSessionUser(req)) return res.redirect('/login');
+  if (!await getSessionUser(req)) return res.redirect(`/login?returnTo=${encodeURIComponent('/cart')}`);
   return res.sendFile(path.join(__dirname, '..', 'client', 'checkout.html'));
 });
 
@@ -378,6 +528,34 @@ function normalizeEmail(email) {
   return typeof email === 'string' ? email.trim().toLowerCase() : '';
 }
 
+function describeLoginDevice(userAgent = '') {
+  const agent = typeof userAgent === 'string' ? userAgent.slice(0, 500) : '';
+  const browser = /Edg\//i.test(agent) ? 'Edge'
+    : /OPR\//i.test(agent) ? 'Opera'
+      : /Firefox\//i.test(agent) ? 'Firefox'
+        : /Chrome\//i.test(agent) && !/Chromium\//i.test(agent) ? 'Chrome'
+          : /Safari\//i.test(agent) && !/Chrome\//i.test(agent) ? 'Safari'
+            : 'Unknown browser';
+  const platform = /Windows/i.test(agent) ? 'Windows'
+    : /Android/i.test(agent) ? 'Android'
+      : /iPhone|iPad|iPod/i.test(agent) ? 'iOS'
+        : /Macintosh|Mac OS/i.test(agent) ? 'macOS'
+          : /Linux/i.test(agent) ? 'Linux'
+            : 'unknown device';
+  return `${browser} on ${platform}`;
+}
+
+function getSafeReturnPath(value, fallback = '/dashboard') {
+  if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//') || value.includes('\\')) {
+    return fallback;
+  }
+  const destination = new URL(value, 'http://z.local');
+  if (destination.origin !== 'http://z.local' || destination.pathname === '/login' || destination.pathname.startsWith('/login/')) {
+    return fallback;
+  }
+  return `${destination.pathname}${destination.search}${destination.hash}`;
+}
+
 function normalizeProfileInput(input = {}, towns = namibianTowns) {
   const name = typeof input.name === 'string' ? input.name.trim() : '';
   const phone = typeof input.phone === 'string' ? input.phone.trim() : '';
@@ -395,7 +573,11 @@ function isValidEmailVerificationToken(token) {
   return typeof token === 'string' && /^[a-f0-9]{64}$/.test(token);
 }
 
-function isBuyerEmailVerified(user) {
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function isEmailVerified(user) {
   return Boolean(user?.emailVerified);
 }
 
@@ -409,6 +591,11 @@ function isAdminUser(user, configuredEmail = process.env.ADMIN_EMAIL, configured
   const userId = user?._id?.toString?.() || user?.id || '';
   const identityMatches = mongoose.isValidObjectId(configuredAdminId) && userId === configuredAdminId;
   return Boolean(adminEmail && user && normalizeEmail(user.email) === adminEmail && identityMatches);
+}
+
+async function isSellerSuspended(user) {
+  const shop = await Shop.findOne({ ownerId: user._id }).select('sellerSuspended').lean();
+  return Boolean(shop?.sellerSuspended);
 }
 
 function assertProductionAdminConfiguration(nodeEnv = process.env.NODE_ENV, adminEmail = process.env.ADMIN_EMAIL, adminUserId = process.env.ADMIN_USER_ID) {
@@ -443,17 +630,48 @@ function hashSessionToken(token) {
   return createHash('sha256').update(token).digest('hex');
 }
 
+function resolveAppBaseUrl({
+  appBaseUrl = process.env.APP_BASE_URL,
+  renderExternalUrl = process.env.RENDER_EXTERNAL_URL,
+  nodeEnv = process.env.NODE_ENV,
+  port = process.env.PORT || 3001
+} = {}) {
+  let baseUrl = appBaseUrl;
+  if (renderExternalUrl) {
+    try {
+      const configuredHost = baseUrl ? new URL(baseUrl).hostname : '';
+      if (!baseUrl || ['localhost', '127.0.0.1', '::1'].includes(configuredHost)) {
+        baseUrl = renderExternalUrl;
+      }
+    } catch {
+      baseUrl = renderExternalUrl;
+    }
+  }
+  if (!baseUrl && nodeEnv !== 'production') baseUrl = `http://localhost:${port}`;
+  if (!baseUrl) return null;
+
+  try {
+    const url = new URL(baseUrl);
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return null;
+    if (nodeEnv === 'production' && url.protocol !== 'https:') return null;
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
+
 async function createEmailVerification(user) {
-  if (process.env.NODE_ENV === 'production' && (!passwordResetMailer || !process.env.APP_BASE_URL?.startsWith('https://'))) {
+  if (process.env.NODE_ENV === 'production' && (!passwordResetMailer || !resolveAppBaseUrl())) {
     throw apiError(503, 'Email verification is not configured. Contact Z support.');
   }
+  const baseUrl = resolveAppBaseUrl();
+  if (!baseUrl) throw apiError(503, 'The public application URL is not configured.');
   const token = randomBytes(32).toString('hex');
   await EmailVerification.findOneAndUpdate(
     { userId: user._id },
     { $set: { tokenHash: hashSessionToken(token), expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) } },
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
-  const baseUrl = process.env.APP_BASE_URL || `http://localhost:${process.env.PORT || 3001}`;
   const verificationUrl = new URL(`/verify-email?token=${encodeURIComponent(token)}`, baseUrl).toString();
   if (process.env.NODE_ENV === 'production') {
     await passwordResetMailer.sendMail({
@@ -467,13 +685,19 @@ async function createEmailVerification(user) {
   return verificationUrl;
 }
 
-async function createSession(res, user) {
+async function createSession(res, user, onCreated = null) {
   const token = randomBytes(32).toString('hex');
-  await Session.create({
+  const session = await Session.create({
     tokenHash: hashSessionToken(token),
     userId: user._id,
     expiresAt: new Date(Date.now() + sessionDuration)
   });
+  try {
+    if (onCreated) await onCreated();
+  } catch (error) {
+    await Session.deleteOne({ _id: session._id });
+    throw error;
+  }
   setSessionCookie(res, token, Math.floor(sessionDuration / 1000));
 }
 
@@ -486,7 +710,8 @@ async function getSessionUser(req) {
     expiresAt: { $gt: new Date() }
   }).populate('userId');
 
-  return session?.userId || null;
+  const user = session?.userId || null;
+  return user?.isSuspended ? null : user;
 }
 
 function apiError(statusCode, message) {
@@ -537,8 +762,8 @@ function roundNAD(value) {
 }
 
 function normalizeCartItems(rawItems) {
-  if (!Array.isArray(rawItems) || rawItems.length === 0 || rawItems.length > 30) {
-    throw apiError(400, 'Your cart must contain between 1 and 30 different products.');
+  if (!Array.isArray(rawItems) || rawItems.length === 0 || rawItems.length > 20) {
+    throw apiError(400, 'Your cart must contain between 1 and 20 different products.');
   }
 
   const quantities = new Map();
@@ -546,13 +771,65 @@ function normalizeCartItems(rawItems) {
     if (!mongoose.isValidObjectId(item?.id) || !Number.isInteger(item?.quantity) || item.quantity < 1 || item.quantity > 99) {
       throw apiError(400, 'Your cart has an invalid product or quantity.');
     }
-    const id = item.id.toString();
+    const id = item.id.toString().toLowerCase();
     const quantity = (quantities.get(id) || 0) + item.quantity;
     if (quantity > 99) throw apiError(400, 'A product quantity cannot exceed 99.');
     quantities.set(id, quantity);
   }
 
   return [...quantities].map(([id, quantity]) => ({ id, quantity }));
+}
+
+function normalizeSavedCartItems(rawItems) {
+  if (!Array.isArray(rawItems) || rawItems.length > 20) {
+    throw apiError(400, 'Your cart can contain up to 20 different products.');
+  }
+  const seen = new Set();
+  return rawItems.map((item) => {
+    if (!mongoose.isValidObjectId(item?.id) || !Number.isInteger(item?.quantity) || item.quantity < 1 || item.quantity > 99) {
+      throw apiError(400, 'Your cart has an invalid product or quantity.');
+    }
+    const id = item.id.toString().toLowerCase();
+    if (seen.has(id)) throw apiError(400, 'Your cart contains a duplicate product.');
+    seen.add(id);
+    return { id, quantity: item.quantity };
+  });
+}
+
+function normalizeSavedWishlistIds(rawIds) {
+  if (!Array.isArray(rawIds) || rawIds.length > 500) {
+    throw apiError(400, 'Your wishlist can contain up to 500 products.');
+  }
+  const seen = new Set();
+  return rawIds.map((rawId) => {
+    if (!mongoose.isValidObjectId(rawId)) throw apiError(400, 'Your wishlist contains an invalid product.');
+    const id = rawId.toString().toLowerCase();
+    if (seen.has(id)) throw apiError(400, 'Your wishlist contains a duplicate product.');
+    seen.add(id);
+    return id;
+  });
+}
+
+function buildPromotionSchedule(startValue = new Date()) {
+  const startsAt = new Date(startValue);
+  if (!Number.isFinite(startsAt.getTime())) throw new Error('Promotion start date must be valid.');
+  return {
+    amountNAD: promotionPriceNAD,
+    durationDays: promotionDurationDays,
+    startsAt,
+    expiresAt: new Date(startsAt.getTime() + promotionDurationDays * 24 * 60 * 60 * 1000)
+  };
+}
+
+function normalizePromotionVisitorId(value) {
+  if (typeof value !== 'string') return null;
+  const normalized = value.toLowerCase();
+  if (!/^(?:[a-f0-9]{32}|[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/.test(normalized)) return null;
+  return normalized.replaceAll('-', '');
+}
+
+function calculatePromotionClickThroughRate(impressions, clicks) {
+  return impressions > 0 ? Math.round((clicks / impressions) * 10000) / 100 : 0;
 }
 
 function resolveShippingZone(sellerTown, deliveryTown) {
@@ -564,8 +841,10 @@ function resolveShippingZone(sellerTown, deliveryTown) {
 async function buildOrderQuote(rawItems, deliveryTown) {
   if (!namibianTowns.includes(deliveryTown)) throw apiError(400, 'Choose a valid delivery town.');
   const requestedItems = normalizeCartItems(rawItems);
+  const suspendedShopIds = await Shop.distinct('_id', { sellerSuspended: true });
   const products = await Product.find({
     _id: { $in: requestedItems.map((item) => item.id) },
+    shopId: { $nin: suspendedShopIds },
     status: 'active',
     isAvailable: { $ne: false },
     moderationStatus: { $ne: 'hidden' }
@@ -702,6 +981,23 @@ function buildProductDuplicateKey({ title, description, category }) {
   ]);
 }
 
+function buildSellerMarketBenchmarks(categories, ownStats, marketStats) {
+  const ownByCategory = new Map(ownStats.map((entry) => [entry._id, entry]));
+  const marketByCategory = new Map(marketStats.map((entry) => [entry._id, entry]));
+  return categories.map((category) => {
+    const own = ownByCategory.get(category);
+    const market = marketByCategory.get(category);
+    return {
+      category,
+      ownProductCount: own?.productCount || 0,
+      ownAveragePriceNAD: own ? Number(own.averagePriceNAD.toFixed(2)) : null,
+      marketProductCount: market?.productCount || 0,
+      competitorShopCount: market?.shopIds.length || 0,
+      marketAveragePriceNAD: market ? Number(market.averagePriceNAD.toFixed(2)) : null
+    };
+  }).sort((a, b) => b.ownProductCount - a.ownProductCount || a.category.localeCompare(b.category));
+}
+
 async function findDuplicateShopName(nameKey) {
   if (await Shop.exists({ nameKey })) return true;
   const legacyShops = await Shop.find({ nameKey: { $exists: false } }).select('name').lean();
@@ -827,7 +1123,7 @@ app.post('/api/auth/register', async (req, res) => {
   if (referralCode && !/^[A-F0-9]{12}$/.test(referralCode)) {
     return res.status(400).json({ error: 'That referral code is not valid.' });
   }
-  if (process.env.NODE_ENV === 'production' && (!passwordResetMailer || !process.env.APP_BASE_URL?.startsWith('https://'))) {
+  if (process.env.NODE_ENV === 'production' && (!passwordResetMailer || !resolveAppBaseUrl())) {
     return res.status(503).json({ error: 'Email verification is not configured. Contact Z support.' });
   }
   const referrer = referralCode ? await User.findOne({ referralCode }) : null;
@@ -887,8 +1183,15 @@ app.post('/api/auth/login', async (req, res) => {
   if (!timingSafeEqual(passwordHash, Buffer.from(user.passwordHash, 'hex'))) {
     return res.status(401).json({ error: 'Email or password is incorrect.' });
   }
+  if (user.isSuspended) return res.status(403).json({ error: 'This account is suspended. Contact Z support for help.' });
 
-  await createSession(res, user);
+  const loginNetwork = await resolveLoginNetwork(req.ip);
+  await createSession(res, user, () => LoginActivity.create({
+    userId: user._id,
+    device: describeLoginDevice(req.get('user-agent')),
+    ...loginNetwork,
+    expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
+  }));
   return res.json({ user: publicUser(user) });
 });
 
@@ -897,9 +1200,11 @@ app.post('/api/auth/forgot-password', passwordResetRateLimit, async (req, res) =
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
     return res.status(400).json({ error: 'Enter a valid email address.' });
   }
-  if (process.env.NODE_ENV === 'production' && (!passwordResetMailer || !process.env.APP_BASE_URL?.startsWith('https://'))) {
+  if (process.env.NODE_ENV === 'production' && (!passwordResetMailer || !resolveAppBaseUrl())) {
     return res.status(503).json({ error: 'Password reset email is not configured. Contact Z support.' });
   }
+  const baseUrl = resolveAppBaseUrl();
+  if (!baseUrl) return res.status(503).json({ error: 'The public application URL is not configured.' });
 
   const user = await User.findOne({ email }).select('_id email name');
   if (!user) return res.status(202).json({ message: 'If an account exists for that email, password reset instructions will be sent.' });
@@ -911,7 +1216,6 @@ app.post('/api/auth/forgot-password', passwordResetRateLimit, async (req, res) =
     userId: user._id,
     expiresAt: new Date(Date.now() + 15 * 60 * 1000)
   });
-  const baseUrl = process.env.APP_BASE_URL || `http://localhost:${process.env.PORT || 3001}`;
   const resetUrl = new URL(`/reset-password?token=${encodeURIComponent(token)}`, baseUrl).toString();
 
   if (process.env.NODE_ENV === 'production') {
@@ -1023,6 +1327,134 @@ app.get('/api/auth/status', async (req, res) => {
   return res.json({ user: user ? publicUser(user) : null });
 });
 
+app.get('/api/account/login-activity', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to view account activity.' });
+  const activities = await LoginActivity.find({
+    userId: user._id,
+    expiresAt: { $gt: new Date() }
+  }).sort({ createdAt: -1 }).limit(10).select('device client_ip country_code city isp_provider readAt createdAt').lean();
+  return res.json({
+    activities: activities.map(({ _id, device, client_ip, country_code, city, isp_provider, readAt, createdAt }) => ({
+      id: _id.toString(),
+      device,
+      client_ip,
+      country_code,
+      city,
+      isp_provider,
+      readAt,
+      createdAt
+    })),
+    unreadCount: activities.filter((activity) => !activity.readAt).length
+  });
+});
+
+app.post('/api/account/login-activity/read', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to update account activity.' });
+  await LoginActivity.updateMany(
+    { userId: user._id, readAt: null, expiresAt: { $gt: new Date() } },
+    { $set: { readAt: new Date() } }
+  );
+  return res.json({ ok: true });
+});
+
+app.get('/api/account/cart', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to sync your cart.' });
+  return res.json({
+    items: (user.cartItems || []).map(({ productId, quantity }) => ({
+      id: productId.toString(),
+      quantity
+    }))
+  });
+});
+
+app.put('/api/account/cart', cartWriteRateLimit, async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to sync your cart.' });
+  const items = normalizeSavedCartItems(req.body?.items);
+  user.cartItems = items.map(({ id, quantity }) => ({ productId: id, quantity }));
+  await user.save();
+  return res.json({
+    items: user.cartItems.map(({ productId, quantity }) => ({
+      id: productId.toString(),
+      quantity
+    }))
+  });
+});
+
+app.get('/api/account/wishlist', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to view your wishlist.' });
+  const ids = (user.wishlistProductIds || []).map((id) => id.toString());
+  const products = ids.length ? await Product.find({
+    _id: { $in: ids },
+    status: 'active',
+    isAvailable: { $ne: false },
+    moderationStatus: { $ne: 'hidden' }
+  }).populate('shopId', 'name slug sellerSuspended').lean() : [];
+  const productsById = new Map(products
+    .filter((product) => product.shopId && !product.shopId.sellerSuspended)
+    .map((product) => [product._id.toString(), product]));
+  return res.json({
+    ids,
+    products: ids.flatMap((id) => {
+      const product = productsById.get(id);
+      if (!product) return [];
+      return [{
+        id,
+        title: product.title,
+        description: product.description,
+        priceNAD: product.priceNAD,
+        category: product.category,
+        town: product.town,
+        imageUrl: product.imageUrl || '',
+        shopName: product.shopId.name,
+        shopSlug: product.shopId.slug
+      }];
+    })
+  });
+});
+
+app.put('/api/account/wishlist', wishlistWriteRateLimit, async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to save your wishlist.' });
+  const ids = normalizeSavedWishlistIds(req.body?.ids);
+  user.wishlistProductIds = ids;
+  await user.save();
+  return res.json({ ids: user.wishlistProductIds.map((id) => id.toString()) });
+});
+
+app.post('/api/account/wishlist/:id', wishlistWriteRateLimit, async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to save your wishlist.' });
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ error: 'Choose a valid product.' });
+  const productId = new mongoose.Types.ObjectId(req.params.id);
+  await User.updateOne({
+    _id: user._id,
+    $expr: { $lt: [{ $size: { $ifNull: ['$wishlistProductIds', []] } }, 500] }
+  }, { $addToSet: { wishlistProductIds: productId } });
+  const updatedUser = await User.findById(user._id).select('wishlistProductIds').lean();
+  const ids = (updatedUser?.wishlistProductIds || []).map((id) => id.toString());
+  if (!ids.includes(productId.toString())) {
+    return res.status(409).json({ error: 'Your wishlist can contain up to 500 products.' });
+  }
+  return res.json({ ids });
+});
+
+app.delete('/api/account/wishlist/:id', wishlistWriteRateLimit, async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to update your wishlist.' });
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ error: 'Choose a valid product.' });
+  await User.updateOne(
+    { _id: user._id },
+    { $pull: { wishlistProductIds: new mongoose.Types.ObjectId(req.params.id) } }
+  );
+  const updatedUser = await User.findById(user._id).select('wishlistProductIds').lean();
+  return res.json({ ids: (updatedUser?.wishlistProductIds || []).map((id) => id.toString()) });
+});
+
 app.post('/api/auth/logout', async (req, res) => {
   const token = getSessionToken(req);
   if (token) await Session.deleteOne({ tokenHash: hashSessionToken(token) });
@@ -1058,7 +1490,7 @@ app.post('/api/orders/quote', async (req, res) => {
 app.post('/api/orders', async (req, res) => {
   const user = await getSessionUser(req);
   if (!user) return res.status(401).json({ error: 'Sign in to place an order.' });
-  if (!isBuyerEmailVerified(user)) return res.status(403).json({ error: 'Verify your email address in your account before placing an order.' });
+  if (!isEmailVerified(user)) return res.status(403).json({ error: 'Verify your email address in your account before placing an order.' });
   if (!mockPaymentsEnabled) return res.status(503).json({ error: 'Mock checkout is disabled. A live payment provider is not configured.' });
   await releaseExpiredReservations();
   const quote = await buildOrderQuote(req.body?.items, req.body?.deliveryTown);
@@ -1204,6 +1636,22 @@ app.post('/api/orders/:orderNumber/support', supportRateLimit, async (req, res) 
   } });
 });
 
+app.use('/api/seller', async (req, res, next) => {
+  const user = await getSessionUser(req);
+  if (!user) return next();
+  if (!isEmailVerified(user)) {
+    return res.status(403).json({
+      error: 'Verify your email address to create or access a seller account.',
+      verificationRequired: true
+    });
+  }
+  if (await isSellerSuspended(user)) {
+    if (req.method === 'GET' && req.path === '/shop') return next();
+    return res.status(403).json({ error: 'Seller access is suspended. Buyer access to your account is still available.' });
+  }
+  return next();
+});
+
 app.get('/api/seller/orders', async (req, res) => {
   const user = await getSessionUser(req);
   if (!user) return res.status(401).json({ error: 'Sign in to view seller orders.' });
@@ -1229,6 +1677,32 @@ app.get('/api/seller/orders', async (req, res) => {
         : null
     })));
   return res.json({ sellerOrders });
+});
+
+app.get('/api/seller/market-benchmarks', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to view seller market benchmarks.' });
+  const shop = await Shop.findOne({ ownerId: user._id }).select('_id').lean();
+  if (!shop) return res.status(404).json({ error: 'Create your storefront before viewing market benchmarks.' });
+
+  const activeListingFilter = { status: 'active', isAvailable: { $ne: false }, moderationStatus: { $ne: 'hidden' } };
+  const ownStats = await Product.aggregate([
+    { $match: { ...activeListingFilter, shopId: shop._id } },
+    { $group: { _id: '$category', productCount: { $sum: 1 }, averagePriceNAD: { $avg: '$priceNAD' } } }
+  ]);
+  const categories = ownStats.map((entry) => entry._id);
+  if (!categories.length) return res.json({ benchmarks: [] });
+
+  const marketStats = await Product.aggregate([
+    { $match: { ...activeListingFilter, category: { $in: categories }, shopId: { $ne: shop._id } } },
+    { $group: {
+      _id: '$category',
+      productCount: { $sum: 1 },
+      shopIds: { $addToSet: '$shopId' },
+      averagePriceNAD: { $avg: '$priceNAD' }
+    } }
+  ]);
+  return res.json({ benchmarks: buildSellerMarketBenchmarks(categories, ownStats, marketStats) });
 });
 
 app.post('/api/seller/orders/:orderNumber/:sellerOrderId/decision', async (req, res) => {
@@ -1553,6 +2027,119 @@ app.get('/api/admin/kyc', async (req, res) => {
   })) });
 });
 
+app.get('/api/admin/users', async (req, res) => {
+  const moderator = await getSessionUser(req);
+  if (!moderator || !isAdminUser(moderator)) return res.status(403).json({ error: 'Admin access is not configured for this account.' });
+
+  const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
+  const status = typeof req.query.status === 'string' ? req.query.status : 'all';
+  const accountType = typeof req.query.accountType === 'string' ? req.query.accountType : 'all';
+  const page = req.query.page === undefined ? 1 : Number(req.query.page);
+  if (search.length > 100 || !['all', 'active', 'suspended'].includes(status) || !['all', 'buyer', 'seller'].includes(accountType) || !Number.isInteger(page) || page < 1 || page > 10000) {
+    return res.status(400).json({ error: 'Check the account search, type, status, and page.' });
+  }
+
+  const filters = [];
+  let sellerIds = null;
+  if (accountType !== 'all') {
+    sellerIds = await Shop.distinct('ownerId');
+    filters.push({ _id: accountType === 'seller' ? { $in: sellerIds } : { $nin: sellerIds } });
+  }
+  if (search) {
+    const expression = new RegExp(escapeRegex(search), 'i');
+    filters.push({ $or: [{ name: expression }, { email: expression }] });
+  }
+  if (status === 'suspended') filters.push({ isSuspended: true });
+  if (status === 'active') filters.push({ $or: [{ isSuspended: false }, { isSuspended: { $exists: false } }] });
+  const filter = filters.length > 1 ? { $and: filters } : filters[0] || {};
+  const pageSize = 25;
+  const [total, users] = await Promise.all([
+    User.countDocuments(filter),
+    User.find(filter)
+      .select('name email emailVerified phone town createdAt isSuspended')
+      .sort({ createdAt: -1, _id: -1 })
+      .skip((page - 1) * pageSize)
+      .limit(pageSize)
+      .lean()
+  ]);
+  const sellerShops = users.length
+    ? await Shop.find({ ownerId: { $in: users.map((account) => account._id) } }).select('ownerId sellerSuspended').lean()
+    : [];
+  const sellerShopByOwner = new Map(sellerShops.map((shop) => [shop.ownerId.toString(), shop]));
+  if (sellerIds === null) {
+    sellerIds = await Shop.distinct('ownerId', { ownerId: { $in: users.map((account) => account._id) } });
+  }
+  const sellerIdSet = new Set(sellerIds.map((id) => id.toString()));
+  return res.json({
+    users: users.map((account) => ({
+      id: account._id.toString(),
+      name: account.name,
+      email: account.email,
+      emailVerified: Boolean(account.emailVerified),
+      phone: account.phone || '',
+      town: account.town || '',
+      createdAt: account.createdAt,
+      isSuspended: Boolean(account.isSuspended),
+      sellerSuspended: Boolean(sellerShopByOwner.get(account._id.toString())?.sellerSuspended),
+      accountType: sellerIdSet.has(account._id.toString()) ? 'seller' : 'buyer',
+      isModerator: isAdminUser(account)
+    })),
+    page,
+    pageSize,
+    total,
+    pages: Math.ceil(total / pageSize)
+  });
+});
+
+app.patch('/api/admin/users/:id/status', async (req, res) => {
+  const moderator = await getSessionUser(req);
+  if (!moderator || !isAdminUser(moderator)) return res.status(403).json({ error: 'Admin access is not configured for this account.' });
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: 'Account not found.' });
+  if (typeof req.body?.isSuspended !== 'boolean') return res.status(400).json({ error: 'Choose whether the account should be suspended.' });
+
+  const account = await User.findById(req.params.id);
+  if (!account) return res.status(404).json({ error: 'Account not found.' });
+  if (isAdminUser(account)) return res.status(403).json({ error: 'The configured moderation account cannot be suspended.' });
+
+  account.isSuspended = req.body.isSuspended;
+  await account.save();
+  if (account.isSuspended) await Session.deleteMany({ userId: account._id });
+  return res.json({
+    user: {
+      id: account._id.toString(),
+      isSuspended: account.isSuspended
+    },
+    message: account.isSuspended
+      ? 'Account suspended. Active sessions have been signed out.'
+      : 'Account reactivated. The user can sign in again.'
+  });
+});
+
+app.patch('/api/admin/users/:id/seller-status', async (req, res) => {
+  const moderator = await getSessionUser(req);
+  if (!moderator || !isAdminUser(moderator)) return res.status(403).json({ error: 'Admin access is not configured for this account.' });
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: 'Seller account not found.' });
+  if (typeof req.body?.sellerSuspended !== 'boolean') return res.status(400).json({ error: 'Choose whether seller access should be suspended.' });
+
+  const account = await User.findById(req.params.id);
+  if (!account) return res.status(404).json({ error: 'Seller account not found.' });
+  if (isAdminUser(account)) return res.status(403).json({ error: 'The configured moderation account cannot be suspended.' });
+
+  const shop = await Shop.findOne({ ownerId: account._id });
+  if (!shop) return res.status(404).json({ error: 'Seller storefront not found.' });
+  shop.sellerSuspended = req.body.sellerSuspended;
+  await shop.save();
+  return res.json({
+    user: {
+      id: account._id.toString(),
+      sellerSuspended: shop.sellerSuspended
+    },
+    message: shop.sellerSuspended
+      ? 'Seller access suspended. The shop and listings are hidden; buyer access remains available.'
+      : 'Seller access restored. The shop and listings are visible again; buyer access was unchanged.'
+  });
+});
+
 app.get('/api/admin/kyc/:shopId/document', async (req, res) => {
   const user = await getSessionUser(req);
   if (!user || !isAdminUser(user)) return res.status(403).json({ error: 'Admin access is not configured for this account.' });
@@ -1625,12 +2212,28 @@ app.patch('/api/admin/products/:id/moderation', async (req, res) => {
 
 app.get('/api/products', async (req, res) => {
   await releaseExpiredReservations();
+  const now = new Date();
+  await PromotionCampaign.updateMany(
+    { status: 'active', expiresAt: { $lte: now } },
+    { $set: { status: 'expired' } }
+  );
+  const promotedProductIds = await PromotionCampaign.distinct('productId', {
+    status: 'active',
+    expiresAt: { $gt: now }
+  });
   const { q = '', category = '', town = '' } = req.query;
   if (typeof q !== 'string' || q.length > 80 || (category && !productCategories.includes(category)) || (town && !namibianTowns.includes(town))) {
     return res.status(400).json({ error: 'Invalid marketplace filters.' });
   }
 
-  const filter = { status: 'active', isAvailable: { $ne: false }, moderationStatus: { $ne: 'hidden' } };
+  const suspendedShopIds = await Shop.distinct('_id', { sellerSuspended: true });
+  const filter = {
+    shopId: { $nin: suspendedShopIds },
+    _id: { $nin: promotedProductIds },
+    status: 'active',
+    isAvailable: { $ne: false },
+    moderationStatus: { $ne: 'hidden' }
+  };
   if (category) filter.category = category;
   if (town) filter.town = town;
   if (q.trim()) {
@@ -1663,14 +2266,196 @@ app.get('/api/products', async (req, res) => {
   });
 });
 
+app.get('/api/promotions/active', async (req, res) => {
+  const now = new Date();
+  await PromotionCampaign.updateMany(
+    { status: 'active', expiresAt: { $lte: now } },
+    { $set: { status: 'expired' } }
+  );
+  const campaigns = await PromotionCampaign.find({
+    status: 'active',
+    startsAt: { $lte: now },
+    expiresAt: { $gt: now }
+  }).sort({ paidAt: -1 }).limit(24)
+    .populate({ path: 'productId', match: { status: 'active', isAvailable: { $ne: false }, stock: { $gt: 0 }, moderationStatus: { $ne: 'hidden' } } })
+    .populate({ path: 'shopId', match: { sellerSuspended: { $ne: true } }, select: 'name slug' })
+    .lean();
+  return res.json({
+    products: campaigns.flatMap((campaign) => {
+      const product = campaign.productId;
+      const shop = campaign.shopId;
+      if (!product || !shop) return [];
+      return [{
+        id: product._id.toString(),
+        campaignId: campaign._id.toString(),
+        title: product.title,
+        description: product.description,
+        priceNAD: product.priceNAD,
+        stock: product.stock ?? null,
+        category: product.category,
+        town: product.town,
+        imageUrl: product.imageUrl || '',
+        shopName: shop.name,
+        shopSlug: shop.slug,
+        promoted: true,
+        promotionExpiresAt: campaign.expiresAt
+      }];
+    })
+  });
+});
+
+app.post('/api/promotions/:id/engagement', promotionEngagementRateLimit, async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: 'Promotion not found.' });
+  const { eventType, placement } = req.body || {};
+  const visitorId = normalizePromotionVisitorId(req.body?.visitorId);
+  if (!['impression', 'click'].includes(eventType) || !['marketplace', 'dashboard'].includes(placement) || !visitorId) {
+    return res.status(400).json({ error: 'Invalid promotion engagement event.' });
+  }
+
+  const now = new Date();
+  const campaign = await PromotionCampaign.findOne({
+    _id: req.params.id,
+    status: 'active',
+    startsAt: { $lte: now },
+    expiresAt: { $gt: now }
+  }).select('_id shopId productId');
+  if (!campaign) return res.status(404).json({ error: 'Active promotion not found.' });
+  const [eligibleProduct, visibleShop] = await Promise.all([
+    Product.exists({
+      _id: campaign.productId,
+      shopId: campaign.shopId,
+      status: 'active',
+      isAvailable: { $ne: false },
+      stock: { $gt: 0 },
+      moderationStatus: { $ne: 'hidden' }
+    }),
+    Shop.exists({ _id: campaign.shopId, sellerSuspended: { $ne: true } })
+  ]);
+  if (!eligibleProduct || !visibleShop) return res.status(404).json({ error: 'Active promotion not found.' });
+
+  const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const visitorHash = createHash('sha256')
+    .update(`${campaign._id}:${placement}:${date.toISOString()}:${visitorId}`)
+    .digest('hex');
+  try {
+    await PromotionEngagement.create({
+      campaignId: campaign._id,
+      shopId: campaign.shopId,
+      eventType,
+      placement,
+      date,
+      visitorHash
+    });
+    return res.status(202).json({ recorded: true });
+  } catch (error) {
+    if (error.code === 11000) return res.status(202).json({ recorded: false });
+    throw error;
+  }
+});
+
+app.get('/api/seller/promotions/stats', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to view promotion statistics.' });
+  const shop = await Shop.findOne({ ownerId: user._id }).select('_id');
+  if (!shop) return res.json({ campaigns: [], daily: [] });
+
+  const now = new Date();
+  await PromotionCampaign.updateMany(
+    { shopId: shop._id, status: 'active', expiresAt: { $lte: now } },
+    { $set: { status: 'expired' } }
+  );
+  const campaigns = await PromotionCampaign.find({
+    shopId: shop._id,
+    status: { $in: ['active', 'expired'] }
+  }).sort({ paidAt: -1 }).limit(100)
+    .populate({ path: 'productId', select: 'title imageUrl' })
+    .lean();
+
+  const periodStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  periodStart.setUTCDate(periodStart.getUTCDate() - 29);
+  const campaignIds = campaigns.map((campaign) => campaign._id);
+  const [campaignTotals, dailyTotals] = campaignIds.length ? await Promise.all([
+    PromotionEngagement.aggregate([
+      { $match: { shopId: shop._id, campaignId: { $in: campaignIds } } },
+      { $group: { _id: { campaignId: '$campaignId', placement: '$placement', eventType: '$eventType' }, count: { $sum: 1 } } }
+    ]),
+    PromotionEngagement.aggregate([
+      { $match: { shopId: shop._id, date: { $gte: periodStart } } },
+      { $group: { _id: { date: '$date', placement: '$placement', eventType: '$eventType' }, count: { $sum: 1 } } }
+    ])
+  ]) : [[], []];
+
+  const totalsByCampaign = new Map();
+  campaignTotals.forEach(({ _id, count }) => {
+    const metrics = totalsByCampaign.get(_id.campaignId.toString()) || {
+      marketplaceImpressions: 0,
+      marketplaceClicks: 0,
+      dashboardImpressions: 0,
+      dashboardClicks: 0
+    };
+    metrics[`${_id.placement}${_id.eventType === 'impression' ? 'Impressions' : 'Clicks'}`] = count;
+    totalsByCampaign.set(_id.campaignId.toString(), metrics);
+  });
+  const dailyByDate = new Map();
+  dailyTotals.forEach(({ _id, count }) => {
+    const dateKey = _id.date.toISOString().slice(0, 10);
+    const metrics = dailyByDate.get(dateKey) || {
+      date: dateKey,
+      marketplaceImpressions: 0,
+      marketplaceClicks: 0,
+      dashboardImpressions: 0,
+      dashboardClicks: 0
+    };
+    metrics[`${_id.placement}${_id.eventType === 'impression' ? 'Impressions' : 'Clicks'}`] = count;
+    dailyByDate.set(dateKey, metrics);
+  });
+
+  const daily = [];
+  for (let day = new Date(periodStart); day <= now; day.setUTCDate(day.getUTCDate() + 1)) {
+    const dateKey = day.toISOString().slice(0, 10);
+    daily.push(dailyByDate.get(dateKey) || {
+      date: dateKey,
+      marketplaceImpressions: 0,
+      marketplaceClicks: 0,
+      dashboardImpressions: 0,
+      dashboardClicks: 0
+    });
+  }
+  return res.json({
+    campaigns: campaigns.map((campaign) => {
+      const metrics = totalsByCampaign.get(campaign._id.toString()) || {
+        marketplaceImpressions: 0,
+        marketplaceClicks: 0,
+        dashboardImpressions: 0,
+        dashboardClicks: 0
+      };
+      const impressions = metrics.marketplaceImpressions + metrics.dashboardImpressions;
+      const clicks = metrics.marketplaceClicks + metrics.dashboardClicks;
+      return {
+        id: campaign._id.toString(),
+        title: campaign.productId?.title || 'Deleted product',
+        imageUrl: campaign.productId?.imageUrl || '',
+        status: campaign.status,
+        startsAt: campaign.startsAt,
+        expiresAt: campaign.expiresAt,
+        impressions,
+        clicks,
+        clickThroughRate: calculatePromotionClickThroughRate(impressions, clicks),
+        ...metrics
+      };
+    }),
+    daily
+  });
+});
+
 app.get('/api/products/:id', async (req, res) => {
   await releaseExpiredReservations();
   if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: 'Product not found.' });
   const product = await Product.findOne({ _id: req.params.id, status: 'active', isAvailable: { $ne: false }, moderationStatus: { $ne: 'hidden' } })
-    .populate('shopId', 'name slug description town')
+    .populate('shopId', 'name slug description town sellerSuspended')
     .lean();
 
-  if (!product?.shopId) return res.status(404).json({ error: 'Product not found.' });
+  if (!product?.shopId || product.shopId.sellerSuspended) return res.status(404).json({ error: 'Product not found.' });
   return res.json({
     product: {
       id: product._id.toString(),
@@ -1692,7 +2477,7 @@ app.get('/api/shops', async (req, res) => {
     return res.status(400).json({ error: 'Invalid shop filters.' });
   }
 
-  const filter = {};
+  const filter = { sellerSuspended: { $ne: true } };
   if (town) filter.town = town;
   if (q.trim()) {
     const safeQuery = q.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -1735,7 +2520,7 @@ app.get('/api/shops', async (req, res) => {
 
 app.get('/api/shops/:slug', async (req, res) => {
   const viewer = await getSessionUser(req);
-  const shop = await Shop.findOne({ slug: req.params.slug }).lean();
+  const shop = await Shop.findOne({ slug: req.params.slug, sellerSuspended: { $ne: true } }).lean();
   if (!shop) return res.status(404).json({ error: 'Shop not found.' });
   const products = await Product.find({
     shopId: shop._id,
@@ -1801,7 +2586,8 @@ app.post('/api/shops/:slug/assistant', shopAssistantRateLimit, async (req, res) 
   }
   const history = [];
   for (const item of requestedHistory) {
-    if (!['user', 'assistant'].includes(item?.role) || typeof item.content !== 'string' || item.content.length > 500) {
+    const maxLength = item?.role === 'assistant' ? 2000 : 500;
+    if (!['user', 'assistant'].includes(item?.role) || typeof item.content !== 'string' || item.content.length > maxLength) {
       return res.status(400).json({ error: 'The conversation could not be processed.' });
     }
     history.push({ role: item.role, content: item.content });
@@ -1809,6 +2595,7 @@ app.post('/api/shops/:slug/assistant', shopAssistantRateLimit, async (req, res) 
 
   const shop = await Shop.findOne({
     slug: req.params.slug,
+    sellerSuspended: { $ne: true },
     assistantPlanActive: true,
     assistantEnabled: true
   }).lean();
@@ -1844,7 +2631,7 @@ app.post('/api/shops/:slug/reviews', async (req, res) => {
   const user = await getSessionUser(req);
   if (!user) return res.status(401).json({ error: 'Sign in to rate this shop.' });
 
-  const shop = await Shop.findOne({ slug: req.params.slug }).select('_id');
+  const shop = await Shop.findOne({ slug: req.params.slug, sellerSuspended: { $ne: true } }).select('_id');
   if (!shop) return res.status(404).json({ error: 'Shop not found.' });
 
   const rating = Number(req.body?.rating);
@@ -1884,8 +2671,13 @@ app.post('/api/products/:id/reports', async (req, res) => {
   if (!user) return res.status(401).json({ error: 'Sign in to report a listing.' });
   if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: 'Listing not found.' });
 
-  const product = await Product.findOne({ _id: req.params.id, status: 'active', moderationStatus: { $ne: 'hidden' } })
-    .populate('shopId', 'ownerId')
+  const suspendedShopIds = await Shop.distinct('_id', { sellerSuspended: true });
+  const product = await Product.findOne({
+    _id: req.params.id,
+    shopId: { $nin: suspendedShopIds },
+    status: 'active',
+    moderationStatus: { $ne: 'hidden' }
+  }).populate('shopId', 'ownerId')
     .select('_id shopId');
   if (!product?.shopId) return res.status(404).json({ error: 'Listing not found.' });
   if (product.shopId.ownerId.toString() === user._id.toString()) return res.status(403).json({ error: 'You cannot report your own listing.' });
@@ -2146,8 +2938,158 @@ app.get('/api/seller/products', async (req, res) => {
   if (!user) return res.status(401).json({ error: 'Sign in to manage listings.' });
   const shop = await Shop.findOne({ ownerId: user._id });
   if (!shop) return res.json({ products: [] });
+  const now = new Date();
+  await PromotionCampaign.updateMany(
+    { shopId: shop._id, status: 'active', expiresAt: { $lte: now } },
+    { $set: { status: 'expired' } }
+  );
   const products = await Product.find({ shopId: shop._id }).sort({ createdAt: -1 }).lean();
-  return res.json({ products: products.map((product) => ({ ...product, id: product._id.toString() })) });
+  const campaigns = await PromotionCampaign.find({
+    shopId: shop._id,
+    status: { $in: ['active', 'pending'] }
+  }).sort({ createdAt: -1 }).lean();
+  const campaignsByProduct = new Map();
+  campaigns.forEach((campaign) => {
+    if (!campaignsByProduct.has(campaign.productId.toString())) campaignsByProduct.set(campaign.productId.toString(), campaign);
+  });
+  return res.json({ products: products.map((product) => {
+    const campaign = campaignsByProduct.get(product._id.toString());
+    return {
+      ...product,
+      id: product._id.toString(),
+      promotion: campaign ? {
+        id: campaign._id.toString(),
+        status: campaign.status,
+        amountNAD: campaign.amountNAD,
+        startsAt: campaign.startsAt,
+        expiresAt: campaign.expiresAt,
+        paymentExpiresAt: campaign.paymentExpiresAt
+      } : null
+    };
+  }) });
+});
+
+app.post('/api/seller/products/:id/promotions', promotionWriteRateLimit, async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to promote a listing.' });
+  if (!mockPaymentsEnabled) return res.status(503).json({ error: 'Promotion payments are unavailable until a live payment provider is configured.' });
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: 'Listing not found.' });
+
+  const shop = await Shop.findOne({ ownerId: user._id });
+  if (!shop) return res.status(404).json({ error: 'Shop not found.' });
+  const product = await Product.findOne({
+    _id: req.params.id,
+    shopId: shop._id,
+    status: 'active',
+    isAvailable: true,
+    stock: { $gt: 0 },
+    moderationStatus: { $ne: 'hidden' }
+  });
+  if (!product) return res.status(404).json({ error: 'Only active, in-stock listings can be promoted.' });
+
+  const now = new Date();
+  await PromotionCampaign.updateMany(
+    { productId: product._id, status: 'active', expiresAt: { $lte: now } },
+    { $set: { status: 'expired' } }
+  );
+  await PromotionCampaign.updateMany(
+    { productId: product._id, status: 'pending', paymentExpiresAt: { $lte: now } },
+    { $set: { status: 'cancelled' } }
+  );
+  const existingCampaign = await PromotionCampaign.findOne({
+    productId: product._id,
+    status: { $in: ['active', 'pending'] }
+  });
+  if (existingCampaign) {
+    return res.status(409).json({
+      error: existingCampaign.status === 'active'
+        ? 'This product already has an active promotion.'
+        : 'A promotion payment is already pending for this product.'
+    });
+  }
+
+  const campaignId = new mongoose.Types.ObjectId();
+  const paymentIntent = paymentAdapter.createIntent(`PROMO-${campaignId.toString()}`);
+  const campaign = await PromotionCampaign.create({
+    _id: campaignId,
+    productId: product._id,
+    sellerId: user._id,
+    shopId: shop._id,
+    amountNAD: promotionPriceNAD,
+    durationDays: promotionDurationDays,
+    paymentReference: paymentIntent.reference,
+    paymentExpiresAt: new Date(now.getTime() + 15 * 60 * 1000)
+  });
+  return res.status(201).json({
+    promotion: {
+      id: campaign._id.toString(),
+      status: campaign.status,
+      amountNAD: campaign.amountNAD,
+      durationDays: campaign.durationDays,
+      paymentExpiresAt: campaign.paymentExpiresAt,
+      mock: true,
+      message: 'Test payment only. No money will be charged.'
+    }
+  });
+});
+
+app.post('/api/seller/promotions/:id/simulate-payment', promotionWriteRateLimit, async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to complete promotion payment.' });
+  if (!mockPaymentsEnabled) return res.status(503).json({ error: 'Promotion payments are unavailable until a live payment provider is configured.' });
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: 'Promotion not found.' });
+
+  const now = new Date();
+  const campaign = await PromotionCampaign.findOne({
+    _id: req.params.id,
+    sellerId: user._id,
+    status: 'pending',
+    paymentExpiresAt: { $gt: now }
+  });
+  if (!campaign) return res.status(404).json({ error: 'Pending promotion payment not found or expired.' });
+  const product = await Product.findOne({
+    _id: campaign.productId,
+    shopId: campaign.shopId,
+    status: 'active',
+    isAvailable: true,
+    stock: { $gt: 0 },
+    moderationStatus: { $ne: 'hidden' }
+  });
+  if (!product) {
+    campaign.status = 'cancelled';
+    await campaign.save();
+    return res.status(409).json({ error: 'This listing is no longer eligible for promotion.' });
+  }
+
+  const payment = paymentAdapter.confirmIntent(campaign.paymentReference);
+  if (payment.status !== 'paid') return res.status(402).json({ error: 'Promotion payment was not completed.' });
+  const schedule = buildPromotionSchedule(payment.confirmedAt || now);
+  try {
+    const activated = await PromotionCampaign.findOneAndUpdate({
+      _id: campaign._id,
+      sellerId: user._id,
+      status: 'pending',
+      paymentExpiresAt: { $gt: now }
+    }, {
+      $set: { status: 'active', paidAt: schedule.startsAt, startsAt: schedule.startsAt, expiresAt: schedule.expiresAt }
+    }, { new: true, runValidators: true });
+    if (!activated) return res.status(409).json({ error: 'This promotion payment is no longer pending.' });
+    return res.json({
+      promotion: {
+        id: activated._id.toString(),
+        productId: activated.productId.toString(),
+        status: activated.status,
+        amountNAD: activated.amountNAD,
+        startsAt: activated.startsAt,
+        expiresAt: activated.expiresAt
+      },
+      mock: true,
+      message: 'Test payment recorded. No money was charged.'
+    });
+  } catch (error) {
+    if (error.code === 11000) return res.status(409).json({ error: 'This product already has an active promotion.' });
+    throw error;
+  }
 });
 
 app.post('/api/seller/products', async (req, res) => {
@@ -2249,7 +3191,7 @@ app.get(['/', '/marketplace'], (req, res) => {
 });
 
 app.get('/login', async (req, res) => {
-  if (await getSessionUser(req)) return res.redirect('/dashboard');
+  if (await getSessionUser(req)) return res.redirect(getSafeReturnPath(req.query.returnTo));
   return res.sendFile(path.join(__dirname, '..', 'client', 'home.html'));
 });
 
@@ -2294,7 +3236,7 @@ async function startServer() {
   }
 
   await mongoose.connect(process.env.MONGODB_URI);
-  await Promise.all([User.init(), Session.init(), PasswordReset.init(), Shop.init(), Product.init(), Order.init(), ListingReport.init(), SupportRequest.init()]);
+  await Promise.all([User.init(), Session.init(), PasswordReset.init(), Shop.init(), Product.init(), PromotionCampaign.init(), PromotionEngagement.init(), Order.init(), ListingReport.init(), SupportRequest.init()]);
   const reservationSweep = setInterval(() => {
     releaseExpiredReservations().catch((error) => console.error('Reservation cleanup failed:', error.message));
   }, 60 * 1000);
@@ -2322,14 +3264,24 @@ if (require.main === module) {
 module.exports = {
   canCancelOrder,
   resolveSellerApprovalState,
+  normalizeCartItems,
+  normalizeSavedCartItems,
+  normalizeSavedWishlistIds,
+  buildPromotionSchedule,
+  normalizePromotionVisitorId,
+  calculatePromotionClickThroughRate,
   getBuyerDisplayName,
   normalizeDuplicateText,
   buildProductDuplicateKey,
+  buildSellerMarketBenchmarks,
   normalizeSupportRequest,
   normalizePasswordResetInput,
+  resolveAppBaseUrl,
+  describeLoginDevice,
+  getSafeReturnPath,
   normalizeProfileInput,
   isValidEmailVerificationToken,
-  isBuyerEmailVerified,
+  isEmailVerified,
   isAdminUser,
   validateImageUrl,
   hasValidImageSignature,

@@ -53,6 +53,7 @@ test('assistant requests use the local model API without an external API key', a
   assert.equal(request.options.headers.Authorization, undefined);
   assert.equal(JSON.parse(request.options.body).model, 'test-model:1b');
   assert.equal(JSON.parse(request.options.body).stream, false);
+  assert.equal(JSON.parse(request.options.body).think, false);
 });
 
 test('assistant requests report a clear error when the local model is unavailable', async () => {

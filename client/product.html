@@ -62,6 +62,10 @@
         .add-button.is-added { border-color: var(--forest); background: var(--forest); }
         .add-button.is-added:hover { color: var(--white); background: var(--forest); }
         .add-button:disabled { opacity: 0.6; cursor: wait; }
+        .wishlist-button { display: inline-flex; min-height: 40px; align-items: center; gap: 8px; margin-top: 10px; padding: 0 12px; border: 1px solid var(--line); border-radius: 3px; color: var(--forest); background: var(--white); cursor: pointer; font-size: 11px; font-weight: 700; }
+        .wishlist-button:hover, .wishlist-button[aria-pressed="true"] { border-color: var(--forest); color: var(--white); background: var(--forest); }
+        .wishlist-button:focus-visible { outline: 2px solid #397d54; outline-offset: 2px; }
+        .wishlist-status { min-height: 16px; margin: 5px 0 0; color: var(--muted); font-size: 10px; }
         .cart-flight { position: fixed; z-index: 100; display: grid; width: 58px; height: 58px; overflow: hidden; place-items: center; border: 1px solid var(--line); border-radius: 4px; background: var(--lime); box-shadow: 0 8px 20px rgba(23, 35, 30, 0.2); pointer-events: none; }
         .cart-flight img { width: 100%; height: 100%; object-fit: cover; }
         .cart-flight span { color: var(--forest); font-family: Georgia, serif; font-size: 27px; }
@@ -132,6 +136,8 @@
                     <label class="quantity-label" for="quantity">Quantity<input class="quantity" id="quantity" type="number" min="1" max="99" value="1"></label>
                     <button class="add-button" id="add-to-cart" type="button"><span>Add to cart</span><span aria-hidden="true">&#8594;</span></button>
                 </div>
+                <button class="wishlist-button" id="wishlist-button" type="button" aria-pressed="false">♡ <span>Save to wishlist</span></button>
+                <p class="wishlist-status" id="wishlist-status" role="status" aria-live="polite"></p>
                 <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
                 <section class="seller-note" aria-labelledby="seller-heading"><h2 id="seller-heading">About this seller</h2><p id="shop-description"></p></section>
                 <section class="report-section" aria-label="Report this product">
@@ -158,6 +164,8 @@
     </main>
     <footer>Z Namibia · Prices shown in Namibian dollars (N$)</footer>
 
+    <script src="/cart-sync.js"></script>
+    <script src="/wishlist-sync.js"></script>
     <script>
         const cartKey = "z_cart";
         const priceFormat = new Intl.NumberFormat("en-NA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -167,6 +175,9 @@
         const addButtonLabel = addButton.querySelector("span");
         const addButtonIcon = addButton.querySelector("span[aria-hidden='true']");
         const feedback = document.querySelector("#feedback");
+        const wishlistButton = document.querySelector("#wishlist-button");
+        const wishlistButtonLabel = wishlistButton.querySelector("span");
+        const wishlistStatus = document.querySelector("#wishlist-status");
         const reportToggle = document.querySelector("#report-toggle");
         const reportForm = document.querySelector("#report-form");
         const reportStatus = document.querySelector("#report-status");
@@ -174,18 +185,21 @@
         let addButtonResetTimer;
 
         function readCart() {
-            try {
-                const cart = JSON.parse(localStorage.getItem(cartKey) || "[]");
-                return Array.isArray(cart) ? cart.filter((item) => typeof item.id === "string" && Number.isInteger(item.quantity) && item.quantity > 0 && item.quantity <= 99) : [];
-            } catch {
-                return [];
-            }
+            return window.ZCartSync.readCart();
         }
 
         function updateCartCount() {
             const count = readCart().reduce((total, item) => total + item.quantity, 0);
             countElement.textContent = String(count);
             cartLink.setAttribute("aria-label", `View cart, ${count} ${count === 1 ? "item" : "items"}`);
+        }
+
+        function updateWishlistButton() {
+            if (!product) return;
+            const isSaved = window.ZWishlistSync.has(product.id);
+            wishlistButton.setAttribute("aria-pressed", String(isSaved));
+            wishlistButton.firstChild.textContent = isSaved ? "♥ " : "♡ ";
+            wishlistButtonLabel.textContent = isSaved ? "Saved to wishlist" : "Save to wishlist";
         }
 
         function animateCartAdd() {
@@ -288,6 +302,7 @@
                     }, { once: true });
                 }
                 document.querySelector("#product-layout").hidden = false;
+                updateWishlistButton();
             } catch {
                 showError();
             }
@@ -301,17 +316,33 @@
             }
             const cart = readCart();
             const existing = cart.find((item) => item.id === product.id);
+            if (!existing && cart.length >= 20) {
+                feedback.textContent = "Your cart is full. Remove an item before adding another product (maximum 20).";
+                return;
+            }
             if (Number.isInteger(product.stock) && quantity + (existing?.quantity || 0) > product.stock) {
                 feedback.textContent = `Only ${product.stock} are available.`;
                 return;
             }
             if (existing) existing.quantity = Math.min(existing.quantity + quantity, 99);
             else cart.push({ id: product.id, quantity });
-            localStorage.setItem(cartKey, JSON.stringify(cart));
+            window.ZCartSync.saveCart(cart);
             updateCartCount();
             animateCartAdd();
             showAddedButtonState();
             feedback.textContent = `${product.title} added to your cart.`;
+        });
+
+        wishlistButton.addEventListener("click", () => {
+            try {
+                const result = window.ZWishlistSync.toggle(product.id);
+                updateWishlistButton();
+                wishlistStatus.textContent = result.saved
+                    ? `${product.title} saved to your wishlist.`
+                    : `${product.title} removed from your wishlist.`;
+            } catch (error) {
+                wishlistStatus.textContent = error.message;
+            }
         });
 
         reportToggle.addEventListener("click", () => {
@@ -353,8 +384,15 @@
             }
         });
 
-        updateCartCount();
-        loadProduct();
+        Promise.all([
+            window.ZCartSync.initialize(),
+            window.ZWishlistSync.initialize()
+        ]).then(() => {
+            updateCartCount();
+            return loadProduct();
+        });
+        window.addEventListener("z-cart-updated", updateCartCount);
+        window.addEventListener("z-wishlist-updated", updateWishlistButton);
     </script>
     <script src="/navigation.js" defer></script>
 </body>

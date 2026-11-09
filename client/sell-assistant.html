@@ -19,32 +19,46 @@
         .header-links a { text-decoration: none; }
         .header-links a:hover { text-decoration: underline; text-underline-offset: 4px; }
         .back-link { display: inline-grid; width: 28px; height: 28px; place-items: center; border: 1px solid var(--ink); border-radius: 50%; text-decoration: none; font-size: 18px; }
-        main { width: min(680px, calc(100% - 40px)); margin: 0 auto; padding: 42px 0 70px; }
+        main { width: min(1920px, calc(100% - clamp(48px, 5vw, 120px))); margin: 0 auto; padding: 46px 0 80px; }
+        main > .eyebrow, main > h1, main > .intro, main > .loading, main > .error, .assistant-form { width: min(1120px, 100%); margin-right: auto; margin-left: auto; }
         .eyebrow { margin: 0 0 10px; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
-        h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 38px; font-weight: 400; line-height: 1.08; }
-        .intro { margin: 10px 0 30px; color: var(--muted); font-size: 12px; line-height: 1.6; }
-        .assistant-form { padding-top: 20px; border-top: 1px solid var(--ink); }
-        .shop-name { margin: 0 0 18px; font-family: Georgia, serif; font-size: 19px; }
-        .status { margin: 0 0 18px; padding: 12px 14px; border-left: 3px solid var(--forest); background: #e8ebdd; color: var(--ink); font-size: 11px; line-height: 1.5; }
-        .data-heading { margin: 22px 0 10px; font-family: Georgia, serif; font-size: 19px; font-weight: 400; }
-        .data-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 0 24px; padding: 0; list-style: none; }
-        .data-list li { padding: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; line-height: 1.5; }
-        .activation { display: flex; align-items: flex-start; gap: 9px; margin: 20px 0; font-size: 11px; line-height: 1.5; }
+        h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(38px, 4vw, 52px); font-weight: 400; letter-spacing: -0.035em; line-height: 1.08; }
+        .intro { max-width: 720px; margin: 12px auto 30px; color: var(--muted); font-size: 14px; line-height: 1.65; }
+        .assistant-form { display: grid; gap: 18px; }
+        #assistant-form[hidden] { display: none !important; }
+        .assistant-header { display: flex; min-height: 104px; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; padding: 22px 26px; border: 1px solid var(--line); background: var(--white); }
+        .assistant-identity { min-width: 0; }
+        .assistant-identity .eyebrow { margin-bottom: 6px; }
+        .shop-name { margin: 0; font-family: Georgia, serif; font-size: clamp(26px, 3vw, 34px); font-weight: 400; overflow-wrap: anywhere; }
+        .status { max-width: 520px; margin: 0; padding: 8px 12px; border: 1px solid #d9d9cf; border-radius: 999px; background: #f1f2ed; color: var(--muted); font-size: 10px; line-height: 1.5; }
+        .data-card, .assistant-controls { padding: 22px; border: 1px solid var(--line); background: var(--white); }
+        .data-heading { margin: 0 0 14px; font-family: Georgia, serif; font-size: 22px; font-weight: 400; }
+        .data-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+        .data-list li { min-height: 58px; padding: 14px 16px; border: 1px solid var(--line); color: var(--muted); background: #fffefa; font-size: 11px; line-height: 1.5; }
+        .assistant-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; }
+        .activation { display: flex; align-items: flex-start; gap: 9px; margin: 0; font-size: 11px; line-height: 1.5; }
         .activation input { width: 16px; height: 16px; flex: 0 0 auto; margin: 0; accent-color: var(--forest); }
-        .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
-        .purchase-button, .save-button { min-height: 42px; padding: 0 14px; border: 1px solid var(--ink); border-radius: 3px; color: var(--white); background: var(--ink); cursor: pointer; font-size: 11px; font-weight: 700; }
+        .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+        .purchase-button, .save-button, .actions a { display: inline-flex; min-height: 44px; align-items: center; padding: 0 16px; border: 1px solid var(--ink); border-radius: 3px; color: var(--white); background: var(--ink); cursor: pointer; font-size: 11px; font-weight: 700; text-decoration: none; }
         .purchase-button:disabled { opacity: 0.6; cursor: not-allowed; }
-        .save-button:hover { color: var(--ink); background: var(--lime); }
+        .save-button:hover, .actions a:hover { color: var(--ink); background: var(--lime); }
         .save-button:disabled { opacity: 0.6; cursor: wait; }
-        .feedback { min-height: 18px; margin: 12px 0 0; color: var(--forest); font-size: 11px; }
+        .feedback { min-height: 18px; margin: 0; color: var(--forest); font-size: 11px; }
+        .assistant-controls > .feedback { flex: 1 1 100%; }
         .feedback.error { color: #8b3b2f; }
-        .loading { color: var(--muted); font-size: 12px; }
+        .loading, .error { padding: 18px 20px; border: 1px solid var(--line); background: var(--white); color: var(--muted); font-size: 12px; line-height: 1.6; }
+        .error { border-color: #dfb2a7; color: #8b3b2f; background: #f6e8e2; }
         [hidden] { display: none !important; }
         @media (max-width: 540px) {
             .site-header { min-height: 64px; padding: 10px 18px; }
             .header-links { gap: 12px; font-size: 10px; }
             main { width: calc(100% - 36px); padding-top: 32px; }
             h1 { font-size: 33px; }
+            .assistant-header { align-items: flex-start; flex-direction: column; padding: 16px; }
+            .data-card, .assistant-controls { padding: 14px; }
+            .data-list { grid-template-columns: 1fr; }
+            .assistant-controls { align-items: flex-start; flex-direction: column; }
+            .actions { width: 100%; }
         }
     </style>
     <link rel="stylesheet" href="/loading.css">
@@ -64,25 +78,34 @@
         <p class="intro">Your assistant uses your shop information automatically. No prompts, FAQs, or model training to manage.</p>
         <p class="loading" id="assistant-loading" role="status">Loading shop settings...</p>
         <form class="assistant-form" id="assistant-form" hidden>
-            <h2 class="shop-name" id="assistant-shop-name"></h2>
-            <p class="status" id="assistant-status" role="status" aria-live="polite"></p>
-            <h2 class="data-heading">What the assistant knows</h2>
-            <ul class="data-list">
-                <li>Your shop name, description, and town</li>
-                <li>Your delivery rates</li>
-                <li>Active product descriptions and prices</li>
-                <li>Current stock availability</li>
-            </ul>
-            <label class="activation" for="assistant-enabled">
-                <input id="assistant-enabled" type="checkbox" disabled>
-                <span>Show the assistant on my public shop</span>
-            </label>
-            <div class="actions">
-                <button class="purchase-button" id="assistant-purchase" type="button" disabled>Purchase assistant</button>
-                <button class="save-button" id="assistant-save" type="submit" hidden>Save settings</button>
-                <a href="/sell/dashboard">Return to my shop</a>
-            </div>
-            <p class="feedback" id="assistant-message" role="status" aria-live="polite"></p>
+            <header class="assistant-header">
+                <div class="assistant-identity">
+                    <p class="eyebrow">Storefront add-on</p>
+                    <h2 class="shop-name" id="assistant-shop-name"></h2>
+                </div>
+                <p class="status" id="assistant-status" role="status" aria-live="polite"></p>
+            </header>
+            <section class="data-card" aria-labelledby="assistant-data-heading">
+                <h2 class="data-heading" id="assistant-data-heading">What the assistant knows</h2>
+                <ul class="data-list">
+                    <li>Your shop name, description, and town</li>
+                    <li>Your delivery rates</li>
+                    <li>Active product descriptions and prices</li>
+                    <li>Current stock availability</li>
+                </ul>
+            </section>
+            <section class="assistant-controls" aria-label="Assistant settings">
+                <label class="activation" for="assistant-enabled">
+                    <input id="assistant-enabled" type="checkbox" disabled>
+                    <span>Show the assistant on my public shop</span>
+                </label>
+                <div class="actions">
+                    <button class="purchase-button" id="assistant-purchase" type="button" disabled>Purchase assistant</button>
+                    <button class="save-button" id="assistant-save" type="submit" hidden>Save settings</button>
+                    <a href="/sell/dashboard">Return to my shop</a>
+                </div>
+                <p class="feedback" id="assistant-message" role="status" aria-live="polite"></p>
+            </section>
         </form>
         <p class="feedback error" id="assistant-error" role="alert" hidden></p>
     </main>

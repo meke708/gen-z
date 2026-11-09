@@ -21,7 +21,7 @@
         body { min-width: 320px; margin: 0; color: var(--ink); background: var(--paper); font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
         button, input, select, textarea { font: inherit; }
         a { color: inherit; }
-        .site-header { display: flex; min-height: 72px; align-items: center; justify-content: space-between; gap: 20px; padding: 12px max(24px, calc((100vw - 1040px) / 2)); border-bottom: 1px solid var(--line); }
+        .site-header { display: flex; min-height: 72px; align-items: center; justify-content: space-between; gap: 20px; padding: 12px max(24px, calc((100vw - 1180px) / 2)); border-bottom: 1px solid var(--line); }
         .header-left { display: inline-flex; align-items: center; gap: 12px; }
         .back-button {
             display: inline-grid;
@@ -55,7 +55,12 @@
         .seller-shop-menu-panel { position: absolute; z-index: 30; top: calc(100% + 10px); right: 0; display: grid; min-width: 190px; gap: 2px; padding: 5px; border: 1px solid var(--line); background: var(--white); box-shadow: 0 8px 20px rgba(23, 35, 30, 0.14); }
         .seller-shop-menu-panel a, .seller-shop-menu-panel button { display: block; padding: 10px; border: 0; color: var(--ink); background: transparent; cursor: pointer; font-size: 11px; font-weight: 700; text-align: left; text-decoration: none; }
         .seller-shop-menu-panel a:hover, .seller-shop-menu-panel button:hover, .seller-shop-menu-panel a:focus-visible, .seller-shop-menu-panel button:focus-visible { color: var(--forest); background: #edf0df; outline: none; }
-        main { width: min(1040px, calc(100% - 48px)); margin: 0 auto; }
+        .seller-header-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 10px; }
+        .seller-mobile-nav-toggle { display: none; width: 40px; height: 40px; padding: 10px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: var(--white); cursor: pointer; }
+        .seller-mobile-nav-toggle span { display: block; width: 3px; height: 3px; margin: 3px auto; border-radius: 50%; background: currentColor; }
+        .seller-mobile-nav-toggle:focus-visible { outline: 2px solid #397d54; outline-offset: 3px; }
+        .seller-header-search { display: none; }
+        main { width: min(1180px, calc(100% - 48px)); margin: 0 auto; }
         .page-intro { padding: 48px 0 26px; }
         .page-intro-copy { min-width: 0; }
         .eyebrow { margin: 0 0 12px; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: 0.17em; text-transform: uppercase; }
@@ -64,18 +69,79 @@
         .seller-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 340px); align-items: start; gap: 24px; padding: 8px 0 70px; }
         .seller-layout > .seller-stats, .seller-layout > section[aria-labelledby="shop-heading"] { grid-column: 1 / -1; }
         .seller-layout > section[aria-labelledby="shop-heading"] { padding-bottom: 4px; }
-        .seller-tabs { display: grid; grid-column: 1 / -1; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 6px; border: 1px solid var(--line); background: var(--white); }
-        .seller-tab { min-height: 46px; padding: 0 12px; border: 1px solid transparent; border-radius: 3px; color: var(--muted); background: transparent; cursor: pointer; font-size: 12px; font-weight: 700; }
-        .seller-tab:hover { color: var(--forest); background: #f1f5df; }
-        .seller-tab[aria-selected="true"] { border-color: var(--forest); color: var(--white); background: var(--forest); }
-        .seller-tab:focus-visible { outline: 2px solid #397d54; outline-offset: 2px; }
         .seller-tab-panel { grid-column: 1 / -1; min-width: 0; }
         .seller-tab-panel[hidden] { display: none !important; }
+        .promotion-stats-panel { padding: clamp(16px, 3vw, 26px); border: 1px solid var(--line); background: var(--white); }
+        .promotion-stats-header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+        .promotion-stats-header h2 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 28px; font-weight: 400; }
+        .promotion-stats-header p:last-child { max-width: 620px; margin: 7px 0 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+        .promotion-stats-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .promotion-stats-card { min-width: 0; padding: 16px; border: 1px solid var(--line); background: #f7f5ee; }
+        .promotion-stats-card dt { color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+        .promotion-stats-card dd { margin: 8px 0 0; color: var(--forest); font-family: Georgia, "Times New Roman", serif; font-size: 27px; }
+        .promotion-trend-card { margin-bottom: 20px; padding: 18px; border: 1px solid var(--line); }
+        .promotion-trend-title { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 21px; font-weight: 400; }
+        .promotion-trend-note { margin: 5px 0 0; color: var(--muted); font-size: 11px; }
+        .promotion-trend { display: grid; height: 150px; grid-auto-columns: minmax(12px, 1fr); grid-auto-flow: column; align-items: end; gap: 5px; overflow-x: auto; margin-top: 16px; padding: 0 0 22px; border-bottom: 1px solid var(--line); }
+        .promotion-trend-day { position: relative; display: flex; height: 100%; align-items: end; justify-content: center; gap: 2px; }
+        .promotion-trend-bar { width: min(9px, 42%); min-height: 0; border-radius: 2px 2px 0 0; background: var(--forest); }
+        .promotion-trend-bar.clicks { background: #d9772f; }
+        .promotion-trend-day time { position: absolute; bottom: -19px; color: var(--muted); font-size: 8px; white-space: nowrap; }
+        .promotion-trend-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; color: var(--muted); font-size: 10px; }
+        .promotion-trend-legend span { display: inline-flex; align-items: center; gap: 6px; }
+        .promotion-trend-legend i { width: 9px; height: 9px; border-radius: 2px; background: var(--forest); }
+        .promotion-trend-legend .clicks-key { background: #d9772f; }
+        .promotion-table-wrap { overflow-x: auto; }
+        .promotion-table { width: 100%; min-width: 760px; border-collapse: collapse; text-align: left; }
+        .promotion-table th, .promotion-table td { padding: 12px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; font-size: 11px; }
+        .promotion-table th { color: var(--muted); font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; }
+        .promotion-product-cell { display: flex; min-width: 180px; align-items: center; gap: 10px; font-weight: 700; }
+        .promotion-product-cell img { width: 42px; height: 42px; flex: 0 0 auto; object-fit: cover; background: #e5ecc9; }
+        .promotion-status { display: inline-block; padding: 4px 7px; border-radius: 999px; color: #285b3a; background: #e8f2e9; font-size: 9px; font-weight: 700; text-transform: capitalize; }
+        .promotion-status.expired { color: #6b5140; background: #eee6db; }
+        .promotion-empty { padding: 22px; border: 1px dashed #a8b19e; color: var(--muted); font-size: 12px; line-height: 1.6; text-align: center; }
+        .promotion-empty a { color: var(--forest); font-weight: 700; }
         #products-panel { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 24px; }
         #products-panel[hidden] { display: none !important; }
-        #settings-panel { padding: 22px; border: 1px solid var(--line); background: var(--white); }
-        #settings-panel .shipping-settings { max-width: 760px; margin: 0; padding: 0; border: 0; }
-        #settings-panel .shipping-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        #settings-panel { padding: 0; border: 0; background: transparent; }
+        #settings-workspace { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 18px; }
+        #settings-content { display: flex; min-width: 0; }
+        #settings-panel .shipping-settings { display: flex; min-width: 0; flex: 1 1 auto; flex-direction: column; max-width: none; margin: 0; padding: 22px; border: 1px solid #d5dcc8; background: var(--white); }
+        #settings-panel .shipping-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 18px 0 0; }
+        .settings-card-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px; margin: -22px -22px 18px; padding: 19px 22px 16px; border-bottom: 1px solid var(--line); background: #fffefa; }
+        .settings-card-identity { min-width: 0; }
+        .settings-card-header .eyebrow { margin-bottom: 6px; }
+        .settings-card-header .section-heading { margin: 0; padding: 0; border: 0; font-size: 24px; }
+        .settings-card-description { margin: 7px 0 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
+        #settings-panel .shipping-grid .field { min-width: 0; min-height: 86px; margin: 0; padding: 14px 16px; border: 1px solid var(--line); background: var(--white); }
+        #settings-panel .shipping-grid .field label { color: var(--muted); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; }
+        #settings-panel .shipping-grid .field input { min-height: 28px; padding: 5px 0 2px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; font-size: 14px; }
+        #settings-panel .shipping-grid .field input:focus { border-bottom-color: var(--forest); box-shadow: none; }
+        #settings-panel .auto-approval-toggle { flex: 0 0 auto; justify-content: flex-end; gap: 8px; margin: 0 0 0 auto; padding: 8px 0 8px 8px; border: 0; border-radius: 0; background: transparent; font-size: 10px; white-space: nowrap; }
+        #settings-panel .auto-approval-toggle:hover { box-shadow: none; }
+        #settings-panel .auto-approval-toggle:focus-within { border-color: transparent; box-shadow: none; }
+        #settings-panel .shipping-save-feedback { margin-bottom: 0; }
+        .seller-promo { min-width: 0; overflow: hidden; border: 1px solid #d5dcc8; background: linear-gradient(145deg, #f1f4e8 0%, #fffefa 75%); }
+        .seller-promo-header { position: absolute; z-index: 1; top: 8px; right: 9px; }
+        .seller-promo-header .eyebrow { display: none; }
+        .seller-promo-count { padding: 5px 8px; border: 1px solid rgba(255, 254, 250, 0.65); border-radius: 999px; color: var(--white); background: rgba(23, 35, 30, 0.68); font-size: 9px; font-weight: 700; }
+        .seller-promo { position: relative; }
+        .seller-promo-slide { position: relative; min-height: 238px; isolation: isolate; overflow: hidden; padding: 20px 20px 16px; }
+        .seller-promo-slide[hidden] { display: none !important; }
+        .seller-promo-slide::before { position: absolute; z-index: -1; inset: 0; background: linear-gradient(90deg, rgba(14, 32, 27, 0.92) 0%, rgba(14, 32, 27, 0.7) 58%, rgba(14, 32, 27, 0.25) 100%); content: ""; }
+        .seller-promo-image { position: absolute; z-index: -2; inset: 0; display: block; width: 100%; height: 100%; margin: 0; object-fit: cover; pointer-events: none; }
+        .seller-promo-slide h3 { max-width: 300px; margin: 0; color: var(--white); font-family: Georgia, "Times New Roman", serif; font-size: 24px; font-weight: 400; line-height: 1.13; }
+        .seller-promo-slide p { margin: 9px 0 17px; color: rgba(255, 254, 250, 0.86); font-size: 11px; line-height: 1.6; }
+        .seller-promo-cta { display: inline-flex; min-height: 38px; align-items: center; gap: 14px; padding: 0 12px; border: 1px solid var(--forest); border-radius: 3px; color: var(--white); background: var(--forest); font-size: 10px; font-weight: 700; text-decoration: none; }
+        .seller-promo-cta:hover { color: var(--ink); background: var(--lime); }
+        .seller-promo-cta:focus-visible, .seller-promo-control:focus-visible, .seller-promo-dot:focus-visible { outline: 2px solid #397d54; outline-offset: 3px; }
+        .seller-promo-footer { display: flex; min-height: 48px; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 16px; border-top: 1px solid #e1e5d9; }
+        .seller-promo-dots { display: flex; align-items: center; gap: 7px; }
+        .seller-promo-dot { width: 8px; height: 8px; padding: 0; border: 0; border-radius: 50%; background: #c7cebd; cursor: pointer; }
+        .seller-promo-dot[aria-current="true"] { width: 20px; border-radius: 999px; background: var(--forest); }
+        .seller-promo-controls { display: flex; gap: 6px; }
+        .seller-promo-control { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid var(--line); border-radius: 50%; color: var(--ink); background: var(--white); cursor: pointer; font-size: 15px; }
+        .seller-promo-control:hover { border-color: var(--forest); background: #edf2e2; }
         .section-heading { margin: 0 0 17px; padding-bottom: 12px; border-bottom: 1px solid var(--ink); font-family: Georgia, "Times New Roman", serif; font-size: 25px; font-weight: 400; letter-spacing: 0; }
         .field { margin-bottom: 16px; }
         label { display: block; margin-bottom: 7px; font-size: 11px; font-weight: 700; }
@@ -163,7 +229,11 @@
         .seller-layout.has-shop { display: grid; }
         #product-section { min-width: 0; }
         .seller-stats { position: static; width: auto; max-height: none; margin: 0; padding: 18px 20px; border: 1px solid var(--line); background: var(--white); }
-        .seller-stats-header { padding-bottom: 11px; border-bottom: 1px solid var(--ink); }
+        .seller-stats-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 11px; border-bottom: 1px solid var(--ink); }
+        .seller-stats-identity { min-width: 0; }
+        .seller-stats-buyer-link { display: inline-flex; min-height: 34px; flex: 0 0 auto; align-items: center; padding: 0 12px; border: 1px solid var(--forest); border-radius: 3px; color: var(--white); background: var(--forest); font-size: 10px; font-weight: 700; text-decoration: none; }
+        .seller-stats-buyer-link:hover { border-color: var(--lime); color: var(--ink); background: var(--lime); }
+        .seller-stats-buyer-link:focus-visible { outline: 2px solid #397d54; outline-offset: 3px; }
         .seller-stats-header .eyebrow { margin-bottom: 5px; }
         .seller-stats-title { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 21px; font-weight: 400; }
         .seller-stats-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; margin: 14px 0 0; }
@@ -174,6 +244,38 @@
         .seller-stats-grid .payout-held dd { color: #805a24; }
         .seller-stats-grid .payout-ready dd { color: var(--forest); }
         .seller-stats-grid .payout-paid dd { color: #285b3a; }
+        .seller-stats-grid .sales-stat dd, .seller-stats-grid .period-sales dd { color: #b65b22; }
+        .seller-analytics-grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(280px, 1fr); gap: 16px; margin-top: 20px; }
+        .analytics-card { min-width: 0; padding: 18px; border: 1px solid var(--line); background: #fffefa; }
+        .analytics-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+        .analytics-card-header .eyebrow { margin-bottom: 5px; }
+        .analytics-card-title { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 20px; font-weight: 400; }
+        .analytics-card-note { margin: 4px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+        .analytics-period-total { flex: 0 0 auto; color: var(--forest); font-family: Georgia, serif; font-size: 17px; }
+        .sales-chart { display: block; width: 100%; height: 210px; overflow: visible; margin: 18px 0 0; }
+        .sales-chart-gridline { stroke: #e8ebdf; stroke-width: 1; }
+        .sales-chart-axis-label { fill: var(--muted); font: 10px "Trebuchet MS", "Segoe UI", sans-serif; }
+        .sales-chart-area { fill: url("#sales-chart-area-gradient"); }
+        .sales-chart-line { fill: none; stroke: #397d54; stroke-linecap: round; stroke-linejoin: round; stroke-width: 3; vector-effect: non-scaling-stroke; }
+        .sales-chart-point { fill: #397d54; stroke: var(--white); stroke-width: 2; vector-effect: non-scaling-stroke; }
+        .sales-chart-point.latest { fill: #b65b22; }
+        .sales-chart-crosshair { pointer-events: none; }
+        .sales-chart-crosshair[hidden] { display: none; }
+        .sales-chart-crosshair line { stroke-dasharray: 5 4; stroke-width: 2; vector-effect: non-scaling-stroke; }
+        .sales-chart-crosshair-x { stroke: #b65b22; }
+        .sales-chart-crosshair-y { stroke: #18382e; }
+        .sales-chart-crosshair circle { fill: #b65b22; stroke: var(--white); stroke-width: 2; vector-effect: non-scaling-stroke; }
+        .sales-chart-tooltip { fill: var(--ink); }
+        .sales-chart-tooltip-text { fill: var(--white); font: 11px "Trebuchet MS", "Segoe UI", sans-serif; }
+        .sales-chart-labels { display: flex; justify-content: space-between; margin-top: 8px; color: var(--muted); font-size: 9px; }
+        .top-products { display: grid; gap: 0; margin: 8px 0 0; padding: 0; list-style: none; }
+        .top-products li { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 49px; border-bottom: 1px solid #e8e8df; }
+        .top-products li:last-child { border-bottom: 0; }
+        .top-products li.analytics-empty { display: block; padding: 16px 0; border: 0; }
+        .top-product-rank { display: grid; width: 25px; height: 25px; place-items: center; border-radius: 50%; color: var(--forest); background: #edf0df; font-size: 10px; font-weight: 700; }
+        .top-product-name { overflow: hidden; font-size: 11px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+        .top-product-sales { color: var(--muted); font-size: 9px; text-align: right; white-space: nowrap; }
+        .analytics-empty { margin: 15px 0 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
         .seller-listings { position: static; width: 100%; min-width: 0; padding: 22px; border: 1px solid var(--line); background: var(--white); }
         .listing-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 11px; border-bottom: 1px solid var(--ink); }
         .listing-panel-heading { min-width: 0; }
@@ -181,6 +283,9 @@
         .listing-panel-title { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 21px; font-weight: 400; letter-spacing: 0; }
         .listing-panel-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 10px; }
         .listing-count { color: var(--muted); font-size: 10px; white-space: nowrap; }
+        .promotion-stats-link { display: inline-flex; min-height: 32px; align-items: center; justify-content: center; padding: 0 10px; border: 1px solid var(--forest); border-radius: 999px; color: var(--forest); background: transparent; font-size: 10px; font-weight: 700; text-decoration: none; white-space: nowrap; }
+        .promotion-stats-link:hover { color: var(--white); background: var(--forest); }
+        .promotion-stats-link:focus-visible { outline: 2px solid #397d54; outline-offset: 3px; }
         .inventory-add-product { display: inline-flex; min-height: 32px; align-items: center; justify-content: center; gap: 5px; padding: 0 10px; border: 1px solid var(--forest); border-radius: 999px; color: var(--white); background: var(--forest); cursor: pointer; font-size: 10px; font-weight: 700; white-space: nowrap; }
         .inventory-add-product::before { content: "+"; color: var(--lime); font-size: 15px; font-weight: 400; line-height: 1; }
         .inventory-add-product:hover { color: var(--ink); background: var(--lime); }
@@ -196,6 +301,12 @@
         .listing-image { display: grid; width: 100%; aspect-ratio: 1.2; overflow: hidden; place-items: center; color: var(--forest); background: #e4ecc9; font-family: Georgia, serif; font-size: 28px; }
         .listing-image img { width: 100%; height: 100%; object-fit: cover; }
         .listing h3 { align-self: center; margin: 0; padding: 0 3px 4px; font-size: 12px; font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
+        .listing-add-tile { display: grid; width: 100%; height: 100%; grid-template-rows: auto 1fr; gap: 9px; padding: 7px; border: 1px dashed #aeb9a3; border-radius: 5px; color: var(--forest); background: #f7f8f2; cursor: pointer; text-align: left; transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease; }
+        .listing-add-tile:hover { transform: translateY(-2px); border-color: var(--forest); background: #edf2e2; }
+        .listing-add-tile:focus-visible { outline: 2px solid #397d54; outline-offset: 3px; }
+        .listing-add-tile-image { display: grid; width: 100%; aspect-ratio: 1.2; place-items: center; border: 1px solid #e0e5d7; color: var(--forest); background: #f0f3e8; }
+        .listing-add-tile-plus { font-size: 38px; font-weight: 300; line-height: 1; }
+        .listing-add-tile-label { align-self: center; padding: 0 3px 4px; font-size: 12px; font-weight: 700; }
         .secondary-button { min-height: 42px; margin-left: 8px; padding: 0 12px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: transparent; cursor: pointer; font-size: 11px; font-weight: 700; }
         .secondary-button:hover { border-color: var(--ink); }
         .secondary-button:disabled { opacity: 0.7; cursor: wait; }
@@ -207,19 +318,37 @@
         .cover-spinner { display: inline-block; width: 13px; height: 13px; margin-right: 7px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; vertical-align: -2px; animation: cover-spin 0.75s linear infinite; }
         @keyframes cover-spin { to { transform: rotate(360deg); } }
         .empty-listings { color: var(--muted); font-size: 12px; line-height: 1.7; }
-        .seller-operations { order: -1; margin: 0 0 38px; }
-        #seller-order-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); align-items: stretch; gap: 12px; margin-bottom: 30px; }
+        .seller-operations { order: -1; width: 100%; min-width: 0; margin: 0 0 38px; padding: 22px; border: 1px solid var(--line); background: var(--white); }
+        .seller-order-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 13px; border-bottom: 1px solid var(--ink); }
+        .seller-order-panel-heading { min-width: 0; }
+        .seller-order-panel-heading .eyebrow { margin-bottom: 5px; }
+        .seller-order-panel-title { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 21px; font-weight: 400; }
+        .seller-order-panel-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 12px; }
+        .seller-order-count { color: var(--muted); font-size: 10px; white-space: nowrap; }
+        #seller-order-list { display: grid; grid-template-columns: minmax(0, 1fr); align-items: stretch; gap: 10px; margin: 16px 0 0; }
         #seller-order-list > .empty-listings { grid-column: 1 / -1; }
-        .seller-order-row { min-width: 0; margin: 0; padding: 7px; border: 1px solid var(--line); border-radius: 5px; background: var(--white); transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease; }
-        .seller-order-row:hover { transform: translateY(-2px); border-color: #b9c7ab; box-shadow: 0 6px 16px rgba(23, 35, 30, 0.08); }
-        .seller-order-card { display: grid; width: 100%; height: 100%; grid-template-rows: auto 1fr; gap: 9px; padding: 0; border: 0; color: var(--ink); background: transparent; cursor: pointer; text-align: left; }
-        .seller-order-card:hover .seller-order-card-name { color: var(--forest); }
-        .seller-order-card:focus-visible { outline: 2px solid #397d54; outline-offset: 2px; }
-        .seller-order-card-image { display: grid; width: 100%; aspect-ratio: 1.2; overflow: hidden; place-items: center; color: var(--forest); background: #e4ecc9; font-family: Georgia, serif; font-size: 28px; }
+        .seller-order-row { min-width: 0; margin: 0; padding: 14px; border: 1px solid var(--line); border-radius: 5px; background: var(--white); transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease; }
+        .seller-order-row:hover { transform: translateY(-1px); border-color: #b9c7ab; box-shadow: 0 6px 16px rgba(23, 35, 30, 0.08); }
+        .seller-order-card { display: grid; width: 100%; grid-template-columns: 78px minmax(0, 1fr) auto; align-items: center; gap: 16px; padding: 0; border: 0; color: var(--ink); background: transparent; cursor: pointer; text-align: left; }
+        .seller-order-card:focus-visible { outline: 2px solid #397d54; outline-offset: 4px; }
+        .seller-order-card-image { display: grid; width: 78px; aspect-ratio: 1; overflow: hidden; place-items: center; color: var(--forest); background: #e4ecc9; font-family: Georgia, serif; font-size: 26px; }
         .seller-order-card-image img { width: 100%; height: 100%; object-fit: cover; }
         .seller-order-card-image { position: relative; }
-        .seller-order-new-badge { position: absolute; top: 6px; right: 6px; display: grid; width: 22px; height: 22px; place-items: center; border: 1px solid rgba(255, 255, 255, 0.9); border-radius: 50%; color: #fff; background: #d83a35; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22); font-family: Georgia, "Times New Roman", serif; font-size: 11px; font-weight: 700; line-height: 1; }
-        .seller-order-card-name { align-self: center; margin: 0; padding: 0 3px 4px; font-size: 12px; font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
+        .seller-order-new-badge { position: absolute; top: 4px; right: 4px; display: grid; width: 21px; height: 21px; place-items: center; border: 1px solid rgba(255, 255, 255, 0.9); border-radius: 50%; color: #fff; background: #d83a35; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22); font-family: Georgia, "Times New Roman", serif; font-size: 10px; font-weight: 700; line-height: 1; }
+        .seller-order-card-main { display: grid; min-width: 0; gap: 5px; }
+        .seller-order-card-name { margin: 0; font-size: 13px; font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
+        .seller-order-card-reference { color: var(--forest); font-size: 10px; font-weight: 700; }
+        .seller-order-card-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+        .seller-order-card-side { display: grid; justify-items: end; gap: 9px; }
+        .seller-order-card-payout { font-family: Georgia, "Times New Roman", serif; font-size: 16px; white-space: nowrap; }
+        .seller-order-card-action { color: var(--forest); font-size: 10px; font-weight: 700; }
+        .seller-order-card:hover .seller-order-card-action { text-decoration: underline; text-underline-offset: 3px; }
+        .seller-order-status { display: inline-flex; align-items: center; gap: 6px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: #f7f8f2; font-size: 9px; font-weight: 700; line-height: 1.2; white-space: nowrap; }
+        .seller-order-status::before { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: currentColor; content: ""; }
+        .seller-order-status.incoming-processing { border-color: #c8dce9; color: #28536c; background: #e7f1f7; }
+        .seller-order-status.incoming-accepted, .seller-order-status.incoming-delivered { border-color: #c8dfcf; color: #285b3a; background: #e8f2e9; }
+        .seller-order-status.incoming-rejected, .seller-order-status.incoming-disputed { border-color: #e4c1ba; color: #8b3b2f; background: #f8e9e5; }
+        .seller-order-status.incoming-shipped { border-color: #ead7aa; color: #77531a; background: #fbf1d9; }
         .seller-order-detail-view { box-sizing: border-box; width: min(680px, calc(100vw - 32px)); max-width: none; max-height: min(90vh, 900px); margin: auto; padding: 0; overflow-y: auto; border: 0; color: var(--ink); background: transparent; }
         .seller-order-detail-view[hidden] { display: none !important; }
         .seller-order-detail-view::backdrop { background: rgba(15, 23, 18, 0.62); backdrop-filter: blur(2px); }
@@ -273,6 +402,9 @@
         .seller-product-dialog #product-form .cover-upload-copy strong { font-size: 11px; }
         .seller-product-dialog #product-form .cover-file-name,
         .seller-product-dialog #product-form .hint { margin-top: 4px; font-size: 9px; }
+        .product-url-preview { display: flex; min-height: 48px; align-items: center; gap: 8px; margin-top: 7px; color: var(--muted); font-size: 9px; }
+        .product-url-preview[hidden] { display: none; }
+        .product-url-preview img { width: 48px; height: 48px; flex: 0 0 auto; border: 1px solid var(--line); border-radius: 4px; background: #f0f3e8; object-fit: cover; }
         .seller-product-dialog #product-form > .primary-button { width: 100%; margin-top: 4px; }
         .seller-product-dialog #product-form > .primary-button { min-height: 42px; }
         .seller-product-dialog #product-form > .secondary-button { justify-self: start; margin: 0; }
@@ -286,6 +418,8 @@
         .seller-listing-detail-status { display: inline-block; margin: 0 0 15px; padding: 6px 9px; border-radius: 999px; color: var(--forest); background: #e9edda; font-size: 10px; font-weight: 700; text-transform: uppercase; }
         .seller-listing-detail-status.archived { color: #6b5140; background: #eee6db; }
         .seller-listing-detail-status.hidden { color: #7a1d1d; background: #f7d9d9; }
+        .seller-promotion-note { display: block; margin-top: 12px; padding: 10px 12px; border-left: 3px solid #d9772f; color: var(--forest); background: #f5f1e4; font-size: 11px; line-height: 1.5; }
+        .seller-promotion-note[hidden] { display: none; }
         .seller-listing-detail-description { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; white-space: pre-wrap; }
         .seller-listing-detail-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin: 18px 0 0; }
         .seller-listing-detail-facts div { min-width: 0; padding: 11px; border: 1px solid #e8ebdf; border-radius: 8px; background: #fafbf7; }
@@ -296,20 +430,8 @@
         .seller-listing-detail-actions button:hover { border-color: var(--forest); background: #f1f5df; }
         .seller-listing-detail-actions .delete-listing { margin-left: auto; border-color: #e4c1ba; color: #8b3b2f; }
         .seller-listing-detail-actions .delete-listing:hover { background: #fff5f2; }
-        .payout-row { display: grid; gap: 7px; margin-top: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--white); }
-        .payout-row:first-child { margin-top: 0; }
-        .payout-row-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-        .payout-row-order { color: var(--ink); font-size: 10px; font-weight: 700; overflow-wrap: anywhere; }
-        .payout-row-shop { margin-top: 3px; color: var(--muted); font-size: 9px; }
-        .payout-row-amount { color: var(--ink); font-family: Georgia, serif; font-size: 16px; font-weight: 400; white-space: nowrap; }
-        .payout-row .seller-status-badge { justify-self: start; }
-        .payout-row p { margin: 0; color: var(--muted); font-size: 9px; line-height: 1.5; overflow-wrap: anywhere; }
-        .seller-operations > h2:first-of-type { margin-bottom: 14px; }
-        .seller-operations > h2:nth-of-type(2) { margin-top: 34px; padding: 18px 0 0; border-top: 1px solid var(--line); border-bottom: 0; }
-        .seller-order-search { display: block; width: min(100%, 440px); min-height: 40px; margin: 0 auto 16px; border-top: 0; }
-        #payout-ledger { margin-bottom: 18px; }
-        .seller-operations > .hint { margin-top: 14px; }
-        .seller-order-content > p, .payout-row p { margin: 7px 0 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
+        .seller-order-search { display: block; width: min(100%, 280px); min-height: 38px; margin: 0; border-top: 0; }
+        .seller-order-content > p { margin: 7px 0 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
         .order-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 10px 0 16px; }
         .order-detail { min-width: 0; padding-top: 8px; border-top: 1px solid var(--line); }
         .order-detail dt { color: var(--muted); font-size: 9px; }
@@ -421,8 +543,6 @@
         .approval-actions .reject-button:hover { background: #ffe7e2; }
         .seller-order-row input { min-width: 0; min-height: 38px; }
         .seller-order-row .secondary-button { flex: 0 0 auto; min-height: 38px; margin: 0; }
-        .payout-row { display: flex; justify-content: space-between; gap: 12px; }
-        .payout-row strong { white-space: nowrap; font-family: Georgia, serif; font-size: 15px; font-weight: 400; }
         .seller-status-badge { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 6px; padding: 5px 8px; border: 1px solid transparent; border-radius: 999px; font-size: 9px; font-weight: 700; line-height: 1.2; white-space: nowrap; }
         .seller-status-badge::before { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.75); content: ""; }
                 .incoming-processing { border-color: #c8dce9; color: #28536c; background: #e7f1f7; }
@@ -442,6 +562,9 @@
         .payout-timing-note { display: flex; align-items: baseline; gap: 7px; }
         .payout-timing-note::before { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: #d99a1b; content: ""; }
         @media (max-width: 600px) {
+            .promotion-stats-panel { padding: 14px; }
+            .promotion-stats-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .promotion-stats-card:last-child { grid-column: 1 / -1; }
             .seller-order-detail-view { width: calc(100vw - 24px); max-height: 92vh; }
             .seller-order-dialog { padding: 20px 14px 16px; border-radius: 13px; }
             .seller-order-detail-close { top: 14px; right: 14px; min-height: 34px; min-width: 34px; padding: 0 10px; }
@@ -460,10 +583,16 @@
             .seller-product-dialog #product-heading { margin-bottom: 12px; font-size: 21px; }
             .seller-product-dialog #product-form { grid-template-columns: minmax(0, 1fr); }
             .seller-product-dialog #product-form > .field { grid-column: 1; }
-            #seller-order-list { grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)); gap: 9px; }
-            .seller-order-row { padding: 6px; }
-            .seller-order-card { gap: 7px; }
-            .seller-order-card-name { font-size: 11px; }
+            .seller-operations { padding: 16px; }
+            .seller-order-panel-header { align-items: flex-start; flex-direction: column; gap: 12px; }
+            .seller-order-panel-actions { width: 100%; justify-content: space-between; }
+            .seller-order-search { width: min(100%, 240px); }
+            .seller-order-row { padding: 10px; }
+            .seller-order-card { grid-template-columns: 58px minmax(0, 1fr); align-items: start; gap: 10px; }
+            .seller-order-card-image { width: 58px; }
+            .seller-order-card-name { font-size: 12px; }
+            .seller-order-card-side { grid-column: 2; grid-template-columns: auto 1fr; align-items: center; justify-items: start; gap: 8px; }
+            .seller-order-card-payout { font-size: 14px; }
         }
         @media (max-width: 360px) {
             .seller-order-dialog .order-product { grid-template-columns: 42px minmax(0, 1fr); }
@@ -481,7 +610,10 @@
             h1 { font-size: 39px; }
             .seller-layout, .seller-layout.has-shop { grid-template-columns: minmax(0, 1fr); gap: 18px; padding-top: 8px; }
             .seller-layout > .seller-stats, .seller-layout > section[aria-labelledby="shop-heading"] { grid-column: 1; }
-            .seller-tabs, .seller-tab-panel { grid-column: 1; }
+            .seller-tab-panel { grid-column: 1; }
+            .seller-analytics-grid { grid-template-columns: minmax(0, 1fr); }
+            #settings-workspace { grid-template-columns: 1fr; }
+            .seller-promo-slide { min-height: 0; }
             #products-panel { grid-template-columns: minmax(0, 1fr); gap: 18px; }
             .seller-stats-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
             .seller-listings { padding: 16px; }
@@ -489,6 +621,8 @@
             .listing { padding: 6px; }
             .listing-view { gap: 7px; }
             .listing h3 { font-size: 11px; }
+            .listing-add-tile { gap: 7px; padding: 6px; }
+            .listing-add-tile-label { font-size: 11px; }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -504,7 +638,7 @@
             <a class="back-button" href="/dashboard" aria-label="Back to buyer profile">←</a>
             <a class="brand" href="/marketplace" aria-label="Z Namibia marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Namibia</span></a>
         </div>
-        <nav class="header-links" aria-label="Seller navigation">
+        <nav class="header-links" id="seller-navigation" aria-label="Seller navigation">
             <a href="/marketplace">Browse marketplace</a>
             <a href="/sell/profile">Seller profile</a>
             <a href="/dashboard">Buyer profile</a>
@@ -512,6 +646,9 @@
                 <summary class="seller-shop-link" id="seller-shop-header-link"><span class="seller-shop-name" id="seller-shop-name"></span><span class="seller-store-word">Seller profile</span></summary>
                 <div class="seller-shop-menu-panel">
                     <a id="seller-shop-public-link" href="/marketplace">View as a buyer</a>
+                    <a href="/sell/orders">Orders</a>
+                    <a href="/sell/listings">Listings</a>
+                    <a href="/sell/transactions">Transactions</a>
                     <a href="/sell/profile">Seller profile overview</a>
                     <a href="/sell/assistant">Shop AI assistant</a>
                     <a href="/sell/verification">Business verification</a>
@@ -520,48 +657,106 @@
                 </div>
             </details>
         </nav>
+        <div class="seller-header-actions">
+            <span id="seller-avatar-slot"></span>
+            <button class="seller-mobile-nav-toggle" id="seller-mobile-nav-toggle" type="button" aria-label="Open seller navigation menu" aria-controls="seller-navigation" aria-expanded="false">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+        <form class="seller-header-search" action="/marketplace" method="get" role="search">
+            <input name="q" type="search" placeholder="Search products or shops" aria-label="Search products or shops">
+            <button type="submit">Search</button>
+        </form>
     </header>
 
     <main>
-        <section class="page-intro">
+        <section class="page-intro" hidden>
             <div class="page-intro-copy">
                 <p class="eyebrow">Seller profile</p>
-                <h1>Seller dashboard</h1>
-                <p>Manage your storefront, products, orders, and delivery for shoppers across Namibia.</p>
+                <h1 id="seller-page-title">Seller dashboard</h1>
+                <p id="seller-page-intro">Manage your storefront, products, orders, and delivery for shoppers across Namibia.</p>
             </div>
         </section>
 
         <div class="seller-layout">
             <aside class="seller-stats" id="seller-stats" aria-label="Shop statistics" hidden>
                 <div class="seller-stats-header">
-                    <p class="eyebrow">Performance</p>
-                    <h2 class="seller-stats-title">Shop stats</h2>
+                    <div class="seller-stats-identity">
+                        <p class="eyebrow">Performance</p>
+                        <h2 class="seller-stats-title">Shop stats</h2>
+                    </div>
+                    <a class="seller-stats-buyer-link" href="/dashboard">Buyer account <span aria-hidden="true">&nbsp;&#8599;</span></a>
                 </div>
                 <dl class="seller-stats-grid">
                     <div class="sales-stat"><dt>Product sales</dt><dd id="seller-stat-sales">N$ 0.00</dd></div>
+                    <div class="period-sales"><dt>Sales · last 30 days</dt><dd id="seller-stat-period-sales">N$ 0.00</dd></div>
+                    <div><dt>Average order value</dt><dd id="seller-stat-average-order">N$ 0.00</dd></div>
                     <div class="payout-held"><dt>On hold</dt><dd id="seller-stat-held">N$ 0.00</dd></div>
                     <div class="payout-ready"><dt>Ready to pay</dt><dd id="seller-stat-ready">N$ 0.00</dd></div>
                     <div class="payout-paid"><dt id="seller-stat-paid-label">Paid out</dt><dd id="seller-stat-paid">N$ 0.00</dd></div>
                     <div><dt>Paid orders</dt><dd id="seller-stat-orders">0</dd></div>
                     <div><dt>To ship</dt><dd id="seller-stat-to-ship">0</dd></div>
+                    <div><dt>Items sold</dt><dd id="seller-stat-items-sold">0</dd></div>
+                    <div><dt>Active listings</dt><dd id="seller-stat-active-listings">0</dd></div>
                 </dl>
+                <div class="seller-analytics-grid">
+                    <section class="analytics-card" aria-labelledby="sales-trend-heading">
+                        <div class="analytics-card-header">
+                            <div>
+                                <p class="eyebrow">Sales trend</p>
+                                <h3 class="analytics-card-title" id="sales-trend-heading">Daily sales</h3>
+                                <p class="analytics-card-note">Paid product sales over the last 30 days</p>
+                            </div>
+                            <strong class="analytics-period-total" id="sales-chart-total">N$ 0.00</strong>
+                        </div>
+                        <svg class="sales-chart" id="sales-chart" viewBox="0 0 1000 220" preserveAspectRatio="none" role="img" aria-labelledby="sales-chart-title sales-chart-description">
+                            <title id="sales-chart-title">Daily sales for the last 30 days</title>
+                            <desc id="sales-chart-description">Sales trend will appear when order data is loaded.</desc>
+                            <defs><linearGradient id="sales-chart-area-gradient" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#d8f36a" stop-opacity="0.5"></stop><stop offset="100%" stop-color="#d8f36a" stop-opacity="0.02"></stop></linearGradient></defs>
+                            <g id="sales-chart-grid"></g>
+                            <path class="sales-chart-area" id="sales-chart-area"></path>
+                            <path class="sales-chart-line" id="sales-chart-line"></path>
+                            <g id="sales-chart-points"></g>
+                            <g class="sales-chart-crosshair" id="sales-chart-crosshair" hidden aria-hidden="true">
+                                <line class="sales-chart-crosshair-x" id="sales-chart-crosshair-x" x1="0" x2="0" y1="14" y2="194"></line>
+                                <line class="sales-chart-crosshair-y" id="sales-chart-crosshair-y" x1="78" x2="990" y1="0" y2="0"></line>
+                                <circle id="sales-chart-crosshair-point" cx="0" cy="0" r="5"></circle>
+                                <rect class="sales-chart-tooltip" id="sales-chart-tooltip" x="0" y="0" width="160" height="26" rx="4"></rect>
+                                <text class="sales-chart-tooltip-text" id="sales-chart-tooltip-text" x="8" y="17"></text>
+                            </g>
+                        </svg>
+                        <div class="sales-chart-labels" id="sales-chart-labels" aria-hidden="true"></div>
+                    </section>
+                    <section class="analytics-card" aria-labelledby="top-products-heading">
+                        <div class="analytics-card-header">
+                            <div>
+                                <p class="eyebrow">Your bestsellers</p>
+                                <h3 class="analytics-card-title" id="top-products-heading">Top products</h3>
+                                <p class="analytics-card-note">Ranked by units sold</p>
+                            </div>
+                        </div>
+                        <ol class="top-products" id="seller-top-products"></ol>
+                    </section>
+                </div>
             </aside>
             <section aria-labelledby="shop-heading">
                 <h2 class="section-heading" id="shop-heading">Your storefront</h2>
                 <p class="message" id="seller-message" role="status" aria-live="polite" hidden></p>
             </section>
 
-            <nav class="seller-tabs" role="tablist" aria-label="Seller dashboard sections">
-                <button class="seller-tab" id="orders-tab" type="button" role="tab" aria-selected="true" aria-controls="orders-panel" tabindex="0">Orders</button>
-                <button class="seller-tab" id="products-tab" type="button" role="tab" aria-selected="false" aria-controls="products-panel" tabindex="-1">Listings</button>
-                <button class="seller-tab" id="settings-tab" type="button" role="tab" aria-selected="false" aria-controls="settings-panel" tabindex="-1">Settings</button>
-            </nav>
-
-            <section class="seller-tab-panel" id="orders-panel" role="tabpanel" aria-labelledby="orders-tab">
-                <section class="seller-operations" id="seller-operations" hidden>
-                    <h2 class="section-heading">Incoming orders</h2>
-                    <input class="seller-order-search" id="seller-order-search" type="search" placeholder="Search order, product, status, tracking..." aria-label="Search orders" hidden>
-                    <div id="seller-order-list" aria-live="polite"><p class="empty-listings">Loading orders...</p></div>
+            <section class="seller-tab-panel" id="orders-panel">
+                    <section class="seller-operations" id="seller-operations" hidden>
+                        <div class="seller-order-panel-header">
+                            <div class="seller-order-panel-heading">
+                                <p class="eyebrow">Orders</p>
+                                <h2 class="seller-order-panel-title">Your orders</h2>
+                            </div>
+                            <div class="seller-order-panel-actions">
+                                <span class="seller-order-count" id="seller-order-count">0 orders</span>
+                                <input class="seller-order-search" id="seller-order-search" type="search" placeholder="Search orders..." aria-label="Search orders" hidden>
+                            </div>
+                        </div>
+                        <div id="seller-order-list" aria-live="polite"><p class="empty-listings">Loading orders...</p></div>
                     <dialog class="seller-order-detail-view" id="seller-order-detail-view" aria-labelledby="seller-order-detail-title" hidden>
                         <div class="seller-order-dialog">
                             <button class="seller-order-detail-close" id="seller-order-detail-close" type="button">Close</button>
@@ -569,13 +764,10 @@
                             <div id="seller-order-detail-content"></div>
                         </div>
                     </dialog>
-                    <h2 class="section-heading">Payout activity</h2>
-                    <div id="payout-ledger" aria-live="polite"><p class="empty-listings">Loading balances...</p></div>
-                    <p class="hint" id="payout-mode-note">Loading payout mode...</p>
                 </section>
             </section>
 
-            <section class="seller-tab-panel" id="products-panel" role="tabpanel" aria-labelledby="products-tab" hidden>
+            <section class="seller-tab-panel" id="products-panel" hidden>
                 <section class="seller-listings" id="seller-listings" aria-labelledby="listing-panel-title" hidden>
                     <div class="listing-panel-header">
                         <div class="listing-panel-heading">
@@ -584,32 +776,101 @@
                         </div>
                         <div class="listing-panel-actions">
                             <span class="listing-count" id="listing-count">Loading...</span>
+                            <a class="promotion-stats-link" href="/sell/promotions">Promotion stats</a>
                             <button class="inventory-add-product" id="inventory-add-product" type="button" aria-label="Add a product">Add</button>
                         </div>
                     </div>
                     <div id="listing-list" aria-live="polite"><p class="empty-listings">Loading listings...</p></div>
                 </section>
             </section>
-            <section class="seller-tab-panel" id="settings-panel" role="tabpanel" aria-labelledby="settings-tab" hidden>
-                <div id="settings-content">
-                    <form class="shipping-settings" id="shipping-form" hidden>
-                        <h2 class="section-heading">Delivery and order settings</h2>
-                        <div class="shipping-grid">
-                            <div class="field"><label for="shipping-local">Same-town fee (N$)</label><input id="shipping-local" type="number" min="0" step="0.01" required></div>
-                            <div class="field"><label for="shipping-hub">Main-hub fee (N$)</label><input id="shipping-hub" type="number" min="0" step="0.01" required></div>
-                            <div class="field"><label for="shipping-remote">Remote-area fee (N$)</label><input id="shipping-remote" type="number" min="0" step="0.01" required></div>
-                            <div class="field"><label for="shipping-threshold">Free above (N$, 0 disables)</label><input id="shipping-threshold" type="number" min="0" step="0.01" required></div>
+            <section class="seller-tab-panel promotion-stats-panel" id="promotions-panel" hidden aria-labelledby="promotion-stats-title">
+                <header class="promotion-stats-header">
+                    <div>
+                        <p class="eyebrow">Promoted products</p>
+                        <h2 id="promotion-stats-title">Promotion performance</h2>
+                        <p>See how often your promoted products were viewed and opened. An impression counts when a listing is visible; metrics count once per anonymous browser session, campaign, placement, and day.</p>
+                    </div>
+                </header>
+                <dl class="promotion-stats-cards" aria-label="Promotion engagement over the last 30 days">
+                    <div class="promotion-stats-card"><dt>Impressions · 30 days</dt><dd id="promotion-impressions">0</dd></div>
+                    <div class="promotion-stats-card"><dt>Clicks · 30 days</dt><dd id="promotion-clicks">0</dd></div>
+                    <div class="promotion-stats-card"><dt>Click-through rate · 30 days</dt><dd id="promotion-ctr">0.00%</dd></div>
+                </dl>
+                <section class="promotion-trend-card" aria-labelledby="promotion-trend-title">
+                    <h3 class="promotion-trend-title" id="promotion-trend-title">Daily engagement</h3>
+                    <p class="promotion-trend-note">Last 30 days, across all campaigns and both placements.</p>
+                    <div class="promotion-trend" id="promotion-trend" role="img" aria-label="Daily promotion impressions and clicks over the last 30 days"></div>
+                    <div class="promotion-trend-legend" aria-hidden="true"><span><i></i>Impressions</span><span><i class="clicks-key"></i>Clicks</span></div>
+                </section>
+                <h3 class="promotion-trend-title">Campaigns</h3>
+                <p class="promotion-trend-note">The latest 100 campaigns are shown. Campaign totals are lifetime; placement counts are split between marketplace and dashboard.</p>
+                <p class="promotion-empty" id="promotion-empty" hidden>No paid promotions yet. <a href="/sell/listings">Choose a product to promote</a> and its statistics will appear here.</p>
+                <div class="promotion-table-wrap" id="promotion-table-wrap" hidden>
+                    <table class="promotion-table">
+                        <thead><tr><th>Promoted product</th><th>Status</th><th>Impressions<br>Marketplace / Dashboard</th><th>Clicks<br>Marketplace / Dashboard</th><th>CTR</th><th>Campaign dates</th></tr></thead>
+                        <tbody id="promotion-campaign-rows"></tbody>
+                    </table>
+                </div>
+                <p class="message" id="promotion-stats-message" role="status" aria-live="polite" hidden></p>
+            </section>
+            <section class="seller-tab-panel" id="settings-panel" hidden>
+                <div id="settings-workspace">
+                    <div id="settings-content">
+                        <form class="shipping-settings" id="shipping-form" hidden>
+                            <header class="settings-card-header">
+                                <div class="settings-card-identity">
+                                    <p class="eyebrow">Store settings</p>
+                                    <h2 class="section-heading">Delivery and order settings</h2>
+                                    <p class="settings-card-description">Manage delivery rates and order approvals.</p>
+                                </div>
+                                <label class="auto-approval-toggle" for="auto-approve-orders">
+                                    <span class="toggle-switch">
+                                        <input id="auto-approve-orders" type="checkbox">
+                                        <span class="toggle-slider" aria-hidden="true"></span>
+                                    </span>
+                                    <span>Auto-approve orders</span>
+                                </label>
+                            </header>
+                            <div class="shipping-grid">
+                                <div class="field"><label for="shipping-local">Same-town fee (N$)</label><input id="shipping-local" type="number" min="0" step="0.01" required></div>
+                                <div class="field"><label for="shipping-hub">Main-hub fee (N$)</label><input id="shipping-hub" type="number" min="0" step="0.01" required></div>
+                                <div class="field"><label for="shipping-remote">Remote-area fee (N$)</label><input id="shipping-remote" type="number" min="0" step="0.01" required></div>
+                                <div class="field"><label for="shipping-threshold">Free above (N$, 0 disables)</label><input id="shipping-threshold" type="number" min="0" step="0.01" required></div>
+                            </div>
+                            <p class="message shipping-save-feedback" id="shipping-message" role="status" aria-live="polite">Changes save automatically.</p>
+                        </form>
+                    </div>
+                    <aside class="seller-promo" id="seller-promo" aria-label="Ways to grow your shop">
+                        <div class="seller-promo-header">
+                            <p class="eyebrow">Grow your business</p>
+                            <span class="seller-promo-count" id="seller-promo-count" aria-live="polite">1 / 3</span>
                         </div>
-                        <label class="auto-approval-toggle" for="auto-approve-orders">
-                            <span>Auto-approve new orders</span>
-                            <span class="toggle-switch">
-                                <input id="auto-approve-orders" type="checkbox">
-                                <span class="toggle-slider" aria-hidden="true"></span>
-                            </span>
-                        </label>
-                        <button class="shipping-save" type="submit"><span>Save delivery settings</span><span aria-hidden="true">&#8594;</span></button>
-                        <p class="message shipping-save-feedback" id="shipping-message" role="status" aria-live="polite"></p>
-                    </form>
+                        <article class="seller-promo-slide" data-promo-slide="assistant" aria-roledescription="slide">
+                            <img class="seller-promo-image" src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&amp;fit=crop&amp;w=960&amp;q=80" alt="" loading="lazy" decoding="async">
+                            <h3 id="seller-promo-assistant-title">Let AI help your shoppers</h3>
+                            <p id="seller-promo-assistant-copy">Add a shop assistant to answer product questions and help customers choose.</p>
+                            <a class="seller-promo-cta" id="seller-promo-assistant-link" href="/sell/assistant">Get the AI assistant <span aria-hidden="true">&#8594;</span></a>
+                        </article>
+                        <article class="seller-promo-slide" data-promo-slide="verification" aria-roledescription="slide" hidden>
+                            <img class="seller-promo-image" src="https://images.unsplash.com/photo-1450101499163-c8848c66ca85?auto=format&amp;fit=crop&amp;w=960&amp;q=80" alt="" loading="lazy" decoding="async">
+                            <h3>Build shopper confidence</h3>
+                            <p>Verify your business to earn a verified badge on your public storefront.</p>
+                            <a class="seller-promo-cta" href="/sell/verification">Verify your business <span aria-hidden="true">&#8594;</span></a>
+                        </article>
+                        <article class="seller-promo-slide" data-promo-slide="products" aria-roledescription="slide" hidden>
+                            <img class="seller-promo-image" src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&amp;fit=crop&amp;w=960&amp;q=80" alt="" loading="lazy" decoding="async">
+                            <h3>Put your products in the spotlight</h3>
+                            <p>Add great photos and clear details so shoppers can discover what you sell.</p>
+                            <a class="seller-promo-cta" href="/sell/listings">Promote your products <span aria-hidden="true">&#8594;</span></a>
+                        </article>
+                        <div class="seller-promo-footer">
+                            <div class="seller-promo-dots" id="seller-promo-dots" aria-label="Choose a promotion slide"></div>
+                            <div class="seller-promo-controls">
+                                <button class="seller-promo-control" id="seller-promo-previous" type="button" aria-label="Previous promotion">&#8592;</button>
+                                <button class="seller-promo-control" id="seller-promo-next" type="button" aria-label="Next promotion">&#8594;</button>
+                            </div>
+                        </div>
+                    </aside>
                 </div>
             </section>
         </div>
@@ -660,6 +921,10 @@
                     <div class="field">
                         <label for="product-image">Or use an image URL</label>
                         <input id="product-image" name="imageUrl" type="url" placeholder="https://example.com/product.jpg">
+                        <div class="product-url-preview" id="product-url-preview" role="status" aria-live="polite" hidden>
+                            <img id="product-url-preview-image" alt="Product image preview" hidden>
+                            <span id="product-url-preview-status"></span>
+                        </div>
                     </div>
                     <button class="primary-button" type="submit" aria-busy="false"><span class="cover-spinner" id="product-submit-spinner" aria-hidden="true" hidden></span><span id="product-submit-label">Publish listing</span><span id="product-submit-arrow" aria-hidden="true">&#8594;</span></button>
                     <button class="secondary-button" id="cancel-edit" type="button" hidden>Cancel edit</button>
@@ -684,19 +949,64 @@
         const sellerMessage = document.querySelector("#seller-message");
         const shippingForm = document.querySelector("#shipping-form");
         const shippingMessage = document.querySelector("#shipping-message");
+        let shippingSaveTimer = null;
+        let shippingSaveInProgress = false;
+        let shippingSaveQueued = false;
+        const sellerPromo = document.querySelector("#seller-promo");
+        const sellerPromoSlides = Array.from(document.querySelectorAll("[data-promo-slide]"));
+        const sellerPromoDots = document.querySelector("#seller-promo-dots");
+        const sellerPromoCount = document.querySelector("#seller-promo-count");
+        let visibleSellerPromoSlides = [];
+        let sellerPromoActiveIndex = 0;
+        let sellerPromoTimer = null;
         const sellerLayout = document.querySelector(".seller-layout");
         const sellerStats = document.querySelector("#seller-stats");
-        const sellerTabs = Array.from(document.querySelectorAll(".seller-tab"));
         const sellerTabPanels = Array.from(document.querySelectorAll(".seller-tab-panel"));
+        const sellerPath = window.location.pathname.replace(/\/+$/, "") || "/";
+        const sellerPage = sellerPath === "/sell/orders"
+            ? "orders"
+            : sellerPath === "/sell/listings"
+                ? "listings"
+                : sellerPath === "/sell/promotions"
+                    ? "promotions"
+                    : "dashboard";
+        const sellerPageTitle = document.querySelector("#seller-page-title");
+        const sellerPageIntro = document.querySelector("#seller-page-intro");
         const sellerStatSales = document.querySelector("#seller-stat-sales");
+        const sellerStatPeriodSales = document.querySelector("#seller-stat-period-sales");
+        const sellerStatAverageOrder = document.querySelector("#seller-stat-average-order");
         const sellerStatHeld = document.querySelector("#seller-stat-held");
         const sellerStatReady = document.querySelector("#seller-stat-ready");
         const sellerStatPaid = document.querySelector("#seller-stat-paid");
         const sellerStatPaidLabel = document.querySelector("#seller-stat-paid-label");
         const sellerStatOrders = document.querySelector("#seller-stat-orders");
         const sellerStatToShip = document.querySelector("#seller-stat-to-ship");
+        const sellerStatItemsSold = document.querySelector("#seller-stat-items-sold");
+        const sellerStatActiveListings = document.querySelector("#seller-stat-active-listings");
+        const salesChart = document.querySelector("#sales-chart");
+        const salesChartGrid = document.querySelector("#sales-chart-grid");
+        const salesChartArea = document.querySelector("#sales-chart-area");
+        const salesChartLine = document.querySelector("#sales-chart-line");
+        const salesChartPoints = document.querySelector("#sales-chart-points");
+        const salesChartDescription = document.querySelector("#sales-chart-description");
+        const salesChartCrosshair = document.querySelector("#sales-chart-crosshair");
+        const salesChartCrosshairX = document.querySelector("#sales-chart-crosshair-x");
+        const salesChartCrosshairY = document.querySelector("#sales-chart-crosshair-y");
+        const salesChartCrosshairPoint = document.querySelector("#sales-chart-crosshair-point");
+        const salesChartTooltip = document.querySelector("#sales-chart-tooltip");
+        const salesChartTooltipText = document.querySelector("#sales-chart-tooltip-text");
+        const salesChartLabels = document.querySelector("#sales-chart-labels");
+        const salesChartTotal = document.querySelector("#sales-chart-total");
+        const sellerTopProducts = document.querySelector("#seller-top-products");
         const sellerListings = document.querySelector("#seller-listings");
-        const payoutModeNote = document.querySelector("#payout-mode-note");
+        const promotionImpressions = document.querySelector("#promotion-impressions");
+        const promotionClicks = document.querySelector("#promotion-clicks");
+        const promotionCtr = document.querySelector("#promotion-ctr");
+        const promotionTrend = document.querySelector("#promotion-trend");
+        const promotionEmpty = document.querySelector("#promotion-empty");
+        const promotionTableWrap = document.querySelector("#promotion-table-wrap");
+        const promotionCampaignRows = document.querySelector("#promotion-campaign-rows");
+        const promotionStatsMessage = document.querySelector("#promotion-stats-message");
         const listingCount = document.querySelector("#listing-count");
         const inventoryAddProduct = document.querySelector("#inventory-add-product");
         const productSection = document.querySelector("#product-section");
@@ -709,6 +1019,10 @@
         const productSubmitSpinner = document.querySelector("#product-submit-spinner");
         const productSubmitArrow = document.querySelector("#product-submit-arrow");
         const productImageFile = document.querySelector("#product-image-file");
+        const productImageUrl = document.querySelector("#product-image");
+        const productUrlPreview = document.querySelector("#product-url-preview");
+        const productUrlPreviewImage = document.querySelector("#product-url-preview-image");
+        const productUrlPreviewStatus = document.querySelector("#product-url-preview-status");
         const productImageFilename = document.querySelector("#product-image-filename");
         const productImageThumb = document.querySelector("#product-upload-thumb");
         const productImagePlaceholder = document.querySelector("#product-upload-placeholder");
@@ -717,6 +1031,7 @@
         const sellerOperations = document.querySelector("#seller-operations");
         const sellerOrderList = document.querySelector("#seller-order-list");
         const sellerOrderSearch = document.querySelector("#seller-order-search");
+        const sellerOrderCount = document.querySelector("#seller-order-count");
         const sellerOrderDetailView = document.querySelector("#seller-order-detail-view");
         const sellerOrderDetailTitle = document.querySelector("#seller-order-detail-title");
         const sellerOrderDetailContent = document.querySelector("#seller-order-detail-content");
@@ -725,12 +1040,13 @@
         const sellerListingDetailTitle = document.querySelector("#seller-listing-detail-title");
         const sellerListingDetailContent = document.querySelector("#seller-listing-detail-content");
         const sellerListingDetailClose = document.querySelector("#seller-listing-detail-close");
-        const payoutLedger = document.querySelector("#payout-ledger");
         const priceFormat = new Intl.NumberFormat("en-NA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         let productPreviewUrl = "";
         let sellerOrdersForSearch = [];
-        let payoutLedgerRefreshTimer = null;
-        let payoutLedgerRequestInFlight = false;
+        let sellerProducts = null;
+        let listingResizeTimer = null;
+        let payoutSummaryRefreshTimer = null;
+        let payoutSummaryRequestInFlight = false;
         let activeSellerOrderTrigger = null;
         let activeSellerListingTrigger = null;
         let activeProductDialogTrigger = null;
@@ -782,10 +1098,11 @@
             sellerOrderDetailView.hidden = true;
             sellerOrderDetailContent.replaceChildren();
             sellerOrderSearch.hidden = sellerOrdersForSearch.length === 0;
+            sellerOrderCount.textContent = `${sellerOrdersForSearch.length} ${sellerOrdersForSearch.length === 1 ? "order" : "orders"}`;
             if (!sellerOrdersForSearch.length) {
                 const emptyOrders = document.createElement("p");
                 emptyOrders.className = "empty-listings";
-                emptyOrders.textContent = "Paid test orders for your shop will appear here.";
+                emptyOrders.textContent = "Paid orders for your shop will appear here when customers place them.";
                 sellerOrderList.append(emptyOrders);
                 return;
             }
@@ -800,6 +1117,7 @@
 
             const query = sellerOrderSearch.value.trim().toLocaleLowerCase();
             const matchingOrders = sellerOrdersForSearch.filter((order) => sellerOrderMatchesQuery(order, query));
+            if (query) sellerOrderCount.textContent = `${matchingOrders.length} of ${sellerOrdersForSearch.length} orders`;
             if (!matchingOrders.length) {
                 const noMatches = document.createElement("p");
                 noMatches.className = "empty-listings";
@@ -818,6 +1136,43 @@
             productImagePlaceholder.hidden = false;
             productImageFilename.textContent = "No image selected";
         }
+
+        let productUrlPreviewRequest = 0;
+        function updateProductUrlPreview() {
+            const request = ++productUrlPreviewRequest;
+            const value = productImageUrl.value.trim();
+            let imageUrl;
+            try {
+                imageUrl = new URL(value);
+            } catch {
+                productUrlPreview.hidden = true;
+                productUrlPreviewImage.removeAttribute("src");
+                return;
+            }
+            if (imageUrl.protocol !== "https:") {
+                productUrlPreview.hidden = false;
+                productUrlPreviewImage.removeAttribute("src");
+                productUrlPreviewImage.hidden = true;
+                productUrlPreviewStatus.textContent = "Use an HTTPS image URL to preview.";
+                return;
+            }
+
+            productUrlPreview.hidden = false;
+            productUrlPreviewImage.hidden = true;
+            productUrlPreviewStatus.textContent = "Loading image preview...";
+            productUrlPreviewImage.onload = () => {
+                if (request !== productUrlPreviewRequest) return;
+                productUrlPreviewImage.hidden = false;
+                productUrlPreviewStatus.textContent = "Image preview";
+            };
+            productUrlPreviewImage.onerror = () => {
+                if (request !== productUrlPreviewRequest) return;
+                productUrlPreviewStatus.textContent = "Preview unavailable for this URL.";
+            };
+            productUrlPreviewImage.src = imageUrl.href;
+        }
+
+        productImageUrl.addEventListener("input", updateProductUrlPreview);
 
         productImageFile.addEventListener("change", () => {
             if (productPreviewUrl) URL.revokeObjectURL(productPreviewUrl);
@@ -840,36 +1195,117 @@
         }
 
         function showMessage(element, text, success = false) {
+            element.hidden = false;
             element.textContent = text;
             element.classList.toggle("success", success);
         }
 
-        function activateSellerTab(tabId, focusTab = false) {
-            const selectedTab = sellerTabs.find((tab) => tab.id === tabId);
-            if (!selectedTab) return;
-            sellerTabs.forEach((tab) => {
-                const isSelected = tab === selectedTab;
-                tab.setAttribute("aria-selected", String(isSelected));
-                tab.tabIndex = isSelected ? 0 : -1;
+        function showSellerPromoSlide(index) {
+            if (!visibleSellerPromoSlides.length) return;
+            sellerPromoActiveIndex = (index + visibleSellerPromoSlides.length) % visibleSellerPromoSlides.length;
+            visibleSellerPromoSlides.forEach((slide, slideIndex) => {
+                slide.hidden = slideIndex !== sellerPromoActiveIndex;
+                const dot = sellerPromoDots.children[slideIndex];
+                dot?.setAttribute("aria-current", String(slideIndex === sellerPromoActiveIndex));
             });
-            sellerTabPanels.forEach((panel) => {
-                panel.hidden = panel.id !== selectedTab.getAttribute("aria-controls");
-            });
-            if (focusTab) selectedTab.focus();
+            sellerPromoCount.textContent = `${sellerPromoActiveIndex + 1} / ${visibleSellerPromoSlides.length}`;
         }
 
-        sellerTabs.forEach((tab, index) => {
-            tab.addEventListener("click", () => activateSellerTab(tab.id));
-            tab.addEventListener("keydown", (event) => {
-                let nextIndex;
-                if (event.key === "ArrowRight") nextIndex = (index + 1) % sellerTabs.length;
-                else if (event.key === "ArrowLeft") nextIndex = (index - 1 + sellerTabs.length) % sellerTabs.length;
-                else if (event.key === "Home") nextIndex = 0;
-                else if (event.key === "End") nextIndex = sellerTabs.length - 1;
-                else return;
-                event.preventDefault();
-                activateSellerTab(sellerTabs[nextIndex].id, true);
+        function configureSellerPromotions(shop) {
+            const assistantSlide = document.querySelector('[data-promo-slide="assistant"]');
+            const verificationSlide = document.querySelector('[data-promo-slide="verification"]');
+            const productsSlide = document.querySelector('[data-promo-slide="products"]');
+            assistantSlide.hidden = false;
+            verificationSlide.hidden = shop.kycStatus === "verified";
+            productsSlide.hidden = false;
+
+            const assistantActive = Boolean(shop.assistantPlanActive);
+            const assistantTitle = document.querySelector("#seller-promo-assistant-title");
+            const assistantCopy = document.querySelector("#seller-promo-assistant-copy");
+            const assistantLink = document.querySelector("#seller-promo-assistant-link");
+            if (assistantActive) {
+                assistantTitle.textContent = "Your AI assistant add-on is active";
+                assistantCopy.textContent = "Set up your assistant and make it available to shoppers on your storefront.";
+                assistantLink.firstChild.nodeValue = "Manage AI assistant ";
+            }
+
+            const verificationTitle = verificationSlide.querySelector("h3");
+            const verificationCopy = verificationSlide.querySelector("p");
+            const verificationLink = verificationSlide.querySelector("a");
+            if (shop.kycStatus === "pending") {
+                verificationTitle.textContent = "Your business is under review";
+                verificationCopy.textContent = "Your verification document has been submitted. Check its status while Z reviews it.";
+                verificationLink.firstChild.nodeValue = "View verification status ";
+            } else if (shop.kycStatus === "rejected") {
+                verificationTitle.textContent = "Update your verification";
+                verificationCopy.textContent = "Review the feedback and submit an updated business document.";
+                verificationLink.firstChild.nodeValue = "Review verification ";
+            }
+
+            visibleSellerPromoSlides = sellerPromoSlides.filter((slide) => !slide.hidden);
+            sellerPromoDots.replaceChildren();
+            visibleSellerPromoSlides.forEach((slide, index) => {
+                const dot = document.createElement("button");
+                dot.type = "button";
+                dot.className = "seller-promo-dot";
+                dot.setAttribute("aria-label", `Show promotion ${index + 1}: ${slide.querySelector("h3").textContent}`);
+                dot.setAttribute("aria-current", "false");
+                dot.addEventListener("click", () => showSellerPromoSlide(index));
+                sellerPromoDots.append(dot);
             });
+            showSellerPromoSlide(0);
+
+            if (visibleSellerPromoSlides.length > 1 && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+                sellerPromoTimer = window.setInterval(() => showSellerPromoSlide(sellerPromoActiveIndex + 1), 6000);
+            }
+        }
+
+        document.querySelector("#seller-promo-previous").addEventListener("click", () => showSellerPromoSlide(sellerPromoActiveIndex - 1));
+        document.querySelector("#seller-promo-next").addEventListener("click", () => showSellerPromoSlide(sellerPromoActiveIndex + 1));
+        sellerPromo.addEventListener("mouseenter", () => window.clearInterval(sellerPromoTimer));
+        sellerPromo.addEventListener("mouseleave", () => {
+            if (visibleSellerPromoSlides.length > 1 && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+                window.clearInterval(sellerPromoTimer);
+                sellerPromoTimer = window.setInterval(() => showSellerPromoSlide(sellerPromoActiveIndex + 1), 6000);
+            }
+        });
+        sellerPromo.addEventListener("focusin", () => window.clearInterval(sellerPromoTimer));
+        sellerPromo.addEventListener("focusout", (event) => {
+            if (!sellerPromo.contains(event.relatedTarget) && visibleSellerPromoSlides.length > 1 && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+                window.clearInterval(sellerPromoTimer);
+                sellerPromoTimer = window.setInterval(() => showSellerPromoSlide(sellerPromoActiveIndex + 1), 6000);
+            }
+        });
+
+        const sellerPageContent = {
+            dashboard: {
+                title: "Seller dashboard",
+                intro: "Manage your storefront and delivery settings for shoppers across Namibia.",
+                panel: "settings-panel"
+            },
+            orders: {
+                title: "Orders",
+                intro: "Review incoming orders, update fulfillment, and keep shoppers informed.",
+                panel: "orders-panel"
+            },
+            listings: {
+                title: "Listings",
+                intro: "Manage the products available in your storefront and the marketplace.",
+                panel: "products-panel"
+            },
+            promotions: {
+                title: "Promotion statistics",
+                intro: "Track views and clicks for products you promote on Z.",
+                panel: "promotions-panel"
+            }
+        }[sellerPage];
+        sellerPageTitle.textContent = sellerPageContent.title;
+        sellerPageIntro.textContent = sellerPageContent.intro;
+        if (sellerPage !== "dashboard") {
+            document.querySelector("#shop-heading").hidden = true;
+        }
+        sellerTabPanels.forEach((panel) => {
+            panel.hidden = panel.id !== sellerPageContent.panel;
         });
 
         function renderListing(product) {
@@ -902,6 +1338,45 @@
             viewButton.addEventListener("click", () => openSellerListingDetails(product, viewButton));
             row.append(viewButton);
             return row;
+        }
+
+        function renderListingAddTile() {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "listing-add-tile";
+            button.setAttribute("aria-label", "Add a product listing");
+            const imagePlaceholder = document.createElement("span");
+            imagePlaceholder.className = "listing-add-tile-image";
+            imagePlaceholder.setAttribute("aria-hidden", "true");
+            const plus = document.createElement("span");
+            plus.className = "listing-add-tile-plus";
+            plus.textContent = "+";
+            imagePlaceholder.append(plus);
+            const label = document.createElement("span");
+            label.className = "listing-add-tile-label";
+            label.textContent = "Add a product";
+            button.append(imagePlaceholder, label);
+            button.addEventListener("click", openProductCreateDialog);
+            return button;
+        }
+
+        function renderListingGrid(products) {
+            listingList.replaceChildren();
+            const columns = Math.max(1, getComputedStyle(listingList).gridTemplateColumns.split(" ").length);
+            if (!products.length) {
+                const empty = document.createElement("p");
+                empty.className = "empty-listings";
+                empty.textContent = "Your shop is open. Publish a product to see it here and in the marketplace.";
+                listingList.append(empty);
+            } else {
+                products.forEach((product) => listingList.append(renderListing(product)));
+            }
+
+            const productRows = Math.ceil(products.length / columns);
+            const addTileCount = (productRows + 2) * columns - products.length;
+            for (let index = 0; index < addTileCount; index += 1) {
+                listingList.append(renderListingAddTile());
+            }
         }
 
         function openSellerListingDetails(product, trigger) {
@@ -948,6 +1423,15 @@
                 fact.append(term, detail);
                 facts.append(fact);
             });
+            const promotionNote = document.createElement("p");
+            promotionNote.className = "seller-promotion-note";
+            if (product.promotion?.status === "active") {
+                promotionNote.textContent = `Promoted until ${new Date(product.promotion.expiresAt).toLocaleString()}.`;
+            } else if (product.promotion?.status === "pending") {
+                promotionNote.textContent = `Promotion test payment pending until ${new Date(product.promotion.paymentExpiresAt).toLocaleString()}. No money is charged.`;
+            } else {
+                promotionNote.hidden = true;
+            }
             const actions = document.createElement("div");
             actions.className = "seller-listing-detail-actions";
             const editButton = document.createElement("button");
@@ -962,19 +1446,51 @@
             archiveButton.type = "button";
             archiveButton.textContent = product.status === "archived" ? "Restore listing" : "Archive listing";
             archiveButton.addEventListener("click", () => changeListingStatus(product, product.status === "archived" ? "active" : "archived"));
+            const promoteButton = document.createElement("button");
+            promoteButton.type = "button";
+            const canPromote = product.status === "active" && product.isAvailable !== false && product.stock > 0 && product.moderationStatus !== "hidden";
+            promoteButton.hidden = !canPromote || product.promotion?.status === "active";
+            promoteButton.textContent = product.promotion?.status === "pending" ? "Complete test payment" : "Promote · N$50 / 7 days";
+            promoteButton.addEventListener("click", () => promoteListing(product, promoteButton));
             const deleteButton = document.createElement("button");
             deleteButton.type = "button";
             deleteButton.className = "delete-listing";
             deleteButton.textContent = "Delete listing";
             deleteButton.addEventListener("click", () => deleteListing(product));
-            actions.append(editButton, archiveButton, deleteButton);
-            copy.append(price, status, description, facts, actions);
+            actions.append(editButton, archiveButton, promoteButton, deleteButton);
+            copy.append(price, status, description, facts, promotionNote, actions);
             sellerListingDetailTitle.textContent = product.title || "Listing details";
             sellerListingDetailContent.replaceChildren(imageWrap, copy);
             activeSellerListingTrigger = trigger;
             sellerListingDetailView.hidden = false;
             sellerListingDetailView.showModal();
             sellerListingDetailClose.focus();
+        }
+
+        async function promoteListing(product, button) {
+            if (!window.confirm(`Promote “${product.title}” for N$50 for 7 days? This is a simulated test payment only; no money will be charged.`)) return;
+            button.disabled = true;
+            const originalLabel = button.textContent;
+            button.textContent = product.promotion?.status === "pending" ? "Completing test payment..." : "Starting promotion...";
+            try {
+                let promotion = product.promotion;
+                if (promotion?.status !== "pending") {
+                    ({ promotion } = await requestJson(`/api/seller/products/${encodeURIComponent(product.id)}/promotions`, {
+                        method: "POST"
+                    }));
+                    product.promotion = promotion;
+                }
+                const result = await requestJson(`/api/seller/promotions/${encodeURIComponent(promotion.id)}/simulate-payment`, {
+                    method: "POST"
+                });
+                sellerListingDetailView.close();
+                showMessage(sellerMessage, result.message || "Promotion is live for 7 days.", true);
+                await loadListings();
+            } catch (error) {
+                showMessage(sellerMessage, error.message || "Could not start the promotion.");
+                button.disabled = false;
+                button.textContent = product.promotion?.status === "pending" ? "Complete test payment" : originalLabel;
+            }
         }
 
         function beginEdit(product, returnTarget = activeSellerListingTrigger) {
@@ -984,7 +1500,8 @@
             document.querySelector("#product-price").value = product.priceNAD;
             document.querySelector("#product-stock").value = product.stock ?? 0;
             document.querySelector("#product-category").value = product.category;
-            document.querySelector("#product-image").value = (product.imageUrls && product.imageUrls[0]) || product.imageUrl || "";
+            productImageUrl.value = (product.imageUrls && product.imageUrls[0]) || product.imageUrl || "";
+            updateProductUrlPreview();
             productImageFile.value = "";
             resetProductUploadPreview();
             productHeading.textContent = "Edit product";
@@ -1002,6 +1519,7 @@
             productForm.reset();
             productImageFile.value = "";
             resetProductUploadPreview();
+            updateProductUrlPreview();
             productHeading.textContent = "Add a product";
             productSubmitLabel.textContent = "Publish listing";
             cancelEditButton.hidden = true;
@@ -1038,18 +1556,107 @@
                 const { products } = await requestJson("/api/seller/products");
                 if (sellerListingDetailView.open) sellerListingDetailView.close();
                 listingCount.textContent = `${products.length} ${products.length === 1 ? "listing" : "listings"}`;
-                listingList.replaceChildren();
-                if (!products.length) {
-                    const empty = document.createElement("p");
-                    empty.className = "empty-listings";
-                    empty.textContent = "Your shop is open. Publish a product to see it here and in the marketplace.";
-                    listingList.append(empty);
-                    return;
-                }
-                products.forEach((product) => listingList.append(renderListing(product)));
+                sellerProducts = products;
+                renderListingGrid(sellerProducts);
             } catch (error) {
                 listingCount.textContent = "Unavailable";
                 listingList.textContent = error.message;
+            }
+        }
+
+        function formatPromotionDate(value) {
+            const date = new Date(value);
+            return Number.isNaN(date.getTime())
+                ? "—"
+                : new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(date);
+        }
+
+        function renderPromotionTrend(days) {
+            promotionTrend.replaceChildren();
+            const maximum = Math.max(1, ...days.map((day) => Math.max(
+                day.marketplaceImpressions + day.dashboardImpressions,
+                day.marketplaceClicks + day.dashboardClicks
+            )));
+            days.forEach((day, index) => {
+                const impressions = day.marketplaceImpressions + day.dashboardImpressions;
+                const clicks = day.marketplaceClicks + day.dashboardClicks;
+                const column = document.createElement("div");
+                column.className = "promotion-trend-day";
+                column.setAttribute("aria-label", `${formatPromotionDate(day.date)}: ${impressions} impressions and ${clicks} clicks`);
+                const impressionBar = document.createElement("span");
+                impressionBar.className = "promotion-trend-bar";
+                impressionBar.style.height = `${impressions ? Math.max(2, (impressions / maximum) * 100) : 0}%`;
+                const clickBar = document.createElement("span");
+                clickBar.className = "promotion-trend-bar clicks";
+                clickBar.style.height = `${clicks ? Math.max(2, (clicks / maximum) * 100) : 0}%`;
+                column.append(impressionBar, clickBar);
+                if (index % 5 === 0 || index === days.length - 1) {
+                    const label = document.createElement("time");
+                    label.dateTime = day.date;
+                    label.textContent = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" })
+                        .format(new Date(`${day.date}T00:00:00Z`));
+                    column.append(label);
+                }
+                promotionTrend.append(column);
+            });
+        }
+
+        function renderPromotionCampaigns(campaigns) {
+            promotionCampaignRows.replaceChildren();
+            campaigns.forEach((campaign) => {
+                const row = document.createElement("tr");
+                const productCell = document.createElement("td");
+                const product = document.createElement("div");
+                product.className = "promotion-product-cell";
+                if (campaign.imageUrl) {
+                    const image = document.createElement("img");
+                    image.src = campaign.imageUrl;
+                    image.alt = "";
+                    image.loading = "lazy";
+                    image.addEventListener("error", () => image.remove(), { once: true });
+                    product.append(image);
+                }
+                const title = document.createElement("span");
+                title.textContent = campaign.title;
+                product.append(title);
+                productCell.append(product);
+
+                const statusCell = document.createElement("td");
+                const status = document.createElement("span");
+                status.className = `promotion-status${campaign.status === "expired" ? " expired" : ""}`;
+                status.textContent = campaign.status;
+                statusCell.append(status);
+
+                const impressionsCell = document.createElement("td");
+                impressionsCell.textContent = `${Number(campaign.marketplaceImpressions).toLocaleString()} / ${Number(campaign.dashboardImpressions).toLocaleString()}`;
+                const clicksCell = document.createElement("td");
+                clicksCell.textContent = `${Number(campaign.marketplaceClicks).toLocaleString()} / ${Number(campaign.dashboardClicks).toLocaleString()}`;
+                const ctrCell = document.createElement("td");
+                ctrCell.textContent = `${Number(campaign.clickThroughRate).toFixed(2)}%`;
+                const datesCell = document.createElement("td");
+                datesCell.textContent = `${formatPromotionDate(campaign.startsAt)} – ${formatPromotionDate(campaign.expiresAt)}`;
+                row.append(productCell, statusCell, impressionsCell, clicksCell, ctrCell, datesCell);
+                promotionCampaignRows.append(row);
+            });
+            promotionEmpty.hidden = campaigns.length > 0;
+            promotionTableWrap.hidden = campaigns.length === 0;
+        }
+
+        async function loadPromotionStats() {
+            promotionStatsMessage.hidden = true;
+            try {
+                const result = await requestJson("/api/seller/promotions/stats");
+                const daily = Array.isArray(result.daily) ? result.daily : [];
+                const campaigns = Array.isArray(result.campaigns) ? result.campaigns : [];
+                const impressions = daily.reduce((total, day) => total + day.marketplaceImpressions + day.dashboardImpressions, 0);
+                const clicks = daily.reduce((total, day) => total + day.marketplaceClicks + day.dashboardClicks, 0);
+                promotionImpressions.textContent = impressions.toLocaleString();
+                promotionClicks.textContent = clicks.toLocaleString();
+                promotionCtr.textContent = `${(impressions ? (clicks / impressions) * 100 : 0).toFixed(2)}%`;
+                renderPromotionTrend(daily);
+                renderPromotionCampaigns(campaigns);
+            } catch (error) {
+                showMessage(promotionStatsMessage, error.message || "Could not load promotion statistics.");
             }
         }
 
@@ -1082,6 +1689,8 @@
             openDetails.type = "button";
             openDetails.className = "seller-order-card";
             const firstItem = sellerOrder.items?.[0];
+            const orderNumber = sellerOrder.orderNumber || "Order";
+            openDetails.setAttribute("aria-label", `View order ${orderNumber}`);
             const imageWrap = document.createElement("span");
             imageWrap.className = "seller-order-card-image";
             if (firstItem?.imageUrl) {
@@ -1103,8 +1712,46 @@
             }
             const itemName = document.createElement("span");
             itemName.className = "seller-order-card-name";
-            itemName.textContent = firstItem?.title || sellerOrder.orderNumber || "Order";
-            openDetails.append(imageWrap, itemName);
+            itemName.textContent = firstItem?.title || orderNumber;
+            const reference = document.createElement("span");
+            reference.className = "seller-order-card-reference";
+            reference.textContent = orderNumber;
+            const meta = document.createElement("span");
+            meta.className = "seller-order-card-meta";
+            const itemCount = (sellerOrder.items || []).reduce((total, item) => total + Number(item.quantity || 0), 0);
+            const summaryPlacedAt = sellerOrder.orderCreatedAt || sellerOrder.createdAt;
+            const placedDate = summaryPlacedAt
+                ? new Date(summaryPlacedAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })
+                : "Date unavailable";
+            [
+                sellerOrder.buyerName || "Customer",
+                `${itemCount} ${itemCount === 1 ? "item" : "items"}`,
+                placedDate
+            ].forEach((value) => {
+                const detail = document.createElement("span");
+                detail.textContent = value;
+                meta.append(detail);
+            });
+            const main = document.createElement("span");
+            main.className = "seller-order-card-main";
+            main.append(reference, itemName, meta);
+            const status = getSellerDecisionStatus(sellerOrder);
+            const statusBadge = document.createElement("span");
+            statusBadge.className = `seller-order-status incoming-${status.key}`;
+            statusBadge.textContent = status.label;
+            const payout = document.createElement("span");
+            payout.className = "seller-order-card-payout";
+            payout.textContent = `N$ ${priceFormat.format(Number(sellerOrder.payoutNAD || 0))}`;
+            const payoutLabel = document.createElement("span");
+            payoutLabel.className = "seller-order-count";
+            payoutLabel.textContent = "Seller payout";
+            const action = document.createElement("span");
+            action.className = "seller-order-card-action";
+            action.textContent = "View details →";
+            const side = document.createElement("span");
+            side.className = "seller-order-card-side";
+            side.append(statusBadge, payout, payoutLabel, action);
+            openDetails.append(imageWrap, main, side);
 
             const content = document.createElement("div");
             content.className = "seller-order-content";
@@ -1289,10 +1936,7 @@
             return row;
         }
 
-        function renderPayoutLedger(ledgerResult) {
-            payoutModeNote.textContent = ledgerResult.mode === "simulated"
-                ? "Mock payout simulation only. No money moves."
-                : "Manual ledger only. Z does not move funds or execute bank transfers.";
+        function renderPayoutSummary(ledgerResult) {
             const sumPayoutsByStatus = (payoutStatus) => ledgerResult.entries
                 .filter((entry) => entry.payoutStatus === payoutStatus)
                 .reduce((total, entry) => total + Number(entry.payoutNAD || 0), 0);
@@ -1300,68 +1944,192 @@
             sellerStatReady.textContent = `N$ ${priceFormat.format(sumPayoutsByStatus("eligible"))}`;
             sellerStatPaid.textContent = `N$ ${priceFormat.format(sumPayoutsByStatus("paid"))}`;
             sellerStatPaidLabel.textContent = ledgerResult.mode === "simulated" ? "Simulated paid" : "Paid out";
-            payoutLedger.replaceChildren();
-            if (!ledgerResult.entries.length) {
-                const emptyLedger = document.createElement("p");
-                emptyLedger.className = "empty-listings";
-                emptyLedger.textContent = "Seller balances will appear here after test orders are confirmed.";
-                payoutLedger.append(emptyLedger);
-                return;
+        }
+
+        function renderSalesChart(orders) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const firstDay = new Date(today);
+            firstDay.setDate(firstDay.getDate() - 29);
+            const dayKey = (date) => `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+            const dailySales = new Map();
+            const days = Array.from({ length: 30 }, (_, index) => {
+                const date = new Date(firstDay);
+                date.setDate(firstDay.getDate() + index);
+                dailySales.set(dayKey(date), 0);
+                return date;
+            });
+
+            for (const order of orders) {
+                const createdAt = new Date(order.orderCreatedAt || order.createdAt);
+                if (!Number.isFinite(createdAt.getTime()) || createdAt < firstDay || createdAt > new Date()) continue;
+                const key = dayKey(createdAt);
+                if (dailySales.has(key)) dailySales.set(key, dailySales.get(key) + Number(order.productsSubtotalNAD || 0));
             }
 
-            ledgerResult.entries.forEach((entry) => {
-                const row = document.createElement("article");
-                row.className = "payout-row";
-                const header = document.createElement("div");
-                header.className = "payout-row-header";
-                const identity = document.createElement("div");
-                const reference = document.createElement("strong");
-                reference.className = "payout-row-order";
-                reference.textContent = entry.orderNumber;
-                const shopName = document.createElement("div");
-                shopName.className = "payout-row-shop";
-                shopName.textContent = entry.shopName;
-                identity.append(reference, shopName);
-                header.append(identity);
-                const amount = document.createElement("strong");
-                amount.className = "payout-row-amount";
-                amount.textContent = `N$ ${Number(entry.payoutNAD).toFixed(2)}`;
-                header.append(amount);
-                row.append(header);
+            const values = days.map((date) => dailySales.get(dayKey(date)) || 0);
+            const peak = Math.max(...values, 1);
+            const total = values.reduce((sum, value) => sum + value, 0);
+            salesChartCrosshair.hidden = true;
+            const chartNamespace = "http://www.w3.org/2000/svg";
+            const plot = { left: 78, right: 990, top: 14, bottom: 194 };
+            const pointY = (value) => plot.bottom - value / peak * (plot.bottom - plot.top);
+            salesChartGrid.replaceChildren();
+            [0, 0.5, 1].forEach((ratio) => {
+                const y = plot.bottom - ratio * (plot.bottom - plot.top);
+                const line = document.createElementNS(chartNamespace, "line");
+                line.setAttribute("class", "sales-chart-gridline");
+                line.setAttribute("x1", String(plot.left));
+                line.setAttribute("x2", String(plot.right));
+                line.setAttribute("y1", String(y));
+                line.setAttribute("y2", String(y));
+                const label = document.createElementNS(chartNamespace, "text");
+                label.setAttribute("class", "sales-chart-axis-label");
+                label.setAttribute("x", "0");
+                label.setAttribute("y", String(y + 4));
+                label.textContent = `N$ ${priceFormat.format(peak * ratio)}`;
+                salesChartGrid.append(line, label);
+            });
+            const coordinates = values.map((value, index) => ({
+                x: plot.left + (plot.right - plot.left) * index / (values.length - 1),
+                y: pointY(value)
+            }));
+            const linePath = coordinates.map((point, index) => `${index ? "L" : "M"}${point.x},${point.y}`).join(" ");
+            salesChartLine.setAttribute("d", linePath);
+            salesChartArea.setAttribute("d", `${linePath} L${plot.right},${plot.bottom} L${plot.left},${plot.bottom} Z`);
+            salesChartPoints.replaceChildren();
+            days.forEach((date, index) => {
+                const value = values[index];
+                const label = date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+                const point = document.createElementNS(chartNamespace, "circle");
+                point.setAttribute("class", `sales-chart-point${index === values.length - 1 ? " latest" : ""}`);
+                point.setAttribute("cx", String(coordinates[index].x));
+                point.setAttribute("cy", String(coordinates[index].y));
+                point.setAttribute("r", "4");
+                point.dataset.label = label;
+                point.dataset.value = String(value);
+                const pointTitle = document.createElementNS(chartNamespace, "title");
+                pointTitle.textContent = `${label}: N$ ${priceFormat.format(value)}`;
+                point.append(pointTitle);
+                salesChartPoints.append(point);
+            });
+            salesChartDescription.textContent = `Total sales: N$ ${priceFormat.format(total)}. Peak daily sales: N$ ${priceFormat.format(peak)}.`;
+            salesChartLabels.replaceChildren();
+            [0, 7, 14, 21, 29].forEach((index) => {
+                const label = document.createElement("span");
+                label.textContent = days[index].toLocaleDateString(undefined, { month: "short", day: "numeric" });
+                salesChartLabels.append(label);
+            });
+            salesChartTotal.textContent = `N$ ${priceFormat.format(total)}`;
+        }
 
-                const statusLabel = entry.payoutStatus.replaceAll("_", " ").replace(/\b\w/g, (character) => character.toUpperCase());
-                const statusBadge = document.createElement("span");
-                statusBadge.className = `seller-status-badge payout-${entry.payoutStatus.replaceAll("_", "-")}`;
-                statusBadge.textContent = statusLabel;
-                row.append(statusBadge);
-                const status = document.createElement("p");
-                if (entry.payoutStatus === "paid") {
-                    const paidLabel = entry.simulated ? "Simulated payout completed" : "Paid out";
-                    status.textContent = `${paidLabel}${entry.payoutMarkedAt ? ` · ${new Date(entry.payoutMarkedAt).toLocaleString()}` : ""}${entry.payoutReference ? ` · Ref ${entry.payoutReference}` : ""}${entry.simulated ? " · No money moved" : ""}`;
-                } else if (entry.payoutStatus === "eligible") {
-                    status.textContent = ledgerResult.mode === "simulated"
-                        ? `Ready for payout · simulated completion ${entry.payoutProcessingAt ? new Date(entry.payoutProcessingAt).toLocaleString() : "soon"}`
-                        : "Ready for manual payout";
-                } else {
-                    status.textContent = entry.payoutEligibleAt
-                        ? `${ledgerResult.mode === "simulated" ? "Ready for payout" : "Review after"} ${new Date(entry.payoutEligibleAt).toLocaleString()}`
-                        : "Awaiting delivery confirmation";
+        salesChart.addEventListener("pointermove", (event) => {
+            const pointCount = salesChartPoints.childElementCount;
+            if (!pointCount) return;
+            const bounds = salesChart.getBoundingClientRect();
+            if (!bounds.width) return;
+            const plot = { left: 78, right: 990, top: 14, bottom: 194 };
+            const chartX = (event.clientX - bounds.left) / bounds.width * 1000;
+            const index = Math.max(0, Math.min(pointCount - 1, Math.round((chartX - plot.left) / (plot.right - plot.left) * (pointCount - 1))));
+            const point = salesChartPoints.children[index];
+            const x = Number(point.getAttribute("cx"));
+            const y = Number(point.getAttribute("cy"));
+            const label = point.dataset.label;
+            const value = Number(point.dataset.value);
+
+            salesChartCrosshair.removeAttribute("hidden");
+            salesChartCrosshairX.setAttribute("x1", String(x));
+            salesChartCrosshairX.setAttribute("x2", String(x));
+            salesChartCrosshairY.setAttribute("y1", String(y));
+            salesChartCrosshairY.setAttribute("y2", String(y));
+            salesChartCrosshairPoint.setAttribute("cx", String(x));
+            salesChartCrosshairPoint.setAttribute("cy", String(y));
+            salesChartTooltipText.textContent = `${label}  N$ ${priceFormat.format(value)}`;
+            salesChartTooltip.setAttribute("width", "180");
+            salesChartTooltip.setAttribute("x", String(x > 790 ? x - 188 : x + 8));
+            salesChartTooltip.setAttribute("y", String(Math.max(2, y - 34)));
+            salesChartTooltipText.setAttribute("x", String(x > 790 ? x - 180 : x + 16));
+            salesChartTooltipText.setAttribute("y", String(Math.max(19, y - 17)));
+        });
+        salesChart.addEventListener("pointerleave", () => {
+            salesChartCrosshair.setAttribute("hidden", "");
+        });
+
+        function renderTopProducts(orders) {
+            const products = new Map();
+            for (const order of orders) {
+                for (const item of order.items || []) {
+                    const title = item.title || "Product";
+                    const product = products.get(title) || { quantity: 0, sales: 0 };
+                    const quantity = Number(item.quantity || 0);
+                    product.quantity += quantity;
+                    product.sales += quantity * Number(item.unitPriceNAD || 0);
+                    products.set(title, product);
                 }
-                row.append(status);
-                payoutLedger.append(row);
+            }
+
+            sellerTopProducts.replaceChildren();
+            const topProducts = [...products.entries()]
+                .sort((a, b) => b[1].quantity - a[1].quantity || b[1].sales - a[1].sales)
+                .slice(0, 5);
+            if (!topProducts.length) {
+                const empty = document.createElement("li");
+                empty.className = "analytics-empty";
+                empty.textContent = "Your top products will appear after your first paid sale.";
+                sellerTopProducts.append(empty);
+                return;
+            }
+            topProducts.forEach(([title, stats], index) => {
+                const row = document.createElement("li");
+                const rank = document.createElement("span");
+                rank.className = "top-product-rank";
+                rank.textContent = String(index + 1);
+                const name = document.createElement("span");
+                name.className = "top-product-name";
+                name.textContent = title;
+                name.title = title;
+                const sales = document.createElement("span");
+                sales.className = "top-product-sales";
+                sales.textContent = `${stats.quantity} sold · N$ ${priceFormat.format(stats.sales)}`;
+                row.append(rank, name, sales);
+                sellerTopProducts.append(row);
             });
         }
 
-        async function refreshSellerPayoutLedger() {
-            if (payoutLedgerRequestInFlight || document.hidden) return;
-            payoutLedgerRequestInFlight = true;
+        function renderSellerAnalytics(orders, activeListingCount) {
+            const completedOrders = orders.filter((order) => order.approvalStatus !== "rejected" && order.fulfillmentStatus !== "disputed");
+            const grossSales = completedOrders.reduce((sum, order) => sum + Number(order.productsSubtotalNAD || 0), 0);
+            const itemCount = completedOrders.reduce((sum, order) => sum + (order.items || []).reduce((items, item) => items + Number(item.quantity || 0), 0), 0);
+            const periodStart = new Date();
+            periodStart.setHours(0, 0, 0, 0);
+            periodStart.setDate(periodStart.getDate() - 29);
+            const periodSales = completedOrders.reduce((sum, order) => {
+                const createdAt = new Date(order.orderCreatedAt || order.createdAt);
+                return createdAt >= periodStart && createdAt <= new Date()
+                    ? sum + Number(order.productsSubtotalNAD || 0)
+                    : sum;
+            }, 0);
+            sellerStatSales.textContent = `N$ ${priceFormat.format(grossSales)}`;
+            sellerStatPeriodSales.textContent = `N$ ${priceFormat.format(periodSales)}`;
+            sellerStatAverageOrder.textContent = `N$ ${priceFormat.format(completedOrders.length ? grossSales / completedOrders.length : 0)}`;
+            sellerStatOrders.textContent = String(orders.length);
+            sellerStatToShip.textContent = String(orders.filter((order) => order.fulfillmentStatus === "processing").length);
+            sellerStatItemsSold.textContent = String(itemCount);
+            sellerStatActiveListings.textContent = activeListingCount === null ? "—" : String(activeListingCount);
+            renderSalesChart(completedOrders);
+            renderTopProducts(completedOrders);
+        }
+
+        async function refreshSellerPayoutSummary() {
+            if (payoutSummaryRequestInFlight || document.hidden) return;
+            payoutSummaryRequestInFlight = true;
             try {
                 const ledgerResult = await requestJson("/api/seller/payout-ledger");
-                renderPayoutLedger(ledgerResult);
+                renderPayoutSummary(ledgerResult);
             } catch (error) {
-                payoutLedger.textContent = error.message;
+                showMessage(sellerMessage, error.message);
             } finally {
-                payoutLedgerRequestInFlight = false;
+                payoutSummaryRequestInFlight = false;
             }
         }
 
@@ -1372,20 +2140,34 @@
                     requestJson("/api/seller/payout-ledger")
                 ]);
                 const sellerOrders = ordersResult.sellerOrders || [];
-                const productSales = sellerOrders.reduce((total, order) => total + Number(order.productsSubtotalNAD || 0), 0);
-                sellerStatSales.textContent = `N$ ${priceFormat.format(productSales)}`;
-                sellerStatOrders.textContent = String(sellerOrders.length);
-                sellerStatToShip.textContent = String(sellerOrders.filter((order) => order.fulfillmentStatus === "processing").length);
+                let activeListingCount = 0;
+                if (sellerPage === "dashboard") {
+                    activeListingCount = null;
+                    try {
+                        const productsResult = await requestJson("/api/seller/products");
+                        activeListingCount = (productsResult.products || []).filter((product) =>
+                            product.status === "active" && product.isAvailable !== false && product.moderationStatus !== "hidden"
+                        ).length;
+                    } catch (error) {
+                        sellerMessage.hidden = false;
+                        showMessage(sellerMessage, `Active listing count could not be loaded: ${error.message}`);
+                    }
+                }
+                renderSellerAnalytics(sellerOrders, activeListingCount);
                 sellerOrdersForSearch = sellerOrders;
                 renderSellerOrders();
 
-                renderPayoutLedger(ledgerResult);
-                if (ledgerResult.mode === "simulated" && !payoutLedgerRefreshTimer) {
-                    payoutLedgerRefreshTimer = window.setInterval(refreshSellerPayoutLedger, 2000);
+                renderPayoutSummary(ledgerResult);
+                if (ledgerResult.mode === "simulated" && !payoutSummaryRefreshTimer) {
+                    payoutSummaryRefreshTimer = window.setInterval(refreshSellerPayoutSummary, 2000);
                 }
             } catch (error) {
-                sellerOrderList.textContent = error.message;
-                payoutLedger.textContent = error.message;
+                if (sellerPage === "dashboard") {
+                    sellerMessage.hidden = false;
+                    showMessage(sellerMessage, error.message);
+                } else {
+                    sellerOrderList.textContent = error.message;
+                }
             }
         }
 
@@ -1401,19 +2183,21 @@
                     sellerShopName.textContent = shop.name;
                     sellerShopMenu.hidden = false;
                     sellerLayout.classList.add("has-shop");
-                    sellerStats.hidden = false;
-                    sellerListings.hidden = false;
+                    configureSellerPromotions(shop);
+                    sellerStats.hidden = sellerPage !== "dashboard";
+                    sellerListings.hidden = sellerPage !== "listings";
                     const rates = shop.shippingRates || {};
                     document.querySelector("#shipping-local").value = rates.localNAD ?? 30;
                     document.querySelector("#shipping-hub").value = rates.hubNAD ?? 70;
                     document.querySelector("#shipping-remote").value = rates.remoteNAD ?? 120;
                     document.querySelector("#shipping-threshold").value = rates.freeThresholdNAD ?? 800;
                     document.querySelector("#auto-approve-orders").checked = Boolean(shop.autoApprovalEnabled);
-                    shippingForm.hidden = false;
-                    productSection.hidden = false;
-                    sellerOperations.hidden = false;
-                    await loadListings();
-                    await loadSellerOperations();
+                    shippingForm.hidden = sellerPage !== "dashboard";
+                    productSection.hidden = sellerPage !== "listings";
+                    sellerOperations.hidden = sellerPage !== "orders";
+                    if (sellerPage === "listings") await loadListings();
+                    if (sellerPage === "promotions") await loadPromotionStats();
+                    if (sellerPage === "orders" || sellerPage === "dashboard") await loadSellerOperations();
                 }
             } catch (error) {
                 if (error.message.includes("Sign in")) {
@@ -1425,10 +2209,19 @@
             }
         }
 
-        shippingForm.addEventListener("submit", async (event) => {
-            event.preventDefault();
-            const button = shippingForm.querySelector("button[type='submit']");
-            button.disabled = true;
+        async function saveShippingSettings() {
+            window.clearTimeout(shippingSaveTimer);
+            shippingSaveTimer = null;
+            if (!shippingForm.checkValidity()) {
+                showMessage(shippingMessage, "Complete all delivery fields with valid values to save.");
+                return;
+            }
+            if (shippingSaveInProgress) {
+                shippingSaveQueued = true;
+                return;
+            }
+            shippingSaveInProgress = true;
+            showMessage(shippingMessage, "Saving changes...");
             try {
                 await requestJson("/api/seller/shop/shipping", {
                     method: "PATCH",
@@ -1441,12 +2234,26 @@
                         autoApprovalEnabled: document.querySelector("#auto-approve-orders").checked
                     })
                 });
-                showMessage(shippingMessage, "Delivery rates and approval settings saved.", true);
+                showMessage(shippingMessage, "Changes saved.", true);
             } catch (error) {
                 showMessage(shippingMessage, error.message);
             } finally {
-                button.disabled = false;
+                shippingSaveInProgress = false;
+                if (shippingSaveQueued) {
+                    shippingSaveQueued = false;
+                    void saveShippingSettings();
+                }
             }
+        }
+
+        shippingForm.addEventListener("input", () => {
+            window.clearTimeout(shippingSaveTimer);
+            if (!shippingForm.checkValidity()) {
+                showMessage(shippingMessage, "Complete all delivery fields with valid values to save.");
+                return;
+            }
+            showMessage(shippingMessage, "Unsaved changes.");
+            shippingSaveTimer = window.setTimeout(() => void saveShippingSettings(), 700);
         });
 
         async function uploadProductImage(file, kind = "product") {
@@ -1468,16 +2275,21 @@
             return result.imageUrl;
         }
 
-        inventoryAddProduct.addEventListener("click", () => {
-            activateSellerTab("products-tab");
+        function openProductCreateDialog(event) {
             if (productForm.dataset.productId) cancelEdit();
             productHeading.textContent = "Add a product";
             productSubmitLabel.textContent = "Publish listing";
             showMessage(productMessage, "");
-            activeProductDialogTrigger = inventoryAddProduct;
+            activeProductDialogTrigger = event.currentTarget;
             productDialog.hidden = false;
             productDialog.showModal();
             document.querySelector("#product-title").focus({ preventScroll: true });
+        }
+        inventoryAddProduct.addEventListener("click", openProductCreateDialog);
+        window.addEventListener("resize", () => {
+            if (sellerProducts === null || sellerPage !== "listings") return;
+            window.clearTimeout(listingResizeTimer);
+            listingResizeTimer = window.setTimeout(() => renderListingGrid(sellerProducts), 120);
         });
         productDialogClose.addEventListener("click", () => productDialog.close());
         productDialog.addEventListener("click", (event) => {
@@ -1545,6 +2357,7 @@
                 else {
                     productForm.reset();
                     resetProductUploadPreview();
+                    updateProductUrlPreview();
                 }
                 showMessage(productMessage, productId ? "Listing updated." : "Your product is now listed in the marketplace.", true);
                 await loadListings();

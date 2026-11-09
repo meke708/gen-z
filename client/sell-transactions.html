@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f4f1e8">
+    <title>Transactions | Z Namibia</title>
+    <style>
+        :root { color-scheme: light; --ink: #17231e; --muted: #68736d; --paper: #f4f1e8; --white: #fffefa; --lime: #d8f36a; --forest: #18382e; --line: #d9d9cf; }
+        * { box-sizing: border-box; }
+        body { min-width: 320px; margin: 0; color: var(--ink); background: var(--paper); font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
+        a { color: inherit; }
+        .site-header { display: flex; min-height: 72px; align-items: center; justify-content: space-between; gap: 20px; padding: 12px max(24px, calc((100vw - 1040px) / 2)); border-bottom: 1px solid var(--line); }
+        .header-left { display: flex; align-items: center; gap: 14px; }
+        .back-link { display: inline-grid; width: 28px; height: 28px; place-items: center; border: 1px solid var(--ink); border-radius: 50%; text-decoration: none; font-size: 18px; }
+        .site-header nav { display: flex; align-items: center; gap: 18px; font-size: 11px; font-weight: 700; }
+        .site-header nav a { text-decoration: none; }
+        .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+        .brand-mark { display: grid; width: 36px; aspect-ratio: 1; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; font-family: Georgia, serif; font-size: 22px; letter-spacing: 0; }
+        main { width: min(1920px, calc(100% - clamp(48px, 5vw, 120px))); margin: 0 auto; padding: 46px 0 80px; }
+        main > .eyebrow, main > h1, main > .intro, .transactions-content { width: min(1120px, 100%); margin-right: auto; margin-left: auto; }
+        .eyebrow { margin-top: 0; margin-bottom: 10px; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
+        h1 { margin-top: 0; margin-bottom: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(38px, 4vw, 52px); font-weight: 400; letter-spacing: -0.035em; }
+        .intro { max-width: 720px; margin-top: 12px; margin-bottom: 30px; color: var(--muted); font-size: 14px; line-height: 1.65; }
+        .transactions-content { display: grid; gap: 16px; }
+        .report-toolbar { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+        .report-metric { min-width: 0; min-height: 90px; padding: 17px 19px; border: 1px solid var(--line); background: var(--white); }
+        .report-total { display: block; font-family: Georgia, serif; font-size: 23px; }
+        .report-total span, .held-total, .paid-total { display: block; margin-top: 6px; color: var(--muted); font-family: "Trebuchet MS", sans-serif; font-size: 10px; font-weight: 400; }
+        .paid-total { color: var(--forest); }
+        .table-card { min-width: 0; overflow: hidden; border: 1px solid var(--line); background: var(--white); }
+        .table-card-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; padding: 18px 20px 14px; border-bottom: 1px solid var(--line); font-family: Georgia, serif; font-size: 21px; font-weight: 400; }
+        .export-button { min-height: 36px; flex: 0 0 auto; padding: 0 12px; border: 1px solid var(--forest); border-radius: 3px; color: var(--white); background: var(--forest); cursor: pointer; font-family: "Trebuchet MS", "Segoe UI", sans-serif; font-size: 10px; font-weight: 700; }
+        .export-button:hover:not(:disabled) { color: var(--ink); background: var(--lime); }
+        .export-button:focus-visible { outline: 2px solid #397d54; outline-offset: 3px; }
+        .export-button:disabled { opacity: 0.55; cursor: wait; }
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; min-width: 620px; border-collapse: collapse; text-align: left; }
+        th { padding: 13px 15px; color: var(--muted); background: #f7f8f2; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; }
+        td { padding: 15px; border-top: 1px solid #e8ebdf; vertical-align: middle; font-size: 11px; }
+        .amount { white-space: nowrap; font-family: Georgia, serif; font-size: 15px; }
+        .shop-name { color: var(--forest); font-weight: 700; }
+        .date-note { display: block; max-width: 260px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+        .payout-status { display: inline-block; padding: 6px 9px; border: 1px solid #e2c987; border-radius: 999px; color: #76552f; background: #f6eddb; font-size: 9px; font-weight: 700; white-space: nowrap; }
+        .payout-status.eligible { border-color: #dce2d2; color: var(--forest); background: #edf0df; }
+        .payout-status.paid, .payout-status.simulated { border-color: #b6d0b9; color: #285b3a; background: #e8f2e9; }
+        .payout-status.disputed { border-color: #dfb2a7; color: #8b3b2f; background: #f8e9e5; }
+        .empty-state { margin: 0; padding: 35px 20px; color: var(--muted); font-size: 12px; }
+        .status { min-height: 20px; margin: 0; color: #8b3b2f; font-size: 11px; }
+        .note { margin: 0; padding: 16px 18px; border: 1px solid #dce2d2; color: var(--muted); background: #e9edda; font-size: 10px; line-height: 1.7; }
+        [hidden] { display: none !important; }
+        @media (max-width: 680px) {
+            .site-header { padding: 12px 18px; }
+            .site-header nav { gap: 10px; font-size: 10px; }
+            main { width: calc(100% - 36px); padding-top: 33px; }
+            h1 { font-size: 35px; }
+            .report-toolbar { grid-template-columns: 1fr; gap: 9px; }
+            .report-metric { min-height: 0; padding: 14px 16px; }
+            .table-card-heading { padding: 15px; }
+        }
+    </style>
+    <link rel="stylesheet" href="/loading.css">
+    <script src="/loading.js"></script>
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-left"><a class="back-link" href="/sell/dashboard" aria-label="Back to seller dashboard">←</a><a class="brand" href="/marketplace" aria-label="Z Namibia marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Namibia</span></a></div>
+        <nav aria-label="Seller navigation"><a href="/sell/dashboard">Seller dashboard</a></nav>
+    </header>
+    <main>
+        <p class="eyebrow">Seller account</p>
+        <h1>Transactions</h1>
+        <p class="intro">Track payout amounts and their status for your paid orders.</p>
+        <div class="transactions-content">
+            <div class="report-toolbar">
+                <div class="report-metric"><strong class="report-total" id="report-total">N$ 0.00 <span>ready for payout</span></strong></div>
+                <div class="report-metric"><span class="held-total" id="held-total">0 on hold</span></div>
+                <div class="report-metric"><span class="paid-total" id="paid-total">0 paid</span></div>
+            </div>
+            <section class="table-card" aria-labelledby="transactions-table-heading">
+                <h2 class="table-card-heading" id="transactions-table-heading"><span>Payout activity</span><button class="export-button" id="export-transactions" type="button" disabled>Export CSV</button></h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>Shop / order</th><th>Payout amount</th><th>Status</th><th>Payment</th></tr></thead>
+                        <tbody id="payout-rows"></tbody>
+                    </table>
+                    <p class="empty-state" id="empty-state" hidden>No payout transactions yet. They will appear after paid orders are confirmed.</p>
+                </div>
+            </section>
+            <p class="status" id="status" role="status" aria-live="polite"></p>
+            <p class="note" id="payout-note">Payout records are activity tracking. They do not prove that a bank transfer occurred.</p>
+        </div>
+    </main>
+    <script>
+        const rows = document.querySelector("#payout-rows");
+        const status = document.querySelector("#status");
+        const emptyState = document.querySelector("#empty-state");
+        const heldTotal = document.querySelector("#held-total");
+        const paidTotal = document.querySelector("#paid-total");
+        const payoutNote = document.querySelector("#payout-note");
+        const exportTransactionsButton = document.querySelector("#export-transactions");
+        const money = new Intl.NumberFormat("en-NA", { style: "currency", currency: "NAD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        let refreshInFlight = false;
+        let refreshTimer = null;
+        let currentLedger = null;
+
+        async function requestLedger() {
+            const response = await fetch("/api/seller/payout-ledger");
+            let result;
+            try {
+                result = await response.json();
+            } catch {
+                throw new Error("The server returned an invalid response.");
+            }
+            if (response.status === 401) {
+                window.location.replace("/login");
+                throw new Error("Sign in to view your transactions.");
+            }
+            if (!response.ok) throw new Error(result.error || "Could not load your transactions.");
+            return result;
+        }
+
+        function renderTransactions(result) {
+            currentLedger = result;
+            exportTransactionsButton.disabled = false;
+            const countFor = (payoutStatus) => result.entries.filter((entry) => entry.payoutStatus === payoutStatus).length;
+            const eligibleTotal = result.entries
+                .filter((entry) => entry.payoutStatus === "eligible")
+                .reduce((total, entry) => total + Number(entry.payoutNAD || 0), 0);
+            document.querySelector("#report-total").firstChild.textContent = `${money.format(eligibleTotal)} `;
+            heldTotal.textContent = `${countFor("held")} on hold`;
+            paidTotal.textContent = `${countFor("paid")} ${result.mode === "simulated" ? "simulated paid" : "paid"}`;
+            payoutNote.textContent = result.mode === "simulated"
+                ? "Simulation only. A simulated paid status and SIM reference do not represent a bank transfer."
+                : "Manual ledger only. Payout records reflect transfers recorded by the seller and do not initiate or verify payment.";
+            rows.replaceChildren();
+            emptyState.hidden = result.entries.length > 0;
+
+            for (const entry of result.entries) {
+                const row = document.createElement("tr");
+                const shopCell = document.createElement("td");
+                const shopName = document.createElement("span");
+                shopName.className = "shop-name";
+                shopName.textContent = entry.shopName;
+                shopCell.append(shopName, document.createTextNode(` · ${entry.orderNumber}`));
+                row.append(shopCell);
+
+                const amountCell = document.createElement("td");
+                amountCell.className = "amount";
+                amountCell.textContent = money.format(Number(entry.payoutNAD || 0));
+                row.append(amountCell);
+
+                const statusCell = document.createElement("td");
+                const payoutStatus = document.createElement("span");
+                payoutStatus.className = `payout-status${entry.payoutStatus === "eligible" ? " eligible" : entry.payoutStatus === "paid" ? entry.simulated ? " simulated" : " paid" : entry.payoutStatus === "disputed" ? " disputed" : ""}`;
+                payoutStatus.textContent = entry.payoutStatus === "eligible"
+                    ? "Ready for payout"
+                    : entry.payoutStatus === "paid"
+                        ? entry.simulated ? "Simulated paid" : "Paid"
+                        : entry.payoutStatus === "disputed" ? "Disputed" : "On hold";
+                statusCell.append(payoutStatus);
+                row.append(statusCell);
+
+                const paymentCell = document.createElement("td");
+                const paymentNote = document.createElement("span");
+                paymentNote.className = "date-note";
+                if (entry.payoutStatus === "paid") {
+                    paymentNote.textContent = `${entry.simulated ? "No real transfer" : "Transfer recorded"}${entry.payoutMarkedAt ? ` · ${new Date(entry.payoutMarkedAt).toLocaleString()}` : ""}${entry.payoutReference ? ` · ${entry.payoutReference}` : ""}`;
+                } else if (result.mode === "simulated") {
+                    paymentNote.textContent = entry.payoutStatus === "eligible"
+                        ? `Simulated payout at ${entry.payoutProcessingAt ? new Date(entry.payoutProcessingAt).toLocaleString() : "next processing window"}`
+                        : `Ready at ${entry.payoutEligibleAt ? new Date(entry.payoutEligibleAt).toLocaleString() : "pending"}`;
+                } else {
+                    paymentNote.textContent = entry.payoutEligibleAt
+                        ? `Ready ${new Date(entry.payoutEligibleAt).toLocaleString()}`
+                        : "Waiting for eligibility date";
+                }
+                paymentCell.append(paymentNote);
+                row.append(paymentCell);
+                rows.append(row);
+            }
+        }
+
+        function escapeCsvCell(value) {
+            const text = String(value ?? "");
+            const safeText = /^[\s]*[=+\-@]/.test(text) ? `'${text}` : text;
+            return `"${safeText.replaceAll('"', '""')}"`;
+        }
+
+        function exportTransactions() {
+            if (!currentLedger) return;
+            const columns = [
+                ["Order number", (entry) => entry.orderNumber],
+                ["Shop", (entry) => entry.shopName],
+                ["Payout amount (NAD)", (entry) => Number(entry.payoutNAD || 0).toFixed(2)],
+                ["Payout status", (entry) => entry.payoutStatus === "eligible"
+                    ? "Ready for payout"
+                    : entry.payoutStatus === "paid"
+                        ? entry.simulated ? "Simulated paid" : "Paid"
+                        : entry.payoutStatus === "disputed" ? "Disputed" : "On hold"],
+                ["Eligible at", (entry) => entry.payoutEligibleAt ? new Date(entry.payoutEligibleAt).toISOString() : ""],
+                ["Paid at", (entry) => entry.payoutMarkedAt ? new Date(entry.payoutMarkedAt).toISOString() : ""],
+                ["Payout reference", (entry) => entry.payoutReference],
+                ["Simulated", (entry) => entry.simulated ? "Yes" : "No"]
+            ];
+            const csv = [
+                columns.map(([header]) => escapeCsvCell(header)).join(","),
+                ...currentLedger.entries.map((entry) => columns.map(([, value]) => escapeCsvCell(value(entry))).join(","))
+            ].join("\r\n");
+            const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" });
+            const downloadUrl = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = downloadUrl;
+            link.download = `seller-transactions-${new Date().toISOString().slice(0, 10)}.csv`;
+            document.body.append(link);
+            link.click();
+            link.remove();
+            window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+        }
+
+        exportTransactionsButton.addEventListener("click", exportTransactions);
+
+        async function loadTransactions() {
+            if (refreshInFlight || document.hidden) return;
+            refreshInFlight = true;
+            try {
+                const result = await requestLedger();
+                renderTransactions(result);
+                status.textContent = "";
+                payoutNote.classList.remove("error");
+                if (result.mode === "simulated" && !refreshTimer) {
+                    refreshTimer = window.setInterval(loadTransactions, 2000);
+                }
+            } catch (error) {
+                payoutNote.classList.add("error");
+                status.textContent = error.message || "Could not load your transactions.";
+                if (error.message.includes("Sign in")) window.location.replace("/login");
+            } finally {
+                refreshInFlight = false;
+            }
+        }
+
+        loadTransactions();
+    </script>
+    <script src="/navigation.js" defer></script>
+</body>
+</html>

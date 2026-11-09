@@ -1,0 +1,33 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const {
+  buildPromotionSchedule,
+  normalizePromotionVisitorId,
+  calculatePromotionClickThroughRate
+} = require('./server');
+
+test('promotion schedule uses the fixed price and seven-day duration', () => {
+  const startsAt = new Date('2026-03-01T12:00:00.000Z');
+  const schedule = buildPromotionSchedule(startsAt);
+
+  assert.equal(schedule.amountNAD, 50);
+  assert.equal(schedule.durationDays, 7);
+  assert.equal(schedule.startsAt.toISOString(), startsAt.toISOString());
+  assert.equal(schedule.expiresAt.toISOString(), '2026-03-08T12:00:00.000Z');
+});
+
+test('promotion schedule rejects invalid start dates', () => {
+  assert.throws(() => buildPromotionSchedule('not-a-date'), /start date must be valid/);
+});
+
+test('promotion visitor IDs accept UUIDs and normalize to lowercase hex', () => {
+  assert.equal(normalizePromotionVisitorId('A1B2C3D4-E5F6-4789-ABCD-0123456789AB'), 'a1b2c3d4e5f64789abcd0123456789ab');
+  assert.equal(normalizePromotionVisitorId('a1b2c3d4e5f64789abcd0123456789ab'), 'a1b2c3d4e5f64789abcd0123456789ab');
+  assert.equal(normalizePromotionVisitorId('invalid-id'), null);
+  assert.equal(normalizePromotionVisitorId(123), null);
+});
+
+test('promotion click-through rate is a percentage and handles no impressions', () => {
+  assert.equal(calculatePromotionClickThroughRate(200, 7), 3.5);
+  assert.equal(calculatePromotionClickThroughRate(0, 0), 0);
+});

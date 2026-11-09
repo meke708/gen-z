@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f4f1e8">
+    <title>User accounts | Z Operations</title>
+    <style>
+        :root { color-scheme: light; --ink: #17231e; --muted: #68736d; --paper: #f4f1e8; --white: #fffefa; --lime: #d8f36a; --forest: #18382e; --line: #d9d9cf; --warning: #8b3b2f; }
+        * { box-sizing: border-box; }
+        body { min-width: 320px; margin: 0; color: var(--ink); background: var(--paper); font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
+        button, input, select { font: inherit; }
+        a { color: inherit; }
+        .site-header { display: flex; min-height: 72px; align-items: center; justify-content: space-between; gap: 16px; padding: 12px max(24px, calc((100vw - 1120px) / 2)); border-bottom: 1px solid var(--line); }
+        .header-left { display: inline-flex; align-items: center; gap: 12px; }
+        .back-button { display: inline-grid; width: 28px; height: 28px; place-items: center; border: 1px solid var(--ink); border-radius: 50%; text-decoration: none; font-size: 18px; }
+        .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+        .brand-mark { display: grid; width: 36px; aspect-ratio: 1; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; font-family: Georgia, serif; font-size: 22px; }
+        nav { display: flex; flex-wrap: wrap; gap: 14px; font-size: 10px; font-weight: 700; }
+        nav a { text-decoration: none; }
+        main { width: min(1120px, calc(100% - 48px)); margin: 0 auto; padding: 40px 0 70px; }
+        .eyebrow { margin: 0 0 10px; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+        h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 38px; font-weight: 400; }
+        .intro { max-width: 700px; margin: 10px 0 24px; color: var(--muted); font-size: 12px; line-height: 1.65; }
+        .filters { display: grid; grid-template-columns: minmax(180px, 1fr) 160px 180px auto; gap: 10px; padding: 14px 0; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--line); }
+        .filters input, .filters select, .filters button { min-height: 40px; padding: 0 11px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: var(--white); font-size: 12px; }
+        .filters button { border-color: var(--ink); cursor: pointer; font-weight: 700; }
+        .filters button:hover { color: var(--white); background: var(--forest); }
+        .result-count { min-height: 18px; margin: 13px 0 0; color: var(--muted); font-size: 11px; }
+        .account { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: center; padding: 17px 0; border-top: 1px solid var(--line); }
+        .account h2 { margin: 0; font-size: 14px; }
+        .account-meta { margin: 5px 0 0; color: var(--muted); font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
+        .badges { display: inline-flex; flex-wrap: wrap; gap: 6px; margin-left: 7px; vertical-align: middle; }
+        .badge { padding: 4px 7px; border-radius: 999px; color: var(--forest); background: #e8eddd; font-size: 9px; font-weight: 800; text-transform: uppercase; }
+        .badge.is-suspended { color: var(--warning); background: #f5e8e2; }
+        .account-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
+        .account-action { min-height: 36px; padding: 0 10px; border: 1px solid var(--ink); border-radius: 3px; color: var(--white); background: var(--forest); cursor: pointer; font-size: 10px; font-weight: 700; }
+        .account-action.is-reactivate { color: var(--ink); background: transparent; }
+        .account-action.is-seller { border-color: var(--warning); color: var(--warning); background: transparent; }
+        .account-action.is-seller:hover { color: var(--white); background: var(--warning); }
+        .account-action:disabled { opacity: .55; cursor: wait; }
+        .queue-status { min-height: 20px; margin: 10px 0; color: var(--forest); font-size: 11px; }
+        .queue-status.is-error { color: var(--warning); }
+        .empty { padding: 24px 0; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+        .pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 15px; border-top: 1px solid var(--line); }
+        .pagination button { min-height: 34px; padding: 0 10px; border: 1px solid var(--ink); border-radius: 3px; color: var(--ink); background: transparent; cursor: pointer; font-size: 11px; font-weight: 700; }
+        .pagination button:disabled { opacity: .45; cursor: default; }
+        .pagination span { color: var(--muted); font-size: 11px; }
+        @media (max-width: 650px) {
+            .site-header { align-items: flex-start; padding: 12px 18px; }
+            nav { gap: 9px; }
+            main { width: calc(100% - 36px); padding-top: 30px; }
+            h1 { font-size: 34px; }
+            .filters { grid-template-columns: 1fr auto; }
+            .filters input { grid-column: 1 / -1; }
+            .account { grid-template-columns: 1fr; gap: 10px; }
+            .account-actions { justify-content: flex-start; }
+        }
+    </style>
+    <link rel="stylesheet" href="/loading.css">
+    <script src="/loading.js"></script>
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-left"><a class="back-button" href="/marketplace" aria-label="Go to marketplace">←</a><a class="brand" href="/marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Operations</span></a></div>
+        <nav aria-label="Admin navigation"><a href="/admin/moderation">Moderation</a><a href="/admin/payouts">Payouts</a><a href="/admin/kyc">Business verification</a><a href="/admin/support">Support</a></nav>
+    </header>
+    <main>
+        <p class="eyebrow">Trust and safety</p>
+        <h1>User accounts</h1>
+        <p class="intro">Find buyer and seller accounts by name or email. Suspending an account prevents sign-in, ends active sessions, and blocks its buyer and seller actions; it does not delete the user's profile or order history.</p>
+        <form class="filters" id="account-filters">
+            <input id="account-search" type="search" maxlength="100" placeholder="Search name or email" aria-label="Search users by name or email">
+            <select id="account-type" aria-label="Filter by account type">
+                <option value="all">All account types</option>
+                <option value="buyer">Buyer accounts</option>
+                <option value="seller">Seller accounts</option>
+            </select>
+            <select id="account-status" aria-label="Filter by account status">
+                <option value="all">All account statuses</option>
+                <option value="active">Active accounts</option>
+                <option value="suspended">Suspended accounts</option>
+            </select>
+            <button type="submit">Search accounts</button>
+        </form>
+        <p class="result-count" id="result-count" aria-live="polite">Loading accounts...</p>
+        <div id="account-list" aria-live="polite"></div>
+        <p class="queue-status" id="queue-status" role="status" aria-live="polite"></p>
+        <div class="pagination" id="pagination" hidden>
+            <button type="button" id="previous-page">Previous</button>
+            <span id="page-label"></span>
+            <button type="button" id="next-page">Next</button>
+        </div>
+    </main>
+    <script>
+        const accountList = document.querySelector("#account-list");
+        const resultCount = document.querySelector("#result-count");
+        const queueStatus = document.querySelector("#queue-status");
+        const searchInput = document.querySelector("#account-search");
+        const typeFilter = document.querySelector("#account-type");
+        const statusFilter = document.querySelector("#account-status");
+        const pagination = document.querySelector("#pagination");
+        let currentPage = 1;
+        let pageCount = 1;
+
+        async function requestJson(url, options) {
+            const response = await fetch(url, options);
+            let result;
+            try { result = await response.json(); } catch { throw new Error("The server returned an invalid response."); }
+            if (!response.ok) throw new Error(result.error || "Account request failed.");
+            return result;
+        }
+
+        function createAccountRow(account) {
+            const row = document.createElement("article");
+            row.className = "account";
+            const details = document.createElement("div");
+            const heading = document.createElement("h2");
+            heading.append(document.createTextNode(account.name || "Unnamed account"));
+            const badges = document.createElement("span");
+            badges.className = "badges";
+            const status = document.createElement("span");
+            status.className = `badge${account.isSuspended ? " is-suspended" : ""}`;
+            status.textContent = account.isSuspended ? "Suspended" : "Active";
+            const type = document.createElement("span");
+            type.className = "badge";
+            type.textContent = account.accountType === "seller" ? "Seller" : "Buyer";
+            badges.append(status, type);
+            if (account.accountType === "seller") {
+                const sellerStatus = document.createElement("span");
+                sellerStatus.className = `badge${account.sellerSuspended ? " is-suspended" : ""}`;
+                sellerStatus.textContent = account.sellerSuspended ? "Seller access suspended" : "Seller access active";
+                badges.append(sellerStatus);
+            }
+            if (account.isModerator) {
+                const moderatorBadge = document.createElement("span");
+                moderatorBadge.className = "badge";
+                moderatorBadge.textContent = "Moderator";
+                badges.append(moderatorBadge);
+            }
+            if (account.emailVerified) {
+                const verifiedBadge = document.createElement("span");
+                verifiedBadge.className = "badge";
+                verifiedBadge.textContent = "Email verified";
+                badges.append(verifiedBadge);
+            }
+            heading.append(badges);
+            details.append(heading);
+
+            const metadata = document.createElement("p");
+            metadata.className = "account-meta";
+            const joined = account.createdAt ? new Date(account.createdAt).toLocaleDateString() : "Unknown";
+            metadata.textContent = [account.email, account.phone, account.town, `Joined ${joined}`].filter(Boolean).join(" · ");
+            details.append(metadata);
+            row.append(details);
+
+            const actions = document.createElement("div");
+            actions.className = "account-actions";
+            if (account.accountType === "seller") {
+                const sellerButton = document.createElement("button");
+                sellerButton.type = "button";
+                sellerButton.className = `account-action is-seller${account.sellerSuspended ? " is-reactivate" : ""}`;
+                sellerButton.textContent = account.sellerSuspended ? "Reactivate seller" : "Suspend seller";
+                sellerButton.disabled = account.isModerator;
+                sellerButton.title = "Seller suspension hides the shop and listings but keeps buyer access.";
+                sellerButton.addEventListener("click", () => updateSellerStatus(account, sellerButton));
+                actions.append(sellerButton);
+            }
+
+            const accountButton = document.createElement("button");
+            accountButton.type = "button";
+            accountButton.className = `account-action${account.isSuspended ? " is-reactivate" : ""}`;
+            accountButton.textContent = account.isSuspended ? "Reactivate account" : "Suspend entire account";
+            accountButton.disabled = account.isModerator;
+            if (account.isModerator) accountButton.title = "The configured moderation account cannot be changed.";
+            accountButton.addEventListener("click", () => updateAccountStatus(account, accountButton));
+            actions.append(accountButton);
+            row.append(actions);
+            return row;
+        }
+
+        async function loadAccounts(preserveStatus = false) {
+            accountList.replaceChildren();
+            pagination.hidden = true;
+            resultCount.textContent = "Loading accounts...";
+            if (!preserveStatus) {
+                queueStatus.classList.remove("is-error");
+                queueStatus.textContent = "";
+            }
+            const params = new URLSearchParams({
+                search: searchInput.value.trim(),
+                accountType: typeFilter.value,
+                status: statusFilter.value,
+                page: String(currentPage)
+            });
+            try {
+                const result = await requestJson(`/api/admin/users?${params}`);
+                resultCount.textContent = `${result.total} ${result.total === 1 ? "account" : "accounts"} found`;
+                pageCount = Math.max(result.pages, 1);
+                if (!result.users.length) {
+                    const empty = document.createElement("p");
+                    empty.className = "empty";
+                    empty.textContent = "No accounts match this search.";
+                    accountList.append(empty);
+                } else {
+                    result.users.forEach((account) => accountList.append(createAccountRow(account)));
+                }
+                pagination.hidden = pageCount <= 1;
+                document.querySelector("#page-label").textContent = `Page ${result.page} of ${pageCount}`;
+                document.querySelector("#previous-page").disabled = result.page <= 1;
+                document.querySelector("#next-page").disabled = result.page >= pageCount;
+            } catch (error) {
+                resultCount.textContent = "Accounts could not be loaded.";
+                queueStatus.classList.add("is-error");
+                queueStatus.textContent = error.message || "Try again.";
+            }
+        }
+
+        async function updateAccountStatus(account, button) {
+            const suspend = !account.isSuspended;
+            const action = suspend ? "suspend" : "reactivate";
+            if (!window.confirm(`Are you sure you want to ${action} ${account.name || account.email}'s account?`)) return;
+            button.disabled = true;
+            queueStatus.classList.remove("is-error");
+            queueStatus.textContent = `${suspend ? "Suspending" : "Reactivating"} account...`;
+            try {
+                const result = await requestJson(`/api/admin/users/${encodeURIComponent(account.id)}/status`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ isSuspended: suspend })
+                });
+                queueStatus.textContent = result.message;
+                await loadAccounts(true);
+            } catch (error) {
+                button.disabled = false;
+                queueStatus.classList.add("is-error");
+                queueStatus.textContent = error.message || "Account status could not be updated.";
+            }
+        }
+
+        async function updateSellerStatus(account, button) {
+            const suspend = !account.sellerSuspended;
+            const action = suspend ? "suspend seller access for" : "reactivate seller access for";
+            const impact = suspend
+                ? "Their shop and listings will be hidden. Their buyer account will remain available."
+                : "Their shop and listings will become visible again. Their buyer account is unchanged.";
+            if (!window.confirm(`Are you sure you want to ${action} ${account.name || account.email}?\n\n${impact}`)) return;
+            button.disabled = true;
+            queueStatus.classList.remove("is-error");
+            queueStatus.textContent = `${suspend ? "Suspending" : "Reactivating"} seller access...`;
+            try {
+                const result = await requestJson(`/api/admin/users/${encodeURIComponent(account.id)}/seller-status`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ sellerSuspended: suspend })
+                });
+                queueStatus.textContent = result.message;
+                await loadAccounts(true);
+            } catch (error) {
+                button.disabled = false;
+                queueStatus.classList.add("is-error");
+                queueStatus.textContent = error.message || "Seller status could not be updated.";
+            }
+        }
+
+        document.querySelector("#account-filters").addEventListener("submit", (event) => {
+            event.preventDefault();
+            currentPage = 1;
+            loadAccounts();
+        });
+        statusFilter.addEventListener("change", () => {
+            currentPage = 1;
+            loadAccounts();
+        });
+        typeFilter.addEventListener("change", () => {
+            currentPage = 1;
+            loadAccounts();
+        });
+        document.querySelector("#previous-page").addEventListener("click", () => {
+            if (currentPage > 1) {
+                currentPage -= 1;
+                loadAccounts();
+            }
+        });
+        document.querySelector("#next-page").addEventListener("click", () => {
+            if (currentPage < pageCount) {
+                currentPage += 1;
+                loadAccounts();
+            }
+        });
+
+        loadAccounts();
+    </script>
+    <script src="/navigation.js" defer></script>
+</body>
+</html>

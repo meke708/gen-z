@@ -27,8 +27,6 @@ services:
         sync: false
       - key: ADMIN_USER_ID
         sync: false
-      - key: APP_BASE_URL
-        sync: false
       - key: AI_OLLAMA_URL
         sync: false
       - key: SMTP_HOST

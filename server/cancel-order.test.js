@@ -4,12 +4,14 @@ const assert = require('node:assert/strict');
 const {
   canCancelOrder,
   resolveSellerApprovalState,
+  resolveAppBaseUrl,
   getBuyerDisplayName,
   normalizeSupportRequest,
+  buildSellerMarketBenchmarks,
   normalizePasswordResetInput,
   normalizeProfileInput,
   isValidEmailVerificationToken,
-  isBuyerEmailVerified,
+  isEmailVerified,
   assertProductionPaymentConfiguration,
   isAdminUser,
   validateImageUrl,
@@ -17,6 +19,55 @@ const {
   resolvePayoutStatus,
   assertProductionAdminConfiguration
 } = require('./server');
+
+test('seller market benchmarks compare only active category listings and handle empty competition', () => {
+  assert.deepEqual(buildSellerMarketBenchmarks(
+    ['Fashion', 'Beauty'],
+    [
+      { _id: 'Fashion', productCount: 2, averagePriceNAD: 125.555 },
+      { _id: 'Beauty', productCount: 1, averagePriceNAD: 80 }
+    ],
+    [
+      { _id: 'Fashion', productCount: 7, shopIds: ['shop-a', 'shop-b'], averagePriceNAD: 110.126 }
+    ]
+  ), [
+    {
+      category: 'Fashion',
+      ownProductCount: 2,
+      ownAveragePriceNAD: 125.56,
+      marketProductCount: 7,
+      competitorShopCount: 2,
+      marketAveragePriceNAD: 110.13
+    },
+    {
+      category: 'Beauty',
+      ownProductCount: 1,
+      ownAveragePriceNAD: 80,
+      marketProductCount: 0,
+      competitorShopCount: 0,
+      marketAveragePriceNAD: null
+    }
+  ]);
+});
+
+test('public app URLs prefer Render for a localhost override and preserve custom domains', () => {
+  assert.equal(resolveAppBaseUrl({
+    appBaseUrl: 'http://localhost:3001',
+    renderExternalUrl: 'https://z-namibia.onrender.com',
+    nodeEnv: 'production'
+  }), 'https://z-namibia.onrender.com');
+  assert.equal(resolveAppBaseUrl({
+    appBaseUrl: 'https://shop.example.com/path',
+    renderExternalUrl: 'https://z-namibia.onrender.com',
+    nodeEnv: 'production'
+  }), 'https://shop.example.com');
+});
+
+test('production public app URLs must be configured and use HTTPS', () => {
+  assert.equal(resolveAppBaseUrl({ nodeEnv: 'production' }), null);
+  assert.equal(resolveAppBaseUrl({ appBaseUrl: 'http://shop.example.com', nodeEnv: 'production' }), null);
+  assert.equal(resolveAppBaseUrl({ appBaseUrl: 'https://shop.example.com', nodeEnv: 'production' }), 'https://shop.example.com');
+});
 
 test('pending orders can be cancelled before the reservation expires', () => {
   const order = {
@@ -102,11 +153,11 @@ test('email verification tokens require a 64-character lowercase hex token', () 
   assert.equal(isValidEmailVerificationToken('short'), false);
 });
 
-test('checkout requires a verified email, including for legacy accounts without the field', () => {
-  assert.equal(isBuyerEmailVerified({ emailVerified: true }), true);
-  assert.equal(isBuyerEmailVerified({ emailVerified: false }), false);
-  assert.equal(isBuyerEmailVerified({}), false);
-  assert.equal(isBuyerEmailVerified(null), false);
+test('seller access and checkout require a verified email, including for legacy accounts without the field', () => {
+  assert.equal(isEmailVerified({ emailVerified: true }), true);
+  assert.equal(isEmailVerified({ emailVerified: false }), false);
+  assert.equal(isEmailVerified({}), false);
+  assert.equal(isEmailVerified(null), false);
 });
 
 test('production cannot start with the mock payment adapter', () => {

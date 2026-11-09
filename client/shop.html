@@ -39,6 +39,10 @@
         .shop-hero { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(260px, 360px); align-items: center; gap: 28px; padding: 20px 0 33px; border-bottom: 1px solid var(--ink); }
         .shop-primary { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
         .eyebrow { margin: 0 0 12px; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
+        .shop-location { display: inline-flex; width: fit-content; align-items: center; gap: 7px; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-decoration: none; text-transform: uppercase; }
+        .shop-location:hover { text-decoration: underline; text-underline-offset: 4px; }
+        .shop-location:focus-visible { outline: 2px solid var(--forest); outline-offset: 4px; }
+        .shop-location svg { width: 14px; height: 14px; flex: 0 0 auto; }
         h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 47px; font-weight: 400; letter-spacing: 0; line-height: 1.05; overflow-wrap: anywhere; }
         #shop-name { color: #d9772f; font-weight: 700; }
         .shop-description { max-width: 650px; margin: 13px 0 0; color: var(--muted); font-size: 13px; line-height: 1.7; white-space: pre-line; }
@@ -148,7 +152,14 @@
         .empty, .error { grid-column: 1 / -1; padding: 35px 10px; color: var(--muted); font-size: 12px; }
         .empty h2 { margin: 0; color: var(--ink); font-family: Georgia, serif; font-size: 24px; font-weight: 400; }
         .empty p { margin: 8px 0 0; }
-        footer { padding: 20px max(24px, calc((100vw - 1120px) / 2)); border-top: 1px solid var(--line); color: var(--muted); font-size: 10px; }
+        footer { padding: 24px max(24px, calc((100vw - 1120px) / 2)); border-top: 1px solid var(--line); color: var(--muted); font-size: 10px; }
+        .shop-location-footer { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(320px, 1.2fr); gap: 24px; align-items: center; padding-bottom: 22px; }
+        .shop-location-footer[hidden] { display: none; }
+        .shop-location-footer h2 { margin: 0; color: var(--ink); font-family: Georgia, serif; font-size: 24px; font-weight: 400; }
+        .shop-location-footer p { margin: 8px 0 0; line-height: 1.6; }
+        .shop-location-footer a { display: inline-flex; margin-top: 12px; color: var(--forest); font-weight: 700; text-underline-offset: 3px; }
+        .shop-location-map { display: block; width: 100%; height: 210px; border: 1px solid var(--line); background: #e4ecc9; }
+        .shop-footer-brand { padding-top: 18px; border-top: 1px solid var(--line); }
         .assistant-widget[hidden], .assistant-window[hidden] { display: none; }
         .assistant-widget { position: fixed; z-index: 20; right: 22px; bottom: 22px; }
         .assistant-widget > summary { display: flex; min-height: 46px; align-items: center; gap: 9px; padding: 0 14px; border: 1px solid var(--ink); border-radius: 3px; color: var(--white); background: var(--forest); cursor: pointer; font-size: 11px; font-weight: 700; list-style: none; }
@@ -196,7 +207,10 @@
             .products { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; }
             .product-info { padding: 10px; }
             .product-title { font-size: 12px; }
-            footer { padding: 18px; }
+            footer { padding: 20px 18px; }
+            .shop-location-footer { grid-template-columns: minmax(0, 1fr); gap: 15px; }
+            .shop-location-footer h2 { font-size: 21px; }
+            .shop-location-map { height: 190px; }
         }
         @media (max-width: 380px) { .products { grid-template-columns: 1fr; } }
     </style>
@@ -216,7 +230,10 @@
         <section class="shop-hero" id="shop-profile" hidden>
             <div class="shop-primary">
                 <div>
-                    <p class="eyebrow" id="shop-town"></p>
+                    <a class="shop-location" id="shop-town" target="_blank" rel="noopener noreferrer">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>
+                        <span id="shop-location-label"></span>
+                    </a>
                     <h1 id="shop-name"></h1>
                     <p class="business-verified-badge" id="business-verified-badge" hidden><span aria-hidden="true">&#10003;</span> Business verified</p>
                     <p class="shop-description" id="shop-description"></p>
@@ -270,7 +287,18 @@
             </form>
         </section>
     </details>
-    <footer>Z Namibia · Independent shops, right here at home.</footer>
+    <footer>
+        <section class="shop-location-footer" id="shop-location-footer" aria-labelledby="shop-location-heading" hidden>
+            <div>
+                <p class="eyebrow">Find this business</p>
+                <h2 id="shop-location-heading"></h2>
+                <p id="shop-location-footer-town"></p>
+                <a id="shop-location-footer-link" target="_blank" rel="noopener noreferrer">Open location in Google Maps</a>
+            </div>
+            <iframe class="shop-location-map" id="shop-location-map" title="Map showing the business town" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+        </section>
+        <div class="shop-footer-brand">Z Namibia · Independent shops, right here at home.</div>
+    </footer>
     <script>
         const priceFormat = new Intl.NumberFormat("en-NA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         const productGrid = document.querySelector("#shop-products");
@@ -428,7 +456,18 @@
                 const { shop } = result;
                 document.title = `${shop.name} | Z Namibia`;
                 document.querySelector("#breadcrumb-shop").textContent = shop.name;
-                document.querySelector("#shop-town").textContent = `${shop.town}, Namibia`;
+                const shopLocation = document.querySelector("#shop-town");
+                const location = `${shop.town}, Namibia`;
+                shopLocation.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`;
+                shopLocation.setAttribute("aria-label", `View ${location} on Google Maps (opens in a new tab)`);
+                document.querySelector("#shop-location-label").textContent = location;
+                const mapsSearchUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`;
+                const locationFooter = document.querySelector("#shop-location-footer");
+                document.querySelector("#shop-location-heading").textContent = `Visit ${shop.name}`;
+                document.querySelector("#shop-location-footer-town").textContent = location;
+                document.querySelector("#shop-location-footer-link").href = mapsSearchUrl;
+                document.querySelector("#shop-location-map").src = `https://www.google.com/maps?q=${encodeURIComponent(location)}&output=embed`;
+                locationFooter.hidden = false;
                 document.querySelector("#shop-name").textContent = shop.name;
                 document.querySelector("#business-verified-badge").hidden = !shop.businessVerified;
                 document.querySelector("#shop-description").textContent = shop.description;
