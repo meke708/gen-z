@@ -67,13 +67,33 @@ body.layout-seller .seller-account-avatar {
     font-weight: 700;
 }
 
+body.layout-seller .seller-account-identity {
+    display: flex;
+    min-width: 0;
+    max-width: min(220px, calc(100vw - 120px));
+    align-items: center;
+    gap: 9px;
+}
+
 body.layout-seller .seller-account-avatar-link {
     position: relative;
-    display: inline-flex;
+    display: inline-grid;
+    width: 36px;
     min-height: 36px;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
+    flex: 0 0 36px;
+    place-items: center;
+    border-radius: 999px;
+}
+
+body.layout-seller .seller-account-business-name {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--ink, #17231e);
+    font-size: 11px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: default;
 }
 
 body.layout-seller .seller-account-verification-warning {
@@ -127,11 +147,19 @@ body.layout-wide footer {
 }
 
 body.layout-marketplace .site-header {
-    position: relative;
-    z-index: 2;
+    position: fixed;
+    z-index: 20;
+    top: 0;
+    right: 0;
+    left: 0;
     color: var(--white);
     border-bottom: 0;
     background: var(--forest);
+}
+
+body.layout-marketplace .site-header.is-scrolled {
+    background: rgba(24, 56, 46, 0.3);
+    backdrop-filter: blur(3px);
 }
 
 body.layout-marketplace main {

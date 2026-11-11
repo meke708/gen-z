@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f4f1e8">
+    <title>User details | Z Operations</title>
+    <style>
+        :root { color-scheme: light; --ink: #17231e; --muted: #68736d; --paper: #f4f1e8; --white: #fffefa; --forest: #18382e; --line: #d9d9cf; --warning: #8b3b2f; --lime: #d8f36a; }
+        * { box-sizing: border-box; }
+        body { min-width: 320px; margin: 0; color: var(--ink); background: var(--paper); font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
+        a { color: inherit; }
+        .site-header { display: flex; min-height: 72px; align-items: center; justify-content: space-between; gap: 16px; padding: 12px max(24px, calc((100vw - 1120px) / 2)); border-bottom: 1px solid var(--line); background: var(--white); }
+        .header-left { display: inline-flex; align-items: center; gap: 12px; }
+        .back-button { display: inline-grid; width: 28px; height: 28px; place-items: center; border: 1px solid var(--ink); border-radius: 50%; text-decoration: none; font-size: 18px; }
+        .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+        .brand-mark { display: grid; width: 36px; aspect-ratio: 1; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; font-family: Georgia, serif; font-size: 22px; }
+        nav { display: flex; flex-wrap: wrap; gap: 14px; font-size: 10px; font-weight: 700; }
+        nav a { color: var(--forest); text-decoration: none; }
+        main { width: min(1120px, calc(100% - 48px)); margin: 0 auto; padding: 36px 0 70px; }
+        .eyebrow { margin: 0 0 10px; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+        .page-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+        h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 38px; font-weight: 400; overflow-wrap: anywhere; }
+        .intro { max-width: 780px; margin: 10px 0 22px; color: var(--muted); font-size: 12px; line-height: 1.65; }
+        .page-link { display: inline-flex; min-height: 36px; align-items: center; padding: 0 11px; border: 1px solid var(--ink); border-radius: 3px; color: var(--forest); text-decoration: none; font-size: 10px; font-weight: 700; white-space: nowrap; }
+        .page-link:hover { color: var(--white); background: var(--forest); }
+        .disclosure-controls { display: flex; justify-content: flex-end; margin-top: 16px; }
+        .disclosure-toggle { min-height: 36px; padding: 0 12px; border: 1px solid var(--ink); border-radius: 3px; color: var(--forest); background: var(--white); cursor: pointer; font-size: 10px; font-weight: 700; }
+        .disclosure-toggle:hover { color: var(--white); background: var(--forest); }
+        .status-message { margin: 16px 0; color: var(--muted); font-size: 12px; }
+        .status-message.is-error { color: var(--warning); }
+        .section { margin-top: 24px; }
+        .section h2 { margin: 0 0 10px; font-family: Georgia, "Times New Roman", serif; font-size: 24px; font-weight: 400; }
+        .section-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+        .section-heading h2 { margin: 0; }
+        .section-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+        .section-action { display: inline-flex; min-height: 32px; align-items: center; padding: 0 10px; border: 1px solid var(--ink); border-radius: 3px; color: var(--forest); text-decoration: none; font-size: 10px; font-weight: 700; }
+        .section-action:hover { color: var(--white); background: var(--forest); }
+        .preview-disclosure { margin-top: 9px; border: 1px solid var(--line); background: rgba(255, 254, 250, .55); }
+        .preview-disclosure > summary { padding: 10px 12px; color: var(--forest); cursor: pointer; font-size: 11px; font-weight: 700; }
+        .preview-disclosure[open] > summary { border-bottom: 1px solid var(--line); }
+        .preview-content { padding: 10px; }
+        .detail-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; border: 1px solid var(--line); background: var(--line); }
+        .detail-item { min-width: 0; padding: 12px; background: var(--white); }
+        .detail-item dt { color: var(--muted); font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+        .detail-item dd { margin: 5px 0 0; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+        .balance-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+        .balance-card { min-height: 95px; padding: 14px; border: 1px solid var(--line); background: var(--white); }
+        .balance-card strong { display: block; color: var(--forest); font-size: 20px; }
+        .balance-card span { display: block; margin-top: 6px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+        .disclaimer { margin: 10px 0 0; padding: 11px 13px; border-left: 3px solid var(--forest); color: var(--muted); background: #e8eddd; font-size: 10px; line-height: 1.6; }
+        .transaction-list { display: grid; gap: 8px; }
+        .transaction { padding: 12px; border: 1px solid var(--line); background: var(--white); font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
+        .transaction strong, .transaction span { display: block; }
+        .transaction strong { font-size: 12px; }
+        .transaction span { color: var(--muted); }
+        .transaction details { margin-top: 8px; color: var(--forest); }
+        .transaction summary { cursor: pointer; font-weight: 700; }
+        .transaction pre { padding: 10px; background: #f4f1e8; font: 10px/1.5 Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .empty { margin: 0; padding: 14px; border: 1px solid var(--line); color: var(--muted); background: var(--white); font-size: 11px; }
+        .status-pill { display: inline-block; margin-left: 6px; padding: 3px 7px; border-radius: 999px; color: var(--forest); background: #e8eddd; font-size: 9px; font-weight: 700; text-transform: uppercase; vertical-align: middle; }
+        .status-pill.is-warning { color: var(--warning); background: #f5e8e2; }
+        @media (max-width: 760px) {
+            .detail-grid, .balance-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .page-heading { flex-direction: column; }
+        }
+        @media (max-width: 520px) {
+            .site-header { align-items: flex-start; padding: 12px 18px; }
+            nav { gap: 9px; }
+            main { width: calc(100% - 36px); padding-top: 28px; }
+            h1 { font-size: 32px; }
+            .detail-grid, .balance-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+    <link rel="stylesheet" href="/loading.css">
+    <script src="/loading.js"></script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-left"><a class="back-button" href="/admin/accounts" aria-label="Back to accounts">←</a><a class="brand" href="/admin/accounts"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Operations</span></a></div>
+        <nav aria-label="Super-admin navigation"><a href="/admin/accounts">Accounts</a><a href="/admin/moderation">Moderation</a><a href="/admin/payouts">Payouts</a><a href="/admin/support">Support</a></nav>
+    </header>
+    <main>
+        <p class="eyebrow">Trust and safety · User details</p>
+        <div class="page-heading">
+            <div>
+                <h1 id="user-name">Loading user details...</h1>
+                <p class="intro">Complete account, marketplace, seller, transaction, support, and security records currently retained by the platform. Passwords, credential hashes, session tokens, API secrets, and uploaded identity-document contents are intentionally not displayed.</p>
+            </div>
+            <a class="page-link" id="activity-link" href="#">View account activity</a>
+        </div>
+        <p class="status-message" id="details-status" role="status" aria-live="polite">Loading account details...</p>
+        <div class="disclosure-controls" id="disclosure-controls" hidden>
+            <button class="disclosure-toggle" id="disclosure-toggle" type="button" aria-expanded="false">Show all sections</button>
+        </div>
+        <div id="user-details" hidden></div>
+    </main>
+    <script>
+        const userName = document.querySelector("#user-name");
+        const detailsStatus = document.querySelector("#details-status");
+        const userDetails = document.querySelector("#user-details");
+        const disclosureControls = document.querySelector("#disclosure-controls");
+        const disclosureToggle = document.querySelector("#disclosure-toggle");
+        const pathParts = window.location.pathname.split("/").filter(Boolean);
+        const accountId = pathParts.at(-2);
+        document.querySelector("#activity-link").href = `/admin/accounts/${encodeURIComponent(accountId)}/activity`;
+
+        disclosureToggle.addEventListener("click", () => {
+            const disclosures = userDetails.querySelectorAll("details");
+            const shouldOpen = [...disclosures].some((disclosure) => !disclosure.open);
+            for (const disclosure of disclosures) disclosure.open = shouldOpen;
+            disclosureToggle.setAttribute("aria-expanded", String(shouldOpen));
+            disclosureToggle.textContent = shouldOpen ? "Hide all sections" : "Show all sections";
+        });
+
+        function escapeText(value) {
+            return value === null || value === undefined || value === "" ? "Not provided" : String(value);
+        }
+
+        function formatDate(value) {
+            return value ? new Date(value).toLocaleString() : "Not available";
+        }
+
+        function formatAmount(value) {
+            return Number.isFinite(value) ? `N$ ${value.toFixed(2)}` : "Not available";
+        }
+
+        function addSection(title, entries) {
+            const section = document.createElement("section");
+            section.className = "section";
+            const heading = document.createElement("h2");
+            heading.textContent = title;
+            const disclosure = document.createElement("details");
+            disclosure.className = "preview-disclosure";
+            const summary = document.createElement("summary");
+            summary.textContent = `Show ${entries.length} detail${entries.length === 1 ? "" : "s"}`;
+            const grid = document.createElement("dl");
+            grid.className = "detail-grid";
+            for (const [label, value] of entries) {
+                const item = document.createElement("div");
+                item.className = "detail-item";
+                const term = document.createElement("dt");
+                term.textContent = label;
+                const description = document.createElement("dd");
+                description.textContent = escapeText(value);
+                item.append(term, description);
+                grid.append(item);
+            }
+            const content = document.createElement("div");
+            content.className = "preview-content";
+            content.append(grid);
+            disclosure.append(summary, content);
+            section.append(heading, disclosure);
+            userDetails.append(section);
+        }
+
+        function addBalances(balances) {
+            const section = document.createElement("section");
+            section.className = "section";
+            const heading = document.createElement("h2");
+            heading.textContent = "Account balances and totals";
+            const disclosure = document.createElement("details");
+            disclosure.className = "preview-disclosure";
+            const summary = document.createElement("summary");
+            const grid = document.createElement("div");
+            grid.className = "balance-grid";
+            const cards = [
+                ["Current Z balance", formatAmount(balances.currentWalletNAD), "Current prototype wallet ledger balance."],
+                ["Buyer purchases", formatAmount(balances.buyerPurchasesNAD), `${balances.buyerPaidOrderCount} paid orders recorded.`],
+                ["Seller earnings credited", formatAmount(balances.sellerPayout.creditedToWalletNAD), "Already credited to the Z balance ledger."],
+                ["Seller earnings awaiting credit", formatAmount(balances.sellerPayout.awaitingWalletCreditNAD), "Paid seller orders not yet credited."],
+                ["Total seller earnings", formatAmount(balances.sellerPayout.totalNAD), `${balances.sellerPayout.orderCount} paid seller orders recorded.`],
+                ["Seller credits", formatAmount(balances.walletLedger.seller_credit?.amountNAD || 0), `${balances.walletLedger.seller_credit?.count || 0} ledger entries.`],
+                ["Purchase debits", formatAmount(balances.walletLedger.purchase_debit?.amountNAD || 0), `${balances.walletLedger.purchase_debit?.count || 0} ledger entries.`],
+                ["Refunds", formatAmount(balances.walletLedger.purchase_refund?.amountNAD || 0), `${balances.walletLedger.purchase_refund?.count || 0} ledger entries.`]
+            ];
+            summary.textContent = `Show ${cards.length} balance totals`;
+            for (const [label, amount, description] of cards) {
+                const card = document.createElement("article");
+                card.className = "balance-card";
+                const value = document.createElement("strong");
+                value.textContent = amount;
+                const title = document.createElement("span");
+                title.textContent = label;
+                const note = document.createElement("span");
+                note.textContent = description;
+                card.append(value, title, note);
+                grid.append(card);
+            }
+            const disclaimer = document.createElement("p");
+            disclaimer.className = "disclaimer";
+            disclaimer.textContent = "These figures are prototype ledger values. No real funds are held or transferred. Purchase totals are gross order totals; seller earnings are after the recorded commission.";
+            const content = document.createElement("div");
+            content.className = "preview-content";
+            content.append(grid, disclaimer);
+            disclosure.append(summary, content);
+            section.append(heading, disclosure);
+            userDetails.append(section);
+        }
+
+        function addTransactionOverview(transactions) {
+            const entries = [
+                ["Orders as buyer", transactions.buyerOrders],
+                ["Orders as seller", transactions.sellerOrders],
+                ["Wallet ledger entries", transactions.wallet],
+                ["Payout requests", transactions.payouts],
+                ["Product promotions", transactions.promotions]
+            ];
+            const section = document.createElement("section");
+            section.className = "section";
+            const headingRow = document.createElement("div");
+            headingRow.className = "section-heading";
+            const heading = document.createElement("h2");
+            heading.textContent = "Transaction history";
+            const actions = document.createElement("div");
+            actions.className = "section-actions";
+            const link = document.createElement("a");
+            link.className = "section-action";
+            link.href = `/admin/accounts/${encodeURIComponent(accountId)}/transactions?type=buyer-orders`;
+            link.textContent = "View transaction records";
+            actions.append(link);
+            headingRow.append(heading, actions);
+
+            const disclosure = document.createElement("details");
+            disclosure.className = "preview-disclosure";
+            const summary = document.createElement("summary");
+            summary.textContent = "Show transaction counts";
+            const content = document.createElement("div");
+            content.className = "preview-content";
+            const grid = document.createElement("dl");
+            grid.className = "detail-grid";
+            for (const [label, value] of entries) {
+                const item = document.createElement("div");
+                item.className = "detail-item";
+                const term = document.createElement("dt");
+                term.textContent = label;
+                const description = document.createElement("dd");
+                description.textContent = escapeText(value);
+                item.append(term, description);
+                grid.append(item);
+            }
+            content.append(grid);
+            disclosure.append(summary, content);
+            section.append(headingRow, disclosure);
+            userDetails.append(section);
+        }
+
+        function addTransactions(title, records, getLines, actions = []) {
+            const previewRecords = records.slice(0, 2);
+            const section = document.createElement("section");
+            section.className = "section";
+            const headingRow = document.createElement("div");
+            headingRow.className = "section-heading";
+            const heading = document.createElement("h2");
+            heading.textContent = title;
+            headingRow.append(heading);
+            if (actions.length) {
+                const actionList = document.createElement("div");
+                actionList.className = "section-actions";
+                for (const action of actions) {
+                    const link = document.createElement("a");
+                    link.className = "section-action";
+                    link.href = action.href;
+                    link.textContent = action.label;
+                    actionList.append(link);
+                }
+                headingRow.append(actionList);
+            }
+            section.append(headingRow);
+            if (!previewRecords.length) {
+                const empty = document.createElement("p");
+                empty.className = "empty";
+                empty.textContent = "No records.";
+                section.append(empty);
+            } else {
+                const disclosure = document.createElement("details");
+                disclosure.className = "preview-disclosure";
+                const summary = document.createElement("summary");
+                summary.textContent = `Show ${previewRecords.length} preview record${previewRecords.length === 1 ? "" : "s"}`;
+                const content = document.createElement("div");
+                content.className = "preview-content";
+                const list = document.createElement("div");
+                list.className = "transaction-list";
+                for (const record of previewRecords) {
+                    const item = document.createElement("article");
+                    item.className = "transaction";
+                    const [primary, ...secondary] = getLines(record);
+                    const label = document.createElement("strong");
+                    label.textContent = primary;
+                    item.append(label);
+                    for (const line of secondary) {
+                        const detail = document.createElement("span");
+                        detail.textContent = line;
+                        item.append(detail);
+                    }
+                    list.append(item);
+                }
+                content.append(list);
+                disclosure.append(summary, content);
+                section.append(disclosure);
+            }
+            userDetails.append(section);
+        }
+
+        function addLinkSection(title, label, href) {
+            const section = document.createElement("section");
+            section.className = "section";
+            const heading = document.createElement("h2");
+            heading.textContent = title;
+            const link = document.createElement("a");
+            link.className = "page-link";
+            link.href = href;
+            link.textContent = label;
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+            section.append(heading, link);
+            userDetails.append(section);
+        }
+
+        function recordAction(type, label, count) {
+            return [{
+                label: `View all ${label} (${count})`,
+                href: `/admin/accounts/${encodeURIComponent(accountId)}/transactions?type=${encodeURIComponent(type)}`
+            }];
+        }
+
+        function previewTitle(label, count) {
+            return count ? `Latest ${label}` : label;
+        }
+
+        function renderDetails(details) {
+            userName.textContent = details.profile.name || "Unnamed account";
+            userDetails.replaceChildren();
+            userDetails.hidden = false;
+            disclosureControls.hidden = false;
+            addSection("Account profile", [
+                ["Email", details.profile.email],
+                ["Phone", details.profile.phone],
+                ["Town", details.profile.town],
+                ["Account type", details.profile.accountType],
+                ["Role", details.profile.role],
+                ["Moderator access", details.profile.isModerator ? "Yes" : "No"],
+                ["Super-admin access", details.profile.isSuperAdmin ? "Yes" : "No"],
+                ["Configured admin identity", details.profile.isConfiguredAdminIdentity ? "Yes" : "No"],
+                ["Email verification", details.profile.emailVerified ? "Verified" : "Not verified"],
+                ["Account status", details.profile.isSuspended ? "Suspended" : "Active"],
+                ["Referral code", details.profile.referralCode],
+                ["Referred by account ID", details.profile.referredBy],
+                ["Referred by", details.records.referralSource ? `${details.records.referralSource.name} · ${details.records.referralSource.email}` : "No referral source"],
+                ["Report dismissals", details.records.dismissedListingReportCount],
+                ["Reports paused", details.records.dismissedListingReportCount >= 10 ? "Yes" : "No"],
+                ["Cart item count", details.profile.cartItemCount],
+                ["Wishlist item count", details.profile.wishlistCount],
+                ["Payout bank", details.records.payoutBankAccount ? `${details.records.payoutBankAccount.bankName} · ${details.records.payoutBankAccount.accountName} · ending ${details.records.payoutBankAccount.accountLast4}` : "Not provided"],
+                ["Created", formatDate(details.profile.createdAt)],
+                ["Last updated", formatDate(details.profile.updatedAt)],
+                ["Account ID", details.profile.id]
+            ]);
+            addBalances(details.balances);
+            addTransactionOverview(details.transactions);
+            if (details.seller) {
+                addSection("Seller and business verification", [
+                    ["Shop", details.seller.name],
+                    ["Shop ID", details.seller.id],
+                    ["Cover image URL", details.seller.coverImageUrl],
+                    ["Shop town", details.seller.town],
+                    ["Shop approval", details.seller.approvalStatus],
+                    ["Shop approval note", details.seller.approvalNote],
+                    ["Seller access", details.seller.sellerSuspended ? "Suspended" : details.seller.sellerRestrictionStatus],
+                    ["Seller restriction reason", details.seller.sellerRestrictionReason],
+                    ["Seller restriction until", formatDate(details.seller.sellerRestrictedUntil)],
+                    ["Last restriction trigger", formatDate(details.seller.sellerRestrictionLastTriggeredAt)],
+                    ["Auto approval enabled", details.seller.autoApprovalEnabled ? "Yes" : "No"],
+                    ["Description", details.seller.description],
+                    ["Shop slug", details.seller.slug],
+                    ["Shipping rates", JSON.stringify(details.seller.shippingRates)],
+                    ["Assistant plan", details.seller.assistantPlanActive ? `Active · ${formatDate(details.seller.assistantPlanPaidAt)}` : "Inactive"],
+                    ["Assistant enabled", details.seller.assistantEnabled ? "Yes" : "No"],
+                    ["Business verification", details.seller.kycStatus],
+                    ["Registered business name", details.seller.kycBusinessName],
+                    ["Document type", details.seller.kycDocumentType],
+                    ["Verification document", details.seller.kycDocumentAvailable ? `Stored document available for authorized review (${details.seller.kycDocumentMime})` : "No document currently stored"],
+                    ["Verification reviewer ID", details.seller.kycReviewedBy],
+                    ["Verification submitted", formatDate(details.seller.kycSubmittedAt)],
+                    ["Verification reviewed", formatDate(details.seller.kycReviewedAt)],
+                    ["Review note", details.seller.kycReviewNote],
+                    ["Shop created", formatDate(details.seller.createdAt)],
+                    ["Shop updated", formatDate(details.seller.updatedAt)]
+                ]);
+                if (details.seller.kycDocumentUrl) {
+                    addLinkSection("Business verification file", "Open stored verification document", details.seller.kycDocumentUrl);
+                }
+            }
+            addTransactions(previewTitle("listings", details.records.counts.listings), details.records.listings, (listing) => [
+                `${listing.title || "Untitled listing"} · ${formatAmount(listing.priceNAD)}`,
+                `Status: ${listing.status} · Availability: ${listing.isAvailable ? "Available" : "Unavailable"} · Stock: ${listing.stock ?? "Not tracked"}`,
+                `Review: ${listing.reviewStatus} · Moderation: ${listing.moderationStatus}${listing.moderationSource ? ` (${listing.moderationSource})` : ""}`,
+                `Category: ${listing.category || "Not set"} · Town: ${listing.town}`,
+                `Created: ${formatDate(listing.createdAt)} · Updated: ${formatDate(listing.updatedAt)} · Moderated: ${formatDate(listing.moderatedAt)}`,
+                `Description: ${listing.description || "No description"}${listing.reviewReasons?.length ? ` · Review notes: ${listing.reviewReasons.join(", ")}` : ""}`
+            ], [
+                ...recordAction("listings", "listings", details.records.counts.listings),
+                ...(details.seller?.slug ? [{ label: "Open seller storefront", href: `/shops/${encodeURIComponent(details.seller.slug)}` }] : [])
+            ]);
+            addTransactions(previewTitle("cart entries", details.records.counts.cart), details.records.cart, (item) => [
+                `${item.title} · ${item.quantity} × ${formatAmount(item.priceNAD)}`,
+                `Listing status: ${item.status} · Product ID: ${item.productId}`
+            ], recordAction("cart", "cart entries", details.records.counts.cart));
+            addTransactions(previewTitle("wishlist entries", details.records.counts.wishlist), details.records.wishlist, (item) => [
+                `${item.title} · ${formatAmount(item.priceNAD)}`,
+                `Listing status: ${item.status} · Product ID: ${item.productId}`
+            ], recordAction("wishlist", "wishlist entries", details.records.counts.wishlist));
+            addTransactions(previewTitle("reviews written", details.records.counts.reviewsWritten), details.records.reviews, (review) => [
+                `${review.shopName} · ${review.rating}/5`,
+                `Comment: ${review.comment || "No written comment"}`,
+                `Created: ${formatDate(review.createdAt)} · Updated: ${formatDate(review.updatedAt)}`
+            ], recordAction("reviews-written", "reviews written", details.records.counts.reviewsWritten));
+            addTransactions(previewTitle("listing reports submitted", details.records.counts.listingReports), details.records.listingReports, (report) => [
+                `${report.productTitle} · ${report.reason} · ${report.status}`,
+                `Reviewed by: ${report.reviewedBy || "Not reviewed"}`,
+                `Details: ${report.details || "No extra details"}`,
+                `Credibility points: ${report.credibilityPoints} · Verified buyer: ${report.verifiedBuyer ? "Yes" : "No"} · Seller reporter: ${report.sellerReporter ? "Yes" : "No"}`,
+                `Submitted: ${formatDate(report.createdAt)} · Reviewed: ${formatDate(report.reviewedAt)}`
+            ], recordAction("listing-reports", "submitted listing reports", details.records.counts.listingReports));
+            addTransactions(previewTitle("reports on this seller's listings", details.records.counts.reportsOnListings), details.records.reportsOnListings, (report) => [
+                `${report.productTitle} · ${report.reason} · ${report.status}`,
+                `Reported by: ${report.reporterName}`,
+                `Reviewed by: ${report.reviewedBy || "Not reviewed"}`,
+                `Details: ${report.details || "No extra details"}`,
+                `Submitted: ${formatDate(report.createdAt)} · Reviewed: ${formatDate(report.reviewedAt)}`
+            ], recordAction("reports-on-listings", "reports on this seller's listings", details.records.counts.reportsOnListings));
+            addTransactions(previewTitle("listing moderation events", details.records.counts.listingModeration), details.records.listingModerationEvents, (event) => [
+                `${event.action.replaceAll("_", " ")} · ${event.targetLabel || "Listing"}`,
+                `Details: ${event.details || "No extra details"} · Actor: ${event.actorName || event.actorType}`,
+                `Recorded: ${formatDate(event.createdAt)}`
+            ], recordAction("listing-moderation", "listing moderation events", details.records.counts.listingModeration));
+            addTransactions(previewTitle("listing engagement aggregates", details.records.counts.listingEngagement), details.records.listingEngagement, (entry) => [
+                `${entry.count} ${entry.eventType}${entry.count === 1 ? "" : "s"} · ${entry.placement} · ${formatDate(entry.date)}`,
+                `Promotion campaign ID: ${entry.campaignId}`,
+                "Aggregated data; visitor identifiers are intentionally excluded."
+            ], [
+                ...recordAction("listing-engagement", "listing engagement aggregates", details.records.counts.listingEngagement),
+                ...(details.seller?.slug ? [{ label: "Open seller storefront", href: `/shops/${encodeURIComponent(details.seller.slug)}` }] : [])
+            ]);
+            addTransactions(previewTitle("support requests", details.records.counts.supportRequests), details.records.supportRequests, (request) => [
+                `${request.topic.replaceAll("_", " ")} · ${request.status}`,
+                `Category: ${request.category} · Order: ${request.orderNumber || "Not linked to an order"}`,
+                `Message: ${request.message}`,
+                `Admin response: ${request.adminResponse || "No response recorded"}`,
+                `Created: ${formatDate(request.createdAt)} · Updated: ${formatDate(request.updatedAt)}`
+            ], recordAction("support-requests", "support requests", details.records.counts.supportRequests));
+            addTransactions(previewTitle("retained sign-in records", details.records.counts.loginActivity), details.records.loginActivities, (activity) => [
+                `${activity.device} · ${formatDate(activity.createdAt)}`,
+                `Network: ${[activity.city, activity.country_code, activity.isp_provider].filter(Boolean).join(", ") || "Location not available"}`,
+                `IP address: ${activity.client_ip || "Not recorded"} · Read: ${formatDate(activity.readAt)} · Expires: ${formatDate(activity.expiresAt)}`
+            ], recordAction("login-activity", "sign-in records", details.records.counts.loginActivity));
+            addTransactions(previewTitle("suspension appeals", details.records.counts.appeals), details.records.appeals, (appeal) => [
+                `${appeal.status} · Reference: ${appeal.referenceId || "None"}`,
+                `Reason: ${appeal.reason}`,
+                `Submitted: ${formatDate(appeal.createdAt)} · Updated: ${formatDate(appeal.updatedAt)}`
+            ], recordAction("appeals", "suspension appeals", details.records.counts.appeals));
+            addTransactions(previewTitle("account notifications", details.records.counts.notifications), details.records.notifications, (notification) => [
+                `${notification.title} · ${notification.destination}`,
+                `Created by: ${notification.createdBy?.name || "Unknown administrator"}`,
+                `${notification.message}`,
+                `Account read: ${formatDate(notification.accountReadAt)} · Seller read: ${formatDate(notification.sellerReadAt)} · Created: ${formatDate(notification.createdAt)}`
+            ], recordAction("notifications", "account notifications", details.records.counts.notifications));
+            addTransactions(previewTitle("seller notifications", details.records.counts.sellerNotifications), details.records.sellerNotifications, (notification) => [
+                `${notification.title} · ${notification.type.replaceAll("_", " ")}`,
+                notification.message,
+                `Related promotion: ${notification.promotionId?._id || "Not available"} · Status: ${notification.promotionId?.status || "Unavailable"} · Read: ${formatDate(notification.readAt)} · Created: ${formatDate(notification.createdAt)} · Updated: ${formatDate(notification.updatedAt)}`
+            ], recordAction("seller-notifications", "seller notifications", details.records.counts.sellerNotifications));
+            addTransactions(previewTitle("developer applications", details.records.counts.developerApplications), details.records.developerApplications, (application) => [
+                `${application.name} · ${application.revokedAt ? "Revoked" : "Active"}`,
+                `App ID: ${application.appId} · Token ending: ${application.tokenLast4}`,
+                `Requests: ${application.usage.requests} · Verified: ${application.usage.verified} · Mismatched: ${application.usage.mismatched}`,
+                `Created: ${formatDate(application.createdAt)} · Updated: ${formatDate(application.updatedAt)} · Revoked: ${formatDate(application.revokedAt)} · Last used: ${formatDate(application.lastUsedAt)} · Last API activity: ${formatDate(application.usage.lastActivity)}`
+            ], recordAction("developer-applications", "developer applications", details.records.counts.developerApplications));
+            addTransactions(previewTitle("referred accounts", details.records.counts.referrals), details.records.referrals, (referredUser) => [
+                `${referredUser.name} · ${referredUser.email}`,
+                `Joined: ${formatDate(referredUser.createdAt)}`
+            ], recordAction("referrals", "referred accounts", details.records.counts.referrals));
+            addTransactions(previewTitle("daily developer API usage records", details.records.counts.developerUsage), details.records.developerUsageRecords, (usage) => [
+                `${formatDate(usage.day)} · ${usage.endpoint} endpoint · App ID: ${usage.appId || "Unattributed"}`,
+                `Requests: ${usage.requests} · Successes: ${usage.successes} · Verified: ${usage.verified} · Mismatched: ${usage.mismatched}`,
+                `Client errors: ${usage.clientErrors} · Server errors: ${usage.serverErrors} · Total duration: ${usage.totalDurationMs} ms · Expires: ${formatDate(usage.expiresAt)}`
+            ], recordAction("developer-usage", "developer API usage records", details.records.counts.developerUsage));
+            addTransactions(previewTitle("seller statements", details.records.counts.statements), details.records.statements, (statement) => [
+                `${statement.statementId} · Created: ${formatDate(statement.createdAt)} · Updated: ${formatDate(statement.updatedAt)}`,
+                `Snapshot: ${JSON.stringify(statement.snapshot)}`
+            ], recordAction("statements", "seller statements", details.records.counts.statements));
+            addTransactions(previewTitle("account audit events", details.records.counts.accountAudit), details.records.accountAuditEvents, (event) => [
+                `${event.action.replaceAll("_", " ")} · ${event.targetType} · ${event.targetLabel || event.targetId}`,
+                `Details: ${event.details || "No extra details"} · Actor: ${event.actorName || event.actorType}`,
+                `Recorded: ${formatDate(event.createdAt)}`
+            ], recordAction("account-audit", "account audit events", details.records.counts.accountAudit));
+            addTransactions(previewTitle("moderation decisions on submitted reports", details.records.counts.submittedReportModeration), details.records.submittedReportModerationEvents, (event) => [
+                `${event.action.replaceAll("_", " ")} · ${event.targetLabel || event.targetId}`,
+                `Details: ${event.details || "No extra details"} · Actor: ${event.actorName || event.actorType}`,
+                `Recorded: ${formatDate(event.createdAt)}`
+            ], recordAction("submitted-report-moderation", "submitted-report moderation events", details.records.counts.submittedReportModeration));
+            addTransactions(previewTitle("listing report decisions made", details.records.counts.listingReviewActions), details.records.listingReviewActions, (report) => [
+                `${report.productTitle} · ${report.reason} · ${report.status}`,
+                `Reported by: ${report.reporterName} · Submitted: ${formatDate(report.createdAt)} · Reviewed: ${formatDate(report.reviewedAt)}`
+            ], recordAction("listing-review-actions", "listing report decisions", details.records.counts.listingReviewActions));
+            addTransactions(previewTitle("reviews received", details.records.counts.reviewsReceived), details.records.receivedReviews, (review) => [
+                `${review.reviewerName} · ${review.rating}/5`,
+                `Reviewer email: ${review.reviewerEmail || "Unavailable"} · Comment: ${review.comment || "No written comment"}`,
+                `Created: ${formatDate(review.createdAt)} · Updated: ${formatDate(review.updatedAt)}`
+            ], recordAction("reviews-received", "reviews received", details.records.counts.reviewsReceived));
+            addTransactions(previewTitle("listing report-threshold events", details.records.counts.thresholdEvents), details.records.thresholdEvents, (event) => [
+                `Product ID: ${event.productId} · Triggered: ${formatDate(event.triggeredAt)}`,
+                `Shop ID: ${event.shopId}`
+            ], recordAction("threshold-events", "threshold events", details.records.counts.thresholdEvents));
+            addTransactions(previewTitle("support notifications", details.records.counts.supportNotifications), details.records.supportNotifications, (notification) => [
+                `${notification.supportRequestId?.topic || "Support request"} · ${notification.supportRequestId?.status || "Unavailable"}`,
+                `Request created: ${formatDate(notification.supportRequestId?.createdAt)} · Read: ${formatDate(notification.readAt)} · Notification created: ${formatDate(notification.createdAt)}`
+            ], recordAction("support-notifications", "support notifications", details.records.counts.supportNotifications));
+            addTransactions(previewTitle("retained account sessions (metadata only)", details.records.counts.sessions), details.records.security.sessions, (session) => [
+                `Created: ${formatDate(session.createdAt)} · Updated: ${formatDate(session.updatedAt)} · Expires: ${formatDate(session.expiresAt)}`,
+                "Session credential is intentionally not displayed."
+            ], recordAction("sessions", "session records", details.records.counts.sessions));
+            addTransactions(previewTitle("password reset requests (metadata only)", details.records.counts.passwordResets), details.records.security.passwordResetRequests, (request) => [
+                `Created: ${formatDate(request.createdAt)} · Expires: ${formatDate(request.expiresAt)}`,
+                "Reset token is intentionally not displayed."
+            ], recordAction("password-resets", "password reset records", details.records.counts.passwordResets));
+            addTransactions(previewTitle("email verification requests (metadata only)", details.records.counts.emailVerifications), details.records.security.emailVerificationRequests, (request) => [
+                `Created: ${formatDate(request.createdAt)} · Expires: ${formatDate(request.expiresAt)}`,
+                "Verification token is intentionally not displayed."
+            ], recordAction("email-verifications", "email verification records", details.records.counts.emailVerifications));
+            addTransactions(previewTitle("suspension appeal access records (metadata only)", details.records.counts.appealAccess), details.records.security.suspensionAppealAccessRequests, (request) => [
+                `Created: ${formatDate(request.createdAt)} · Expires: ${formatDate(request.expiresAt)}`,
+                "Appeal verification token is intentionally not displayed."
+            ], recordAction("appeal-access", "appeal access records", details.records.counts.appealAccess));
+        }
+
+        async function loadDetails() {
+            try {
+                const response = await fetch(`/api/admin/users/${encodeURIComponent(accountId)}/details`);
+                let result;
+                try { result = await response.json(); } catch { throw new Error("The server returned an invalid response."); }
+                if (!response.ok) throw new Error(result.error || "User details could not be loaded.");
+                renderDetails(result.details);
+                detailsStatus.textContent = "Account details loaded.";
+            } catch (error) {
+                userName.textContent = "User details unavailable";
+                detailsStatus.classList.add("is-error");
+                detailsStatus.textContent = error.message || "User details could not be loaded.";
+            }
+        }
+
+        loadDetails();
+    </script>
+    <script src="/navigation.js" defer></script>
+</body>
+</html>

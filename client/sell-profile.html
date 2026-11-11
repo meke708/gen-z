@@ -99,6 +99,8 @@
         .profile-actions a { min-height: 44px; padding: 0 16px; border-radius: 3px; font-size: 11px; }
         .profile-actions a:not(.primary) { border-color: var(--line); background: var(--white); }
         .profile-actions a:not(.primary):hover { border-color: var(--forest); background: #edf2e2; }
+        .profile-actions a.developer-link { border-color: var(--line); color: var(--muted); font-size: 10px; font-weight: 600; }
+        .profile-actions a.developer-link:hover { border-color: var(--forest); color: var(--forest); background: var(--white); }
         @media (max-width: 760px) {
             main { width: calc(100% - 36px); padding-top: 34px; }
             .profile-header { padding: 18px; }
@@ -126,6 +128,7 @@
     </style>
     <link rel="stylesheet" href="/loading.css">
     <script src="/loading.js"></script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 </head>
 <body>
     <header class="site-header">
@@ -172,6 +175,7 @@
             <div class="profile-actions">
                 <a class="primary" href="/sell/dashboard">Manage seller dashboard</a>
                 <a id="business-verification-link" href="/sell/verification">Business verification</a>
+                <a class="developer-link" id="developer-profile-link" href="/developers" hidden>Developer API</a>
             </div>
         </section>
         <p class="error" id="error-message" role="alert" hidden></p>
@@ -185,6 +189,7 @@
         const coverPhotoPreview = document.querySelector("#cover-photo-preview");
         const coverPhotoFallback = document.querySelector(".cover-photo-avatar");
         const coverPhotoMessage = document.querySelector("#cover-photo-message");
+        const developerProfileLink = document.querySelector("#developer-profile-link");
 
         coverPhotoPreview.addEventListener("load", () => { coverPhotoPreview.hidden = false; });
         coverPhotoPreview.addEventListener("error", () => { coverPhotoPreview.hidden = true; });
@@ -202,6 +207,18 @@
                 const shopResult = await requestJson("/api/seller/shop");
                 if (!shopResult.shop) throw new Error("Create your storefront before viewing your seller profile.");
                 const verificationResult = await requestJson("/api/seller/shop/verification");
+                try {
+                    const developerResponse = await fetch("/api/developer/apps");
+                    if (developerResponse.status !== 401 && developerResponse.status !== 403) {
+                        let developerResult;
+                        try { developerResult = await developerResponse.json(); } catch { throw new Error("Developer applications returned an invalid response."); }
+                        if (!developerResponse.ok) throw new Error(developerResult.error || "Could not check developer access.");
+                        developerProfileLink.hidden = !developerResult.applications?.length;
+                    }
+                } catch (error) {
+                    developerProfileLink.hidden = true;
+                    console.error("Developer API profile link could not be loaded:", error);
+                }
                 const shop = shopResult.shop;
                 const verification = verificationResult.verification;
                 if (typeof shop.coverImageUrl === "string" && shop.coverImageUrl) coverPhotoPreview.src = shop.coverImageUrl;

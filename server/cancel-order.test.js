@@ -36,6 +36,7 @@ const {
   validateImageUrl,
   hasValidImageSignature,
   resolvePayoutStatus,
+  calculateWalletPayment,
   assertProductionAdminConfiguration
 } = require('./server');
 
@@ -402,17 +403,16 @@ test('image uploads require bytes matching the declared image type', () => {
   assert.equal(hasValidImageSignature({ mimetype: 'image/jpeg', buffer: Buffer.from('not an image') }), false);
 });
 
-test('payout simulation advances held, eligible, then paid after two delays', () => {
+test('seller earnings move from held into the Z balance after the delivery hold', () => {
   const eligibleAt = new Date('2026-10-27T12:00:00.000Z');
   const sellerOrder = { fulfillmentStatus: 'delivered', payoutStatus: 'held', payoutEligibleAt: eligibleAt };
   assert.equal(resolvePayoutStatus(sellerOrder, new Date(eligibleAt.getTime() - 1), 10_000, true), 'held');
   assert.equal(resolvePayoutStatus(sellerOrder, eligibleAt, 10_000, true), 'eligible');
-  assert.equal(resolvePayoutStatus({ ...sellerOrder, payoutStatus: 'eligible' }, new Date(eligibleAt.getTime() + 9_999), 10_000, true), 'eligible');
-  assert.equal(resolvePayoutStatus({ ...sellerOrder, payoutStatus: 'eligible' }, new Date(eligibleAt.getTime() + 10_000), 10_000, true), 'paid');
+  assert.equal(resolvePayoutStatus({ ...sellerOrder, payoutStatus: 'eligible' }, new Date(eligibleAt.getTime() + 60_000), 10_000, true), 'eligible');
 });
 
-test('manual payout mode never auto-advances eligible payouts to paid', () => {
-  const eligibleAt = new Date('2026-10-27T12:00:00.000Z');
-  const sellerOrder = { fulfillmentStatus: 'delivered', payoutStatus: 'eligible', payoutEligibleAt: eligibleAt };
-  assert.equal(resolvePayoutStatus(sellerOrder, new Date(eligibleAt.getTime() + 60_000), 10_000, false), 'eligible');
+test('Z balance checkout uses wallet credit first and charges only the remainder to card', () => {
+  assert.deepEqual(calculateWalletPayment(125, 40, 'wallet'), { walletUsedNAD: 40, cardDueNAD: 85 });
+  assert.deepEqual(calculateWalletPayment(125, 200, 'wallet'), { walletUsedNAD: 125, cardDueNAD: 0 });
+  assert.deepEqual(calculateWalletPayment(125, 200, 'card'), { walletUsedNAD: 0, cardDueNAD: 125 });
 });

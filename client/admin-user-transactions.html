@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f4f1e8">
+    <title>Account history | Z Operations</title>
+    <style>
+        :root { color-scheme: light; --ink: #17231e; --muted: #68736d; --paper: #f4f1e8; --white: #fffefa; --forest: #18382e; --line: #d9d9cf; --warning: #8b3b2f; --lime: #d8f36a; }
+        * { box-sizing: border-box; }
+        body { min-width: 320px; margin: 0; color: var(--ink); background: var(--paper); font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
+        a { color: inherit; }
+        button, select { font: inherit; }
+        .site-header { display: flex; min-height: 72px; align-items: center; justify-content: space-between; gap: 16px; padding: 12px max(24px, calc((100vw - 1120px) / 2)); border-bottom: 1px solid var(--line); background: var(--white); }
+        .header-left { display: inline-flex; align-items: center; gap: 12px; }
+        .back-button { display: inline-grid; width: 28px; height: 28px; place-items: center; border: 1px solid var(--ink); border-radius: 50%; text-decoration: none; font-size: 18px; }
+        .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+        .brand-mark { display: grid; width: 36px; aspect-ratio: 1; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; font-family: Georgia, serif; font-size: 22px; }
+        nav { display: flex; flex-wrap: wrap; gap: 14px; font-size: 10px; font-weight: 700; }
+        nav a { color: var(--forest); text-decoration: none; }
+        main { width: min(1120px, calc(100% - 48px)); margin: 0 auto; padding: 36px 0 70px; }
+        .eyebrow { margin: 0 0 10px; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+        .page-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+        h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 38px; font-weight: 400; overflow-wrap: anywhere; }
+        .intro { max-width: 780px; margin: 10px 0 22px; color: var(--muted); font-size: 12px; line-height: 1.65; }
+        .page-link, .toolbar button { display: inline-flex; min-height: 36px; align-items: center; padding: 0 11px; border: 1px solid var(--ink); border-radius: 3px; color: var(--forest); background: transparent; text-decoration: none; font-size: 10px; font-weight: 700; cursor: pointer; }
+        .page-link:hover, .toolbar button:hover:not(:disabled) { color: var(--white); background: var(--forest); }
+        .status-message { margin: 16px 0; color: var(--muted); font-size: 12px; }
+        .status-message.is-error { color: var(--warning); }
+        .toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin: 18px 0; padding: 14px; border: 1px solid var(--line); background: var(--white); }
+        .toolbar label { display: grid; gap: 5px; color: var(--muted); font-size: 10px; font-weight: 700; }
+        .toolbar select { min-height: 36px; min-width: 190px; padding: 0 9px; border: 1px solid var(--line); color: var(--ink); background: var(--white); font-size: 11px; }
+        .summary { margin-right: auto; color: var(--muted); font-size: 11px; }
+        .toolbar button:disabled { opacity: .45; cursor: not-allowed; }
+        .record-list { display: grid; gap: 10px; }
+        .record { border: 1px solid var(--line); background: var(--white); }
+        .record summary { padding: 14px; cursor: pointer; font-size: 12px; font-weight: 700; overflow-wrap: anywhere; }
+        .record pre { margin: 0; padding: 0 14px 14px; color: var(--muted); font: 10px/1.6 Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .empty { padding: 18px; border: 1px solid var(--line); color: var(--muted); background: var(--white); font-size: 11px; }
+        @media (max-width: 760px) { .page-heading { flex-direction: column; } }
+        @media (max-width: 520px) {
+            .site-header { align-items: flex-start; padding: 12px 18px; }
+            nav { gap: 9px; }
+            main { width: calc(100% - 36px); padding-top: 28px; }
+            h1 { font-size: 32px; }
+            .toolbar { align-items: stretch; flex-direction: column; }
+            .toolbar select { width: 100%; }
+            .summary { margin: 0; }
+        }
+    </style>
+    <link rel="stylesheet" href="/loading.css">
+    <script src="/loading.js"></script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-left"><a class="back-button" id="back-link" href="#" aria-label="Back to user details">←</a><a class="brand" href="/admin/accounts"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Operations</span></a></div>
+        <nav aria-label="Super-admin navigation"><a href="/admin/accounts">Accounts</a><a href="/admin/payouts">Payouts</a><a href="/admin/support">Support</a></nav>
+    </header>
+    <main>
+        <p class="eyebrow">Trust and safety · Account history</p>
+        <div class="page-heading">
+            <div>
+                <h1 id="account-name">Loading account...</h1>
+                <p class="intro" id="account-identity">Loading account history...</p>
+            </div>
+            <a class="page-link" id="details-link" href="#">Back to user details</a>
+        </div>
+        <p class="status-message" id="status" role="status" aria-live="polite">Loading transactions...</p>
+        <div class="toolbar">
+            <label for="type-filter">Record type
+                <select id="type-filter">
+                    <option value="buyer-orders">Orders as buyer</option>
+                    <option value="seller-orders">Orders as seller</option>
+                    <option value="wallet">Z balance ledger</option>
+                    <option value="payouts">Payout requests</option>
+                    <option value="promotions">Product promotions</option>
+                    <option value="cart">Cart entries</option>
+                    <option value="wishlist">Wishlist entries</option>
+                    <option value="listings">Seller listings</option>
+                    <option value="reviews-written">Reviews written</option>
+                    <option value="listing-reports">Listing reports submitted</option>
+                    <option value="reports-on-listings">Reports on seller listings</option>
+                    <option value="listing-moderation">Listing moderation events</option>
+                    <option value="listing-engagement">Listing engagement aggregates</option>
+                    <option value="support-requests">Support requests</option>
+                    <option value="login-activity">Sign-in activity</option>
+                    <option value="appeals">Suspension appeals</option>
+                    <option value="notifications">Account notifications</option>
+                    <option value="seller-notifications">Seller notifications</option>
+                    <option value="developer-applications">Developer applications</option>
+                    <option value="developer-usage">Developer API usage</option>
+                    <option value="statements">Seller statements</option>
+                    <option value="account-audit">Account audit events</option>
+                    <option value="submitted-report-moderation">Submitted-report moderation events</option>
+                    <option value="listing-review-actions">Listing review decisions</option>
+                    <option value="reviews-received">Reviews received</option>
+                    <option value="threshold-events">Listing report-threshold events</option>
+                    <option value="support-notifications">Support notifications</option>
+                    <option value="sessions">Session metadata</option>
+                    <option value="password-resets">Password reset metadata</option>
+                    <option value="email-verifications">Email verification metadata</option>
+                    <option value="appeal-access">Appeal access metadata</option>
+                    <option value="referrals">Referred accounts</option>
+                </select>
+            </label>
+            <label for="page-size">Records per page
+                <select id="page-size">
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </label>
+            <span class="summary" id="page-summary">—</span>
+            <button id="previous-page" type="button" disabled>Previous</button>
+            <button id="next-page" type="button" disabled>Next</button>
+        </div>
+        <div class="record-list" id="records"></div>
+    </main>
+    <script>
+        const accountId = window.location.pathname.split("/").filter(Boolean).at(-2);
+        const accountName = document.querySelector("#account-name");
+        const accountIdentity = document.querySelector("#account-identity");
+        const status = document.querySelector("#status");
+        const recordsElement = document.querySelector("#records");
+        const typeFilter = document.querySelector("#type-filter");
+        const pageSizeSelect = document.querySelector("#page-size");
+        const pageSummary = document.querySelector("#page-summary");
+        const previousButton = document.querySelector("#previous-page");
+        const nextButton = document.querySelector("#next-page");
+        const backUrl = `/admin/accounts/${encodeURIComponent(accountId)}/details`;
+        let currentPage = 1;
+        let totalPages = 0;
+        let requestInFlight = false;
+        document.querySelector("#back-link").href = backUrl;
+        document.querySelector("#details-link").href = backUrl;
+
+        const recordTitles = {
+            "buyer-orders": (record) => `${record.orderNumber} · N$ ${Number(record.totalNAD || 0).toFixed(2)} · ${record.paymentStatus}`,
+            "seller-orders": (record) => `${record.orderNumber} · N$ ${Number(record.payoutNAD || 0).toFixed(2)} payout · ${record.payoutStatus}`,
+            wallet: (record) => `${record.type.replaceAll("_", " ")} · N$ ${Number(record.amountNAD || 0).toFixed(2)} · ${record.orderNumber}`,
+            payouts: (record) => `N$ ${Number(record.amountNAD || 0).toFixed(2)} · ${record.status} payout`,
+            promotions: (record) => `${record.productId?.title || "Listing unavailable"} · N$ ${Number(record.amountNAD || 0).toFixed(2)} · ${record.status}`,
+            cart: (record) => `Cart listing ${record.productId} · Quantity ${record.quantity}`,
+            wishlist: (record) => `Wishlist listing ${record.productId}`,
+            listings: (record) => `${record.title || "Untitled listing"} · ${record.status} · ${record.reviewStatus}`,
+            "reviews-written": (record) => `${record.shopId?.name || "Shop unavailable"} · ${record.rating}/5`,
+            "listing-reports": (record) => `${record.productId?.title || "Listing unavailable"} · ${record.reason} · ${record.status}`,
+            "reports-on-listings": (record) => `${record.productId?.title || "Listing unavailable"} · ${record.reason} · ${record.status}`,
+            "listing-moderation": (record) => `${record.action.replaceAll("_", " ")} · ${record.targetLabel || "Listing"}`,
+            "listing-engagement": (record) => `${record.count} ${record.eventType} events · ${record.placement} · ${new Date(record.date).toLocaleDateString()}`,
+            "support-requests": (record) => `${record.topic.replaceAll("_", " ")} · ${record.status}`,
+            "login-activity": (record) => `${record.device} · ${new Date(record.createdAt).toLocaleString()}`,
+            appeals: (record) => `${record.status} appeal · ${record.referenceId || "No reference"}`,
+            notifications: (record) => `${record.title} · ${record.destination}`,
+            "seller-notifications": (record) => `${record.title} · ${record.type}`,
+            "developer-applications": (record) => `${record.name} · App ${record.appId}`,
+            "developer-usage": (record) => `${new Date(record.day).toLocaleDateString()} · ${record.endpoint} · App ${record.appId || "unattributed"}`,
+            statements: (record) => `Seller statement ${record.statementId}`,
+            "account-audit": (record) => `${record.action.replaceAll("_", " ")} · ${record.targetLabel || record.targetId}`,
+            "submitted-report-moderation": (record) => `${record.action.replaceAll("_", " ")} · ${record.targetLabel || record.targetId}`,
+            "listing-review-actions": (record) => `${record.productId?.title || "Listing unavailable"} · ${record.reason} · ${record.status}`,
+            "reviews-received": (record) => `${record.userId?.name || "Account unavailable"} · ${record.rating}/5`,
+            "threshold-events": (record) => `Product ${record.productId} · ${new Date(record.triggeredAt).toLocaleString()}`,
+            "support-notifications": (record) => `${record.supportRequestId?.topic || "Support request"} · ${record.supportRequestId?.status || "Unavailable"}`,
+            sessions: (record) => `Session created ${new Date(record.createdAt).toLocaleString()}`,
+            "password-resets": (record) => `Password reset request ${new Date(record.createdAt).toLocaleString()}`,
+            "email-verifications": (record) => `Email verification request ${new Date(record.createdAt).toLocaleString()}`,
+            "appeal-access": (record) => `Appeal access request ${new Date(record.createdAt).toLocaleString()}`,
+            referrals: (record) => `${record.name} · ${record.email}`
+        };
+
+        function renderRecords(result) {
+            recordsElement.replaceChildren();
+            if (!result.records.length) {
+                const empty = document.createElement("p");
+                empty.className = "empty";
+                empty.textContent = "No records of this type.";
+                recordsElement.append(empty);
+                return;
+            }
+            for (const record of result.records) {
+                const item = document.createElement("details");
+                item.className = "record";
+                const summary = document.createElement("summary");
+                summary.textContent = recordTitles[result.type](record);
+                const content = document.createElement("pre");
+                content.textContent = JSON.stringify(record, null, 2);
+                item.append(summary, content);
+                recordsElement.append(item);
+            }
+        }
+
+        async function loadTransactions() {
+            if (requestInFlight) return;
+            requestInFlight = true;
+            typeFilter.disabled = true;
+            pageSizeSelect.disabled = true;
+            previousButton.disabled = true;
+            nextButton.disabled = true;
+            status.classList.remove("is-error");
+            status.textContent = "Loading account history...";
+            recordsElement.replaceChildren();
+            const params = new URLSearchParams({
+                type: typeFilter.value,
+                page: String(currentPage),
+                pageSize: pageSizeSelect.value
+            });
+            try {
+                const response = await fetch(`/api/admin/users/${encodeURIComponent(accountId)}/transactions?${params}`);
+                let result;
+                try { result = await response.json(); } catch { throw new Error("The server returned an invalid response."); }
+                if (!response.ok) throw new Error(result.error || "Account history could not be loaded.");
+                accountName.textContent = result.account.name || "Unnamed account";
+                accountIdentity.textContent = result.account.email;
+                status.textContent = `${result.total} record${result.total === 1 ? "" : "s"} in this category.`;
+                currentPage = result.page;
+                totalPages = result.pages;
+                pageSummary.textContent = result.total
+                    ? `Showing ${(result.page - 1) * result.pageSize + 1}–${Math.min(result.page * result.pageSize, result.total)} of ${result.total} · Page ${result.page} of ${result.pages}`
+                    : "0 records";
+                previousButton.disabled = result.page <= 1;
+                nextButton.disabled = result.page >= result.pages;
+                renderRecords(result);
+            } catch (error) {
+                pageSummary.textContent = "Transactions unavailable";
+                previousButton.disabled = true;
+                nextButton.disabled = true;
+                totalPages = 0;
+                status.classList.add("is-error");
+                status.textContent = error.message || "Account history could not be loaded.";
+            } finally {
+                requestInFlight = false;
+                typeFilter.disabled = false;
+                pageSizeSelect.disabled = false;
+                previousButton.disabled = currentPage <= 1 || totalPages === 0;
+                nextButton.disabled = currentPage >= totalPages || totalPages === 0;
+            }
+        }
+
+        typeFilter.addEventListener("change", () => {
+            currentPage = 1;
+            loadTransactions();
+        });
+        pageSizeSelect.addEventListener("change", () => {
+            currentPage = 1;
+            loadTransactions();
+        });
+        previousButton.addEventListener("click", () => {
+            if (!requestInFlight && currentPage > 1) {
+                currentPage -= 1;
+                loadTransactions();
+            }
+        });
+        nextButton.addEventListener("click", () => {
+            if (!requestInFlight && currentPage < totalPages) {
+                currentPage += 1;
+                loadTransactions();
+            }
+        });
+
+        const initialType = new URLSearchParams(window.location.search).get("type");
+        if (initialType && [...typeFilter.options].some((option) => option.value === initialType)) {
+            typeFilter.value = initialType;
+        }
+        loadTransactions();
+    </script>
+    <script src="/navigation.js" defer></script>
+</body>
+</html>

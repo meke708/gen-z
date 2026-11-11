@@ -51,6 +51,26 @@ node -p "require('crypto').randomBytes(32).toString('base64')"
 
 Keep this key in a secret manager or password manager, separately from any encrypted-document backups. Do not commit it. Losing the key makes documents that have not yet been reviewed unreadable.
 
+## Z-balance statement verification
+
+Before sellers can print signed statements, configure `Z_STATEMENT_SIGNING_KEY` in `server/.env` with a randomly generated 32-byte hexadecimal key:
+
+```powershell
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Keep the key private in a secret manager or password manager, back it up securely, and keep it stable: changing or losing it prevents verification of previously issued statements. The server signs its own stored statement snapshot; it never signs figures supplied by the browser. Printed statements include a reference, signature, and public verification link. Verification compares the snapshot with the official stored record; it detects changed statement data but cannot prevent editing or visual forgery of a PDF. Each statement includes all seller-order entries and up to the 50 most recent wallet activity records.
+
+## Developer statement API
+
+Visit `/developers` to read the public API documentation. Developers sign up or sign in with a Z account and must verify their email before creating an application. Each account can have up to five active applications. The portal displays each public app ID and reveals its API token only once; tokens are stored as hashes and can be revoked there.
+
+The read-only API requires `X-Z-App-Id` and `Authorization: Bearer <API_TOKEN>` headers. `GET /api/v1/statements/{statementId}/verify` checks the official signed record. `POST /api/v1/statements/verify-pdf` accepts multipart form data containing a `statement` PDF and optionally `statementId`; it reads the printed reference when possible and compares PDF text values with the signed snapshot. Calls are limited to 60 per minute per IP. Use HTTPS in production and keep the token on a trusted server; never embed it in browser or distributed client code. PDF text checks cannot detect visual edits that preserve the original underlying text.
+
+The API test client at `/developer-api-test` requires a signed-in Super Admin account and a separate password, so Super Admins can use it remotely. On Admin statement verification, use “Open API test with developer credentials” to hand off a developer-provided App ID and token; the browser fragment is stripped from the address bar immediately and the test page does not persist the credentials. Configure `DEVELOPER_API_TEST_PASSWORD_HASH` in the ignored `server/.env` using a salted scrypt hash; do not put the password itself in source control. The unlock cookie expires after 30 minutes. These restrictions apply only to the test client, not the public developer API.
+
+The Admin statement-verification page includes statement verification and API usage totals, daily request/verified/mismatch graphs, endpoint and top-application breakdowns, and average response times for 7, 30, or 90 days. Usage is stored as daily aggregate counts for up to 400 days; request contents, statement references, tokens, and client IP addresses are not collected.
+
 ## Deployment notes
 
 - A free-tier Render Blueprint is provided in `render.yaml`. Create the service from the private GitHub repository and supply the prompted secret environment variables in Render. Free instances may spin down and use ephemeral filesystems, so treat this as a preview deployment, not a production storefront.
@@ -66,6 +86,12 @@ Keep this key in a secret manager or password manager, separately from any encry
 - Configure image uploads and password reset email using the `CLOUDINARY_*` and `SMTP_*` settings. Render supplies the public service URL for reset and verification links automatically; set `APP_BASE_URL` only when using a custom HTTPS domain.
 - The Blueprint disables mock checkout in production by default. To test orders on a non-customer-facing Render deployment, set `MOCK_PAYMENTS_ENABLED=true` and `ALLOW_MOCK_PAYMENTS_IN_PRODUCTION=true` in that service's environment, then redeploy. Mock checkout only records simulated payments; it does not charge money. Turn it off before accepting real customers. Configure a real payment adapter before accepting live payments; this repository currently has no live payment adapter.
 - Product promotions are currently N$50 for 7 days and use the simulated test-payment flow only. No money is charged; in production this flow requires the mock-payment testing opt-in described above.
+- Seller listings and transaction activity reconcile active promotions against their recorded payment method, payment totals, confirmation timestamp, and any Z-balance debit. Unverifiable promotions are cancelled without another debit, and the seller receives a persistent update in the seller workspace under Updates.
+- All new and edited product listings go through server-side automated checks. Complete listings from verified, unrestricted seller accounts auto-approve across ordinary categories; no previous approved-product count is required. Missing basic data, an unverified or restricted seller account, Namibian health/medicine, telecom/Wi-Fi/Bluetooth, food/agriculture, and second-hand clothing categories, or risk keywords for drugs, weapons, counterfeit/stolen goods, protected wildlife, permit-controlled goods, alcohol/tobacco, and recalled products are rejected with specific reasons. Sellers receive a seller-workspace notification and can view the rejection reasons on their listing; editing and resubmitting runs the checks again. These text/category matches are conservative signals, not proof that a listing is unlawful. No VAT is added or calculated.
+- Product-review signals are informed by the [NMRC medicines registration overview](https://nmrc.gov.na/medicine-registration-overview), [CRAN type approval guidance](https://www.cran.na/licensing/), a [U.S. Commercial Service Namibia import-restrictions summary](https://www.privacyshield.gov/ps/article?id=Namibia-Prohibited-Restricted-Imports) (import/permit guidance, not a local resale prohibition), and general marketplace examples in [eBay's prohibited and restricted items policy](https://www.ebay.com/help/policies/prohibited-restricted-items/prohibited-restricted-items?id=4207). These references are not a complete legal list; administrators should verify applicable permits and local law.
+- Super admins can send in-app notifications to all accounts or up to 100 individually selected accounts, and choose the account dashboard, seller workspace, or both as the destination. Seller-workspace-only delivery requires seller recipients.
+- Super admins can view read-only server diagnostics at `/admin/server-config`, including detected OS, runtime, uptime, memory, and database connection status. This page does not execute shell commands or expose configuration secrets.
+- The shop AI assistant is a one-time N$50 add-on in the test-payment flow. Sellers can choose Z balance or a simulated test card; wallet funds are used first and any shortfall is simulated on the test card. No real card payment is processed.
 - Sellers can view promotion impressions, clicks, click-through rates, and a 30-day daily trend at `/sell/promotions`. An impression is recorded after a promoted card or dashboard banner is at least half visible; counts are deduplicated per anonymous browser session, campaign, placement, and UTC day. Raw IP addresses are not collected for promotion analytics.
 - The Terms page is a draft and still requires legal review, operator contact details, and a separate Privacy Policy before launch.
 - The public help and FAQ page is available at `/support`. Signed-in users can submit general, financial, or verification requests and track responses. Financial and verification topics are classified by the server and excluded from moderator support queries.

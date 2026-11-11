@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f4f1e8">
+    <title>API test client | Z Namibia</title>
+    <style>
+        :root { color-scheme: light; --ink: #17231e; --muted: #68736d; --paper: #f4f1e8; --white: #fffefa; --forest: #18382e; --line: #d9d9cf; --red: #8b3b2f; }
+        * { box-sizing: border-box; }
+        [hidden] { display: none !important; }
+        body { margin: 0; color: var(--ink); background: var(--paper); font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
+        header { padding: 18px max(24px, calc((100vw - 960px) / 2)); border-bottom: 1px solid var(--line); background: var(--white); font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+        header a { color: inherit; text-decoration: none; }
+        main { width: min(960px, calc(100% - 36px)); margin: 38px auto 70px; }
+        .eyebrow { margin: 0 0 8px; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+        h1 { margin: 0; font: 400 clamp(36px, 5vw, 48px) Georgia, serif; }
+        .intro { max-width: 720px; margin: 12px 0 22px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+        .warning { margin: 18px 0; padding: 12px 14px; border-left: 3px solid #d99a1b; color: #684d1e; background: #fbf1d9; font-size: 11px; line-height: 1.6; }
+        .card { margin-top: 16px; padding: 20px; border: 1px solid var(--line); background: var(--white); }
+        h2 { margin: 0 0 12px; font: 400 23px Georgia, serif; }
+        form { display: grid; gap: 13px; }
+        label { display: grid; gap: 6px; font-size: 11px; font-weight: 700; }
+        input, select, button { width: 100%; min-height: 40px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: #fff; font: inherit; font-size: 12px; }
+        input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid #397d54; outline-offset: 2px; }
+        input[type="file"] { padding: 6px; }
+        button { width: auto; justify-self: start; padding: 0 16px; border-color: var(--forest); color: var(--white); background: var(--forest); cursor: pointer; font-size: 11px; font-weight: 700; }
+        button:disabled { opacity: .6; cursor: wait; }
+        .field-note { margin: -7px 0 0; color: var(--muted); font-size: 10px; }
+        .status { min-height: 20px; margin: 12px 0 0; color: var(--red); font-size: 11px; }
+        .result { margin-top: 18px; }
+        .result[hidden] { display: none; }
+        .result-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+        .http-status { color: var(--muted); font: 11px Consolas, monospace; }
+        pre { max-height: 540px; overflow: auto; margin: 10px 0 0; padding: 14px; color: #edf4e9; background: #17231e; font: 11px/1.6 Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .docs-link { font-size: 11px; font-weight: 700; }
+        @media (max-width: 600px) { .card { padding: 15px; } }
+    </style>
+</head>
+<body>
+    <header><a href="/developers">Z Namibia · Developer API</a></header>
+    <main>
+        <p class="eyebrow">Developer tools</p>
+        <h1>API test client</h1>
+        <p class="intro">Try the statement verification API against the current Z server. This page sends requests to this site’s API using the App ID and token you enter.</p>
+        <p class="warning"><strong>Testing only:</strong> use a dedicated test application. Credentials are kept in page memory and are not saved by this page, but the token is sent to this server with each request. Never paste production credentials into a shared or untrusted computer.</p>
+        <section class="card">
+            <h2>Request details</h2>
+            <form id="api-test-form">
+                <label for="app-id">App ID
+                    <input id="app-id" name="appId" autocomplete="off" required placeholder="Your developer application ID">
+                </label>
+                <label for="api-token">API token
+                    <input id="api-token" name="apiToken" type="password" autocomplete="off" required placeholder="zstmt_live_…">
+                </label>
+                <label for="operation">Test
+                    <select id="operation" name="operation">
+                        <option value="pdf">Verify a statement PDF (reference read automatically)</option>
+                        <option value="reference">Verify a statement reference</option>
+                    </select>
+                </label>
+                <label id="reference-field" for="statement-id">Statement reference
+                    <input id="statement-id" name="statementId" autocomplete="off" placeholder="Statement ID">
+                </label>
+                <label id="pdf-field" for="statement-file" hidden>Statement PDF
+                    <input id="statement-file" name="statement" type="file" accept="application/pdf,.pdf">
+                </label>
+                <p class="field-note" id="field-note">The reference is read from the PDF automatically. PDF uploads are processed in memory and are not saved.</p>
+                <button id="send-request" type="submit">Send API request</button>
+            </form>
+            <p class="status" id="status" role="status" aria-live="polite"></p>
+            <section class="result" id="result" hidden aria-live="polite">
+                <div class="result-heading"><strong>API response</strong><span class="http-status" id="http-status"></span></div>
+                <pre id="response-body"></pre>
+            </section>
+        </section>
+        <p><a class="docs-link" href="/developers">Read the full API documentation</a></p>
+    </main>
+    <script>
+        const form = document.querySelector("#api-test-form");
+        const operation = document.querySelector("#operation");
+        const referenceField = document.querySelector("#reference-field");
+        const referenceInput = document.querySelector("#statement-id");
+        const pdfField = document.querySelector("#pdf-field");
+        const pdfInput = document.querySelector("#statement-file");
+        const fieldNote = document.querySelector("#field-note");
+        const button = document.querySelector("#send-request");
+        const status = document.querySelector("#status");
+        const result = document.querySelector("#result");
+        const httpStatus = document.querySelector("#http-status");
+        const responseBody = document.querySelector("#response-body");
+        const handoffCredentials = new URLSearchParams(window.location.hash.slice(1));
+        const handoffAppId = handoffCredentials.get("appId") || "";
+        const handoffApiToken = handoffCredentials.get("apiToken") || "";
+        if (window.location.hash) history.replaceState(null, "", window.location.pathname + window.location.search);
+        if (/^[\da-f-]{36}$/i.test(handoffAppId) && /^zstmt_live_[A-Za-z0-9_-]{43}$/.test(handoffApiToken)) {
+            document.querySelector("#app-id").value = handoffAppId;
+            document.querySelector("#api-token").value = handoffApiToken;
+        }
+
+        function updateOperationFields() {
+            const pdfMode = operation.value === "pdf";
+            referenceField.hidden = pdfMode;
+            referenceInput.required = !pdfMode;
+            pdfField.hidden = !pdfMode;
+            pdfInput.required = pdfMode;
+            fieldNote.textContent = pdfMode
+                ? "The reference is read from the PDF automatically; no reference input is required. PDF uploads are processed in memory and are not saved."
+                : "PDF uploads are processed in memory and are not saved.";
+        }
+
+        operation.addEventListener("change", updateOperationFields);
+        updateOperationFields();
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            if (!form.reportValidity()) return;
+            button.disabled = true;
+            result.hidden = true;
+            status.textContent = "Sending request to the Z statement API…";
+            const appId = document.querySelector("#app-id").value.trim();
+            const apiToken = document.querySelector("#api-token").value.trim();
+            const headers = {
+                "X-Z-App-Id": appId,
+                "Authorization": `Bearer ${apiToken}`
+            };
+            const isPdf = operation.value === "pdf";
+            const url = isPdf
+                ? "/api/v1/statements/verify-pdf"
+                : `/api/v1/statements/${encodeURIComponent(referenceInput.value.trim())}/verify`;
+            let body;
+            if (isPdf) {
+                body = new FormData();
+                body.append("statement", pdfInput.files[0]);
+            }
+
+            try {
+                const response = await fetch(url, {
+                    method: isPdf ? "POST" : "GET",
+                    headers,
+                    body
+                });
+                let responseText = await response.text();
+                let parsed;
+                try {
+                    parsed = JSON.parse(responseText);
+                    responseText = JSON.stringify(parsed, null, 2);
+                } catch {
+                    parsed = null;
+                }
+                httpStatus.textContent = `HTTP ${response.status} ${response.statusText}`;
+                responseBody.textContent = responseText || "(empty response)";
+                result.hidden = false;
+                status.textContent = response.ok ? "API request completed." : (parsed?.error || "The API request returned an error.");
+            } catch (error) {
+                status.textContent = error.message || "Could not reach the statement API.";
+            } finally {
+                button.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

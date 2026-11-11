@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+const os = require('os');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const { createHash, randomBytes, randomUUID, scrypt, timingSafeEqual } = require('crypto');
 const fsPromises = require('fs/promises');
@@ -10,10 +11,26 @@ const nodemailer = require('nodemailer');
 const multer = require('multer');
 const helmet = require('helmet');
 const { rateLimit } = require('express-rate-limit');
+const { PDFParse } = require('pdf-parse');
 const { createPaymentAdapter } = require('./payment-adapter');
 const { isAssistantModelReady, requestShopAssistantAnswer } = require('./shop-assistant');
 const { decryptKycDocument, detectKycDocumentMime, encryptKycDocument, getKycEncryptionKey, isKycStorageConfigured } = require('./kyc-storage');
 const { resolveLoginNetwork } = require('./login-activity');
+const { getProductBasicDataIssues, getProductReviewDecision } = require('./product-review');
+const { getServerDiagnostics } = require('./runtime-diagnostics');
+const { listAllowedTests, runAllowedTest, runAllAllowedTests } = require('./approved-test-runner');
+const { DEFAULT_LOGIN_WALLPAPER, normalizeLoginWallpaper } = require('./login-wallpaper');
+const { normalizeBankPayoutAccount, normalizePayoutRequestAmount } = require('./payout-settings');
+const { getStatementSigningKey, signStatement, verifyStatement } = require('./statement-signature');
+const { getStatementPdfChecks } = require('./statement-pdf');
+const { getDeveloperApiUsageCounters } = require('./developer-api-usage');
+const { verifyDeveloperTestPassword } = require('./developer-test-access');
+const {
+  createDeveloperCredentials,
+  hashDeveloperToken,
+  isValidDeveloperToken,
+  normalizeDeveloperAppName
+} = require('./developer-api');
 const app = express();
 const kycStorageDirectory = process.env.KYC_STORAGE_DIR || path.join(__dirname, 'private', 'kyc');
 const trustProxyHops = Number(process.env.TRUST_PROXY_HOPS || 0);
@@ -26,7 +43,10 @@ const sessionCookie = 'z_session';
 const sessionDuration = 7 * 24 * 60 * 60 * 1000;
 const promotionPriceNAD = 50;
 const promotionDurationDays = 7;
+const assistantPriceNAD = 50;
 const paymentAdapter = createPaymentAdapter(process.env.PAYMENT_MODE || 'mock');
+const developerTestSessions = new Map();
+const developerTestSessionDurationMs = 30 * 60 * 1000;
 const authRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 10,
@@ -54,6 +74,48 @@ const promotionWriteRateLimit = rateLimit({
   standardHeaders: 'draft-8',
   legacyHeaders: false,
   message: { error: 'Promotion requests are limited. Please try again later.' }
+});
+const sellerPayoutRateLimit = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { error: 'Payout settings and requests are limited. Try again in an hour.' }
+});
+const sellerStatementRateLimit = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 20,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { error: 'Statement generation is limited. Try again in an hour.' }
+});
+const developerAppRateLimit = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 10,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { error: 'Developer app changes are limited. Try again in an hour.' }
+});
+const statementApiRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { error: 'Statement API rate limit exceeded. Try again in a minute.' }
+});
+const developerTestUnlockRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { error: 'Too many test-client password attempts. Try again in 15 minutes.' }
+});
+const adminStatementRateLimit = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 10,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { error: 'Statement verification uploads are limited. Try again in an hour.' }
 });
 const promotionEngagementRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -118,6 +180,13 @@ const kycSubmissionRateLimit = rateLimit({
   legacyHeaders: false,
   message: { error: 'Too many verification submissions. Try again later.' }
 });
+const commandTestRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { error: 'Test runs are limited. Please try again later.' }
+});
 const imageUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 1, fieldSize: 32 },
@@ -127,6 +196,10 @@ const kycDocumentUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024, files: 1, fields: 2, fieldSize: 256 },
   fileFilter: (req, file, callback) => callback(null, ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype))
+});
+const statementPdfUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024, files: 1, fields: 1, fieldSize: 64 }
 });
 const passwordResetMailer = process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASSWORD
   ? nodemailer.createTransport({
@@ -143,6 +216,12 @@ const userSchema = new mongoose.Schema({
   role: { type: String, enum: ['customer', 'moderator', 'sandbox'], default: 'customer', index: true },
   emailVerified: { type: Boolean, default: false },
   isSuspended: { type: Boolean, default: false, index: true },
+  walletBalanceNAD: { type: Number, default: 0, min: 0 },
+  payoutBankAccount: {
+    bankName: { type: String, trim: true, maxlength: 80 },
+    accountName: { type: String, trim: true, maxlength: 80 },
+    accountLast4: { type: String, match: /^\d{4}$/ }
+  },
   dismissedListingReportCount: { type: Number, default: 0, min: 0 },
   cartItems: {
     type: [{
@@ -163,11 +242,66 @@ const userSchema = new mongoose.Schema({
   salt: { type: String, required: true },
   passwordHash: { type: String, required: true }
 }, { timestamps: true });
+const walletTransactionSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  reference: { type: String, required: true, unique: true },
+  type: { type: String, enum: ['seller_credit', 'purchase_debit', 'purchase_refund'], required: true },
+  amountNAD: { type: Number, required: true, min: 0 },
+  balanceAfterNAD: { type: Number, required: true, min: 0 },
+  orderNumber: { type: String, required: true },
+  description: { type: String, required: true, maxlength: 200 }
+}, { timestamps: true });
+walletTransactionSchema.index({ userId: 1, createdAt: -1 });
+const simulatedPayoutRequestSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  shopId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', required: true, index: true },
+  amountNAD: { type: Number, required: true, min: 0.01 },
+  status: { type: String, enum: ['simulated'], default: 'simulated' },
+  mode: { type: String, enum: ['simulated'], default: 'simulated' },
+  destination: {
+    bankName: { type: String, required: true, maxlength: 80 },
+    accountName: { type: String, required: true, maxlength: 80 },
+    accountLast4: { type: String, required: true, match: /^\d{4}$/ }
+  }
+}, { timestamps: true });
+simulatedPayoutRequestSchema.index({ userId: 1, createdAt: -1 });
+const sellerStatementSchema = new mongoose.Schema({
+  statementId: { type: String, required: true, unique: true, index: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  snapshot: { type: mongoose.Schema.Types.Mixed, required: true },
+  signature: { type: String, required: true, match: /^[a-f\d]{64}$/i }
+}, { timestamps: true });
+const developerApplicationSchema = new mongoose.Schema({
+  appId: { type: String, required: true, unique: true, index: true },
+  ownerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  name: { type: String, required: true, trim: true, maxlength: 80 },
+  tokenHash: { type: String, required: true, unique: true },
+  tokenLast4: { type: String, required: true, match: /^[A-Za-z0-9_-]{4}$/ },
+  revokedAt: { type: Date, default: null, index: true },
+  lastUsedAt: { type: Date, default: null }
+}, { timestamps: true });
+const developerApiUsageSchema = new mongoose.Schema({
+  day: { type: Date, required: true },
+  endpoint: { type: String, enum: ['reference', 'pdf'], required: true },
+  appId: { type: String, default: null },
+  requests: { type: Number, default: 0, min: 0 },
+  successes: { type: Number, default: 0, min: 0 },
+  verified: { type: Number, default: 0, min: 0 },
+  mismatched: { type: Number, default: 0, min: 0 },
+  clientErrors: { type: Number, default: 0, min: 0 },
+  serverErrors: { type: Number, default: 0, min: 0 },
+  totalDurationMs: { type: Number, default: 0, min: 0 },
+  expiresAt: { type: Date, required: true }
+}, { versionKey: false });
+developerApiUsageSchema.index({ day: 1, endpoint: 1, appId: 1 }, { unique: true });
+developerApiUsageSchema.index({ appId: 1, day: -1 });
+developerApiUsageSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 const sessionSchema = new mongoose.Schema({
   tokenHash: { type: String, required: true, unique: true },
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   expiresAt: { type: Date, required: true, expires: 0 }
 }, { timestamps: true });
+sessionSchema.index({ userId: 1, createdAt: -1 });
 const loginActivitySchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   device: { type: String, required: true, maxlength: 80 },
@@ -212,6 +346,7 @@ const shopSchema = new mongoose.Schema({
     freeThresholdNAD: { type: Number, min: 0, default: 800 }
   },
   assistantPlanActive: { type: Boolean, default: false },
+  assistantPlanPaidAt: { type: Date, default: null },
   assistantEnabled: { type: Boolean, default: false },
   kycStatus: { type: String, enum: ['not_submitted', 'pending', 'verified', 'rejected'], default: 'not_submitted', index: true },
   kycBusinessName: { type: String, trim: true, maxlength: 120, default: '' },
@@ -227,17 +362,18 @@ shopSchema.index({ nameKey: 1 }, { unique: true, partialFilterExpression: { name
 const productSchema = new mongoose.Schema({
   shopId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', required: true, index: true },
   duplicateKey: { type: String, select: false },
-  title: { type: String, required: true, trim: true, maxlength: 100 },
-  description: { type: String, required: true, trim: true, maxlength: 1500 },
-  priceNAD: { type: Number, required: true, min: 0.01 },
+  title: { type: String, trim: true, maxlength: 100, default: '' },
+  description: { type: String, trim: true, maxlength: 1500, default: '' },
+  priceNAD: { type: Number, min: 0, default: 0 },
   stock: { type: Number, min: 0, max: 100000, default: null },
   isAvailable: { type: Boolean, default: true },
-  category: { type: String, required: true },
+  category: { type: String, default: '' },
   town: { type: String, required: true },
   imageUrl: { type: String, default: '' },
   imageUrls: { type: [String], default: [] },
   status: { type: String, enum: ['active', 'archived'], default: 'active' },
   reviewStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'approved', index: true },
+  reviewReasons: { type: [String], default: [] },
   moderationStatus: { type: String, enum: ['visible', 'hidden'], default: 'visible' },
   moderationSource: { type: String, enum: ['moderator', 'report_threshold', null], default: null },
   moderatedAt: { type: Date, default: null }
@@ -255,6 +391,9 @@ const promotionCampaignSchema = new mongoose.Schema({
   status: { type: String, enum: ['pending', 'active', 'expired', 'cancelled'], default: 'pending', index: true },
   paymentReference: { type: String, required: true, unique: true },
   paymentExpiresAt: { type: Date, required: true },
+  paymentMethod: { type: String, enum: ['card', 'wallet', null], default: null },
+  walletUsedNAD: { type: Number, min: 0, default: 0 },
+  cardDueNAD: { type: Number, min: 0, default: 0 },
   paidAt: { type: Date, default: null },
   startsAt: { type: Date, default: null },
   expiresAt: { type: Date, default: null }
@@ -289,6 +428,8 @@ const listingReportSchema = new mongoose.Schema({
   status: { type: String, enum: ['pending', 'dismissed', 'actioned'], default: 'pending', index: true }
 }, { timestamps: true });
 listingReportSchema.index({ productId: 1, reporterId: 1 }, { unique: true });
+listingReportSchema.index({ reporterId: 1, createdAt: -1 });
+listingReportSchema.index({ reviewedBy: 1, reviewedAt: -1 });
 const listingThresholdEventSchema = new mongoose.Schema({
   shopId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', required: true, index: true },
   productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
@@ -312,6 +453,8 @@ const moderationAuditSchema = new mongoose.Schema({
   details: { type: String, default: '', trim: true, maxlength: 500 }
 }, { timestamps: true });
 moderationAuditSchema.index({ createdAt: -1 });
+moderationAuditSchema.index({ targetType: 1, targetId: 1, createdAt: -1 });
+moderationAuditSchema.index({ actorId: 1, createdAt: -1 });
 const shopReviewSchema = new mongoose.Schema({
   shopId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', required: true, index: true },
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
@@ -319,6 +462,7 @@ const shopReviewSchema = new mongoose.Schema({
   comment: { type: String, default: '', trim: true, maxlength: 500 }
 }, { timestamps: true });
 shopReviewSchema.index({ shopId: 1, userId: 1 }, { unique: true });
+shopReviewSchema.index({ userId: 1, createdAt: -1 });
 const orderLineSchema = new mongoose.Schema({
   productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
   title: { type: String, required: true },
@@ -345,6 +489,7 @@ const sellerOrderSchema = new mongoose.Schema({
   trackingReference: { type: String, default: '' },
   deliveredAt: { type: Date, default: null },
   payoutEligibleAt: { type: Date, default: null },
+  walletCreditedAt: { type: Date, default: null },
   payoutReference: { type: String, default: '' },
   payoutMarkedAt: { type: Date, default: null }
 }, { timestamps: true });
@@ -360,6 +505,9 @@ const orderSchema = new mongoose.Schema({
   commissionRate: { type: Number, min: 0, max: 1 },
   totalNAD: { type: Number, required: true, min: 0 },
   paymentStatus: { type: String, enum: ['pending', 'paid', 'expired', 'cancelled'], default: 'pending', index: true },
+  paymentMethod: { type: String, enum: ['card', 'wallet'], default: 'card' },
+  walletUsedNAD: { type: Number, default: 0, min: 0 },
+  cardDueNAD: { type: Number, default: 0, min: 0 },
   paymentMode: { type: String, enum: ['mock'], default: 'mock' },
   paymentReference: { type: String, default: '' },
   reservationExpiresAt: { type: Date, required: true, index: true },
@@ -388,6 +536,42 @@ const supportNotificationSchema = new mongoose.Schema({
   readAt: { type: Date, default: null }
 }, { timestamps: true });
 supportNotificationSchema.index({ userId: 1, supportRequestId: 1 }, { unique: true });
+const sellerNotificationSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  type: { type: String, enum: ['promotion_cancelled'], required: true },
+  promotionId: { type: mongoose.Schema.Types.ObjectId, ref: 'PromotionCampaign', required: true },
+  title: { type: String, required: true, trim: true, maxlength: 120 },
+  message: { type: String, required: true, trim: true, maxlength: 500 },
+  readAt: { type: Date, default: null }
+}, { timestamps: true });
+sellerNotificationSchema.index({ userId: 1, promotionId: 1, type: 1 }, { unique: true });
+const accountNotificationSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  title: { type: String, required: true, trim: true, maxlength: 120 },
+  message: { type: String, required: true, trim: true, maxlength: 1000 },
+  destination: { type: String, enum: ['account', 'seller', 'both'], default: 'both', index: true },
+  accountReadAt: { type: Date, default: null },
+  sellerReadAt: { type: Date, default: null },
+  readAt: { type: Date, default: null }
+}, { timestamps: true });
+accountNotificationSchema.index({ userId: 1, createdAt: -1 });
+const walletReconciliationAlertSchema = new mongoose.Schema({
+  accountId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
+  status: { type: String, enum: ['open', 'resolved'], required: true, default: 'open' },
+  accountBalanceNAD: { type: Number, required: true },
+  ledgerBalanceNAD: { type: Number, required: true },
+  expectedBalanceNAD: { type: Number, required: true },
+  matchedBalanceNAD: { type: Number, required: true },
+  differenceNAD: { type: Number, required: true },
+  ledgerIntegrityDifferenceNAD: { type: Number, required: true },
+  transactionCount: { type: Number, required: true },
+  generation: { type: Number, default: 0 },
+  notifiedGeneration: { type: Number, default: null },
+  openedAt: { type: Date, required: true },
+  resolvedAt: { type: Date, default: null },
+  lastCheckedAt: { type: Date, required: true }
+}, { timestamps: true });
 const suspensionAppealSchema = new mongoose.Schema({
   accountEmail: { type: String, required: true, trim: true, lowercase: true, maxlength: 254, index: true },
   activeEmailKey: { type: String, default: undefined },
@@ -406,6 +590,22 @@ const platformSettingSchema = new mongoose.Schema({
   key: { type: String, required: true, unique: true },
   commissionRate: { type: Number, required: true, min: 0, max: 1 }
 }, { timestamps: true });
+const loginWallpaperSchema = new mongoose.Schema({
+  key: { type: String, required: true, unique: true, default: 'login' },
+  productId: { type: mongoose.Schema.Types.ObjectId, default: null },
+  productIds: { type: [{ type: mongoose.Schema.Types.ObjectId }], default: undefined },
+  rotatePromotions: { type: Boolean, default: undefined },
+  topLine: { type: String, required: true, maxlength: 120 },
+  headline: { type: String, required: true, maxlength: 90 },
+  headlineAccent: { type: String, required: true, maxlength: 90 },
+  description: { type: String, default: '', maxlength: 280 },
+  caption: { type: String, default: '', maxlength: 160 },
+  footerLeft: { type: String, default: '', maxlength: 40 },
+  footerRight: { type: String, default: '', maxlength: 40 },
+  imageX: { type: Number, required: true, min: 0, max: 100 },
+  imageY: { type: Number, required: true, min: 0, max: 100 },
+  overlay: { type: Number, required: true, min: 0, max: 0.6 }
+}, { timestamps: true });
 const User = mongoose.model('User', userSchema);
 const Session = mongoose.model('Session', sessionSchema);
 const LoginActivity = mongoose.model('LoginActivity', loginActivitySchema);
@@ -420,12 +620,26 @@ const ListingThresholdEvent = mongoose.model('ListingThresholdEvent', listingThr
 const ModerationAudit = mongoose.model('ModerationAudit', moderationAuditSchema);
 const ShopReview = mongoose.model('ShopReview', shopReviewSchema);
 const Order = mongoose.model('Order', orderSchema);
+const WalletTransaction = mongoose.model('WalletTransaction', walletTransactionSchema);
+const SimulatedPayoutRequest = mongoose.model('SimulatedPayoutRequest', simulatedPayoutRequestSchema);
+const SellerStatement = mongoose.model('SellerStatement', sellerStatementSchema);
+const DeveloperApplication = mongoose.model('DeveloperApplication', developerApplicationSchema);
+const DeveloperApiUsage = mongoose.model('DeveloperApiUsage', developerApiUsageSchema);
 const SupportRequest = mongoose.model('SupportRequest', supportRequestSchema);
 const SupportNotification = mongoose.model('SupportNotification', supportNotificationSchema);
+const SellerNotification = mongoose.model('SellerNotification', sellerNotificationSchema);
+const AccountNotification = mongoose.model('AccountNotification', accountNotificationSchema);
+const WalletReconciliationAlert = mongoose.model('WalletReconciliationAlert', walletReconciliationAlertSchema);
 const SuspensionAppeal = mongoose.model('SuspensionAppeal', suspensionAppealSchema);
 const SuspensionAppealAccess = mongoose.model('SuspensionAppealAccess', suspensionAppealAccessSchema);
 const PlatformSetting = mongoose.model('PlatformSetting', platformSettingSchema);
-const productCategories = ['Art & Crafts', 'Beauty', 'Electronics', 'Fashion', 'Food', 'Home'];
+const LoginWallpaper = mongoose.model('LoginWallpaper', loginWallpaperSchema);
+const productCategories = [
+  'Art & Crafts', 'Beauty', 'Electronics', 'Fashion', 'Food', 'Home',
+  'Clothing', 'Shoes', 'Books', 'Furniture', 'Homeware',
+  'Health & Medicines (NMRC)', 'Telecom / Wi-Fi / Bluetooth (CRAN)',
+  'Food & Agriculture', 'Second-hand clothes'
+];
 const namibianTowns = ['Windhoek', 'Swakopmund', 'Walvis Bay', 'Oshakati', 'Rundu', 'Otjiwarongo', 'Other'];
 const hubTowns = new Set(['Windhoek', 'Swakopmund', 'Walvis Bay', 'Oshakati', 'Rundu', 'Otjiwarongo']);
 const commissionRate = Number(process.env.PLATFORM_COMMISSION_RATE || 0.1);
@@ -434,9 +648,8 @@ if (!Number.isFinite(commissionRate) || commissionRate < 0 || commissionRate > 1
 }
 const reservationDurationMs = Number(process.env.ORDER_RESERVATION_MINUTES || 15) * 60 * 1000;
 const payoutHoldDurationMs = Number(process.env.PAYOUT_HOLD_HOURS || 72) * 60 * 60 * 1000;
-const payoutProcessingDurationMs = Number(process.env.PAYOUT_PROCESSING_HOURS || process.env.PAYOUT_HOLD_HOURS || 72) * 60 * 60 * 1000;
-if (![payoutHoldDurationMs, payoutProcessingDurationMs].every((duration) => Number.isFinite(duration) && duration > 0)) {
-  throw new Error('PAYOUT_HOLD_HOURS and PAYOUT_PROCESSING_HOURS must be positive numbers.');
+if (!Number.isFinite(payoutHoldDurationMs) || payoutHoldDurationMs <= 0) {
+  throw new Error('PAYOUT_HOLD_HOURS must be a positive number.');
 }
 const simulatedPayoutsEnabled = paymentAdapter.mode === 'mock' && process.env.NODE_ENV !== 'production' && process.env.SIMULATE_PAYOUTS !== 'false';
 const payoutSweepSeconds = Number(process.env.PAYOUT_SWEEP_SECONDS || (simulatedPayoutsEnabled ? 1 : 60));
@@ -530,6 +743,15 @@ app.get('/sell/promotions', async (req, res) => {
   return res.sendFile(path.join(__dirname, '..', 'client', 'sell.html'));
 });
 
+app.get('/sell/notifications', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.redirect('/login');
+  const shop = await Shop.findOne({ ownerId: user._id });
+  if (shop?.sellerSuspended) return res.redirect('/dashboard?section=profile&sellerSuspended=1');
+  if (!shop) return res.redirect('/sell/setup');
+  return res.sendFile(path.join(__dirname, '..', 'client', 'sell.html'));
+});
+
 app.get('/sell/transactions', async (req, res) => {
   const user = await getSessionUser(req);
   if (!user) return res.redirect('/login');
@@ -537,6 +759,68 @@ app.get('/sell/transactions', async (req, res) => {
   if (shop?.sellerSuspended) return res.redirect('/dashboard?section=profile&sellerSuspended=1');
   if (!shop) return res.redirect('/sell/setup');
   return res.sendFile(path.join(__dirname, '..', 'client', 'sell-transactions.html'));
+});
+
+app.get('/statement-verification', (req, res) => {
+  return res.sendFile(path.join(__dirname, '..', 'client', 'statement-verification.html'));
+});
+
+app.get('/developers', (req, res) => {
+  return res.sendFile(path.join(__dirname, '..', 'client', 'developer-portal.html'));
+});
+
+function getDeveloperTestSession(req) {
+  const token = req.headers.cookie?.split(';')
+    .map((item) => item.trim())
+    .find((item) => item.startsWith('z_developer_test='))
+    ?.slice('z_developer_test='.length);
+  if (!token) return false;
+  const expiresAt = developerTestSessions.get(token);
+  if (!expiresAt) return false;
+  if (expiresAt <= Date.now()) {
+    developerTestSessions.delete(token);
+    return false;
+  }
+  return true;
+}
+
+app.get(['/developer-api-test', '/developer-api-test.html'], async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user || !isAdminUser(user)) return res.status(403).send('Super-admin access is required.');
+  if (!process.env.DEVELOPER_API_TEST_PASSWORD_HASH) {
+    return res.status(503).send('The API test password is not configured.');
+  }
+  const file = getDeveloperTestSession(req) ? 'developer-api-test.html' : 'developer-api-test-lock.html';
+  res.set('Cache-Control', 'no-store');
+  return res.sendFile(path.join(__dirname, '..', 'client', file));
+});
+
+app.post('/api/developer-api-test/unlock', developerTestUnlockRateLimit, async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user || !isAdminUser(user)) return res.status(403).json({ error: 'Super-admin access is required.' });
+  const passwordHash = process.env.DEVELOPER_API_TEST_PASSWORD_HASH;
+  if (!passwordHash) return res.status(503).json({ error: 'The API test password is not configured.' });
+  if (!verifyDeveloperTestPassword(req.body?.password, passwordHash)) {
+    return res.status(401).json({ error: 'The password is incorrect.' });
+  }
+  const now = Date.now();
+  for (const [session, expiresAt] of developerTestSessions) {
+    if (expiresAt <= now) developerTestSessions.delete(session);
+  }
+  const token = randomBytes(32).toString('hex');
+  developerTestSessions.set(token, now + developerTestSessionDurationMs);
+  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+  res.setHeader('Set-Cookie', `z_developer_test=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${Math.floor(developerTestSessionDurationMs / 1000)}${secure}`);
+  return res.json({ unlocked: true });
+});
+
+app.get('/sell/billing', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.redirect('/login');
+  const shop = await Shop.findOne({ ownerId: user._id });
+  if (shop?.sellerSuspended) return res.redirect('/dashboard?section=profile&sellerSuspended=1');
+  if (!shop) return res.redirect('/sell/setup');
+  return res.sendFile(path.join(__dirname, '..', 'client', 'sell-billing.html'));
 });
 
 app.get('/sell/profile', async (req, res) => {
@@ -580,10 +864,45 @@ app.get('/admin/payouts', async (req, res) => {
   return res.sendFile(path.join(__dirname, '..', 'client', 'admin-payouts.html'));
 });
 
+app.get('/admin/statement-verification', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user || !isAdminUser(user)) return res.status(403).send('Admin access is not configured for this account.');
+  return res.sendFile(path.join(__dirname, '..', 'client', 'admin-statement-verification.html'));
+});
+
 app.get('/admin/moderation', async (req, res) => {
   const user = await getSessionUser(req);
   if (!user || !isModeratorUser(user)) return res.status(403).send('Moderator access is not configured for this account.');
   return res.sendFile(path.join(__dirname, '..', 'client', 'admin-moderation.html'));
+});
+
+app.get('/admin/login-wallpaper', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user || !isModeratorUser(user)) return res.status(403).send('Moderator access is not configured for this account.');
+  return res.sendFile(path.join(__dirname, '..', 'client', 'admin-login-wallpaper.html'));
+});
+
+app.get('/admin/login-wallpaper/preview', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user || !isModeratorUser(user)) return res.status(403).send('Moderator access is not configured for this account.');
+  const policy = [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "font-src 'self' https://fonts.gstatic.com",
+    "form-action 'self'",
+    "frame-ancestors 'self'",
+    "img-src 'self' data: blob: https:",
+    "object-src 'none'",
+    "script-src 'self' 'unsafe-inline'",
+    "script-src-attr 'none'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "frame-src 'self' https://www.google.com",
+    "connect-src 'self'"
+  ];
+  if (process.env.NODE_ENV === 'production') policy.push('upgrade-insecure-requests');
+  res.removeHeader('Content-Security-Policy');
+  res.setHeader('Content-Security-Policy', policy.join('; '));
+  return res.sendFile(path.join(__dirname, '..', 'client', 'home.html'));
 });
 
 app.get('/admin/support', async (req, res) => {
@@ -604,6 +923,12 @@ app.get('/admin/accounts', async (req, res) => {
   return res.sendFile(path.join(__dirname, '..', 'client', 'admin-accounts.html'));
 });
 
+app.get('/admin/notifications', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user || !isAdminUser(user)) return res.status(403).send('Admin access is not configured for this account.');
+  return res.sendFile(path.join(__dirname, '..', 'client', 'admin-notifications.html'));
+});
+
 app.get('/admin/accounts/:id/activity', async (req, res) => {
   const user = await getSessionUser(req);
   if (!user || !isAdminUser(user)) return res.status(403).send('Admin access is not configured for this account.');
@@ -611,10 +936,36 @@ app.get('/admin/accounts/:id/activity', async (req, res) => {
   return res.sendFile(path.join(__dirname, '..', 'client', 'admin-user-activity.html'));
 });
 
+app.get('/admin/accounts/:id/details', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user || !isAdminUser(user)) return res.status(403).send('Admin access is not configured for this account.');
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Account not found.');
+  return res.sendFile(path.join(__dirname, '..', 'client', 'admin-user-details.html'));
+});
+
+app.get('/admin/accounts/:id/transactions', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user || !isAdminUser(user)) return res.status(403).send('Admin access is not configured for this account.');
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Account not found.');
+  return res.sendFile(path.join(__dirname, '..', 'client', 'admin-user-transactions.html'));
+});
+
 app.get('/admin/platform', async (req, res) => {
   const user = await getSessionUser(req);
   if (!user || !isAdminUser(user)) return res.status(403).send('Super-admin access is not configured for this account.');
   return res.sendFile(path.join(__dirname, '..', 'client', 'admin-platform.html'));
+});
+
+app.get('/admin/server-config', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user || !isAdminUser(user)) return res.status(403).send('Super-admin access is not configured for this account.');
+  return res.sendFile(path.join(__dirname, '..', 'client', 'admin-server-config.html'));
+});
+
+app.get('/admin/commands', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user || !isAdminUser(user)) return res.status(403).send('Super-admin access is not configured for this account.');
+  return res.sendFile(path.join(__dirname, '..', 'client', 'admin-commands.html'));
 });
 
 app.get('/cart', (req, res) => {
@@ -641,10 +992,13 @@ app.get('/shops/:slug', (req, res) => {
 const protectedAdminFiles = {
   '/admin-payouts.html': { file: 'admin-payouts.html', allow: isAdminUser },
   '/admin-moderation.html': { file: 'admin-moderation.html', allow: isModeratorUser },
+  '/admin-login-wallpaper.html': { file: 'admin-login-wallpaper.html', allow: isModeratorUser },
   '/admin-support.html': { file: 'admin-support.html', allow: isAdminUser },
   '/admin-kyc.html': { file: 'admin-kyc.html', allow: isAdminUser },
   '/admin-accounts.html': { file: 'admin-accounts.html', allow: isAdminUser },
-  '/admin-platform.html': { file: 'admin-platform.html', allow: isAdminUser }
+  '/admin-notifications.html': { file: 'admin-notifications.html', allow: isAdminUser },
+  '/admin-platform.html': { file: 'admin-platform.html', allow: isAdminUser },
+  '/admin-statement-verification.html': { file: 'admin-statement-verification.html', allow: isAdminUser }
 };
 
 app.get(Object.keys(protectedAdminFiles), async (req, res) => {
@@ -852,7 +1206,7 @@ async function applyAutomaticSellerRestriction(shopId, now = new Date()) {
       sellerRestrictionLastTriggeredAt: now,
       sellerRestrictionReason: 'Three separate listings reached the report threshold within 48 hours.'
     }
-  }, { new: true }).select('_id ownerId name sellerRestrictedUntil').lean();
+  }, { returnDocument: 'after' }).select('_id ownerId name sellerRestrictedUntil').lean();
   if (!shop) return false;
 
   const owner = await User.findById(shop.ownerId).select('name email').lean();
@@ -879,7 +1233,7 @@ async function expireAutomaticSellerRestrictions(now = new Date()) {
       sellerRestrictedUntil: { $lte: now }
     }, {
       $set: { sellerRestrictionStatus: 'active', sellerRestrictedUntil: null, sellerRestrictionReason: '' }
-    }, { new: true }).select('_id').lean();
+    }, { returnDocument: 'after' }).select('_id').lean();
     if (!released) continue;
     const owner = await User.findById(shop.ownerId).select('name email').lean();
     await recordModerationAudit({
@@ -996,7 +1350,7 @@ async function createEmailVerification(user) {
   await EmailVerification.findOneAndUpdate(
     { userId: user._id },
     { $set: { tokenHash: hashSessionToken(token), expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) } },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
+    { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
   );
   const verificationUrl = new URL(`/verify-email?token=${encodeURIComponent(token)}`, baseUrl).toString();
   if (process.env.NODE_ENV === 'production') {
@@ -1038,6 +1392,64 @@ async function getSessionUser(req) {
 
   const user = session?.userId || null;
   return user?.isSuspended ? null : user;
+}
+
+async function authenticateDeveloperApplication(req, res) {
+  const appId = req.get('x-z-app-id') || '';
+  const authorization = req.get('authorization') || '';
+  const token = authorization.match(/^Bearer (zstmt_live_[A-Za-z0-9_-]{43})$/)?.[1] || '';
+  if (!/^[\da-f-]{36}$/i.test(appId) || !isValidDeveloperToken(token)) {
+    res.set('WWW-Authenticate', 'Bearer');
+    res.status(401).json({ error: 'Provide a valid X-Z-App-Id and Bearer API token.' });
+    return null;
+  }
+  const application = await DeveloperApplication.findOne({
+    appId,
+    tokenHash: hashDeveloperToken(token),
+    revokedAt: null
+  }).populate('ownerId', 'emailVerified isSuspended');
+  if (!application || !application.ownerId || application.ownerId.isSuspended || !isEmailVerified(application.ownerId)) {
+    res.set('WWW-Authenticate', 'Bearer');
+    res.status(401).json({ error: 'The application ID or API token is invalid or revoked.' });
+    return null;
+  }
+  req.developerApiAppId = application.appId;
+  if (process.env.NODE_ENV === 'production' && !req.secure) {
+    res.status(400).json({ error: 'Use HTTPS for developer API requests.' });
+    return null;
+  }
+  application.lastUsedAt = new Date();
+  await application.save();
+  return application;
+}
+
+function trackDeveloperApiUsage(endpoint) {
+  return (req, res, next) => {
+    const startedAt = Date.now();
+    res.once('finish', () => {
+      const day = new Date();
+      day.setUTCHours(0, 0, 0, 0);
+      const counters = getDeveloperApiUsageCounters(res.statusCode, req.developerApiOutcome || null);
+      const key = { day, endpoint, appId: req.developerApiAppId || null };
+      const update = {
+        $inc: { ...counters, totalDurationMs: Math.max(0, Date.now() - startedAt) },
+        $setOnInsert: { expiresAt: new Date(day.getTime() + 400 * 24 * 60 * 60 * 1000) }
+      };
+      DeveloperApiUsage.updateOne(key, update, { upsert: true }).catch(async (error) => {
+        if (error?.code === 11000) {
+          try {
+            await DeveloperApiUsage.updateOne(key, { $inc: update.$inc });
+            return;
+          } catch (retryError) {
+            console.error(`Could not record developer API usage: ${retryError.message}`);
+            return;
+          }
+        }
+        console.error(`Could not record developer API usage: ${error.message}`);
+      });
+    });
+    next();
+  };
 }
 
 function apiError(statusCode, message) {
@@ -1337,6 +1749,44 @@ async function notifyModeratorsOfSupportRequest(request) {
   return moderators.length;
 }
 
+async function notifyProductReviewDecision({ product, shop, seller, reviewDecision }) {
+  let recipients;
+  let title;
+  let message;
+  let destination;
+  if (reviewDecision.reviewStatus === 'approved') {
+    recipients = [{ _id: seller._id }];
+    title = 'Product published';
+    message = `"${product.title}" passed the automatic review checks and is now published in your shop.`;
+    destination = 'seller';
+  } else {
+    recipients = [{ _id: seller._id }];
+    title = 'Product listing rejected';
+    message = `"${product.title || 'Untitled product'}" was rejected: ${reviewDecision.reviewReasons.join(' ')}`;
+    destination = 'seller';
+  }
+
+  if (!recipients.length) {
+    const error = 'No eligible account is available to receive the product review notice.';
+    console.error(error);
+    return error;
+  }
+
+  try {
+    await AccountNotification.insertMany(recipients.map((recipient) => ({
+      userId: recipient._id,
+      createdBy: seller._id,
+      title,
+      message: message.slice(0, 1000),
+      destination
+    })));
+    return null;
+  } catch (error) {
+    console.error('Product review notification could not be delivered:', error);
+    return 'The product was saved, but its review notification could not be delivered.';
+  }
+}
+
 function normalizePasswordResetInput(input = {}) {
   const token = typeof input.token === 'string' ? input.token : '';
   const password = input.password;
@@ -1357,17 +1807,349 @@ function assertProductionPaymentConfiguration(
   }
 }
 
-function resolvePayoutStatus(sellerOrder, now, processingDurationMs, simulatePayouts) {
+function resolvePayoutStatus(sellerOrder, now) {
   const currentStatus = sellerOrder?.payoutStatus || 'held';
   const eligibleAt = sellerOrder?.payoutEligibleAt ? new Date(sellerOrder.payoutEligibleAt) : null;
   if (sellerOrder?.fulfillmentStatus !== 'delivered' || !eligibleAt || eligibleAt > now) return currentStatus;
   if (currentStatus === 'held') return 'eligible';
-  if (currentStatus === 'eligible' && simulatePayouts && eligibleAt.getTime() + processingDurationMs <= now.getTime()) return 'paid';
   return currentStatus;
 }
 
 function roundNAD(value) {
   return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function reconcileWalletBalance(accountBalanceNAD, ledgerSummary) {
+  const accountBalanceCents = Math.round(Number(accountBalanceNAD) * 100);
+  if (!Number.isSafeInteger(accountBalanceCents) || accountBalanceCents < 0) {
+    throw new TypeError('Account wallet balance must be a non-negative monetary amount.');
+  }
+  if (!ledgerSummary || !ledgerSummary.transactionCount) {
+    return {
+      status: 'unverified',
+      transactionCount: 0,
+      accountBalanceNAD: roundNAD(accountBalanceCents / 100),
+      ledgerBalanceNAD: null,
+      expectedBalanceNAD: null,
+      openingBalanceNAD: null,
+      creditsNAD: 0,
+      debitsNAD: 0,
+      refundsNAD: 0,
+      matchedBalanceNAD: null,
+      differenceNAD: null,
+      ledgerIntegrityDifferenceNAD: null,
+      unverifiedBalanceNAD: roundNAD(accountBalanceCents / 100)
+    };
+  }
+
+  const toCents = (value, label) => {
+    const cents = Math.round(Number(value) * 100);
+    if (!Number.isSafeInteger(cents) || cents < 0) throw new TypeError(`${label} must be a non-negative monetary amount.`);
+    return cents;
+  };
+  if (!['seller_credit', 'purchase_debit', 'purchase_refund'].includes(ledgerSummary.firstType)) {
+    throw new TypeError('First wallet transaction has an unsupported type.');
+  }
+  const amountCents = toCents(ledgerSummary.firstAmountNAD, 'First wallet transaction amount');
+  const firstBalanceCents = toCents(ledgerSummary.firstBalanceAfterNAD, 'First recorded wallet balance');
+  const ledgerBalanceCents = toCents(ledgerSummary.lastBalanceAfterNAD, 'Latest recorded wallet balance');
+  const creditsCents = toCents(ledgerSummary.creditsNAD || 0, 'Wallet credits');
+  const debitsCents = toCents(ledgerSummary.debitsNAD || 0, 'Wallet debits');
+  const refundsCents = toCents(ledgerSummary.refundsNAD || 0, 'Wallet refunds');
+  const firstMovementCents = ledgerSummary.firstType === 'purchase_debit' ? -amountCents : amountCents;
+  const openingBalanceCents = firstBalanceCents - firstMovementCents;
+  const expectedBalanceCents = openingBalanceCents + creditsCents + refundsCents - debitsCents;
+  const differenceCents = accountBalanceCents - ledgerBalanceCents;
+  const ledgerIntegrityDifferenceCents = expectedBalanceCents - ledgerBalanceCents;
+  const status = differenceCents === 0 && ledgerIntegrityDifferenceCents === 0 ? 'matched' : 'mismatch';
+
+  return {
+    status,
+    transactionCount: ledgerSummary.transactionCount,
+    accountBalanceNAD: roundNAD(accountBalanceCents / 100),
+    ledgerBalanceNAD: roundNAD(ledgerBalanceCents / 100),
+    expectedBalanceNAD: roundNAD(expectedBalanceCents / 100),
+    openingBalanceNAD: roundNAD(openingBalanceCents / 100),
+    creditsNAD: roundNAD(creditsCents / 100),
+    debitsNAD: roundNAD(debitsCents / 100),
+    refundsNAD: roundNAD(refundsCents / 100),
+    matchedBalanceNAD: roundNAD(Math.max(0, Math.min(accountBalanceCents, ledgerBalanceCents)) / 100),
+    differenceNAD: roundNAD(differenceCents / 100),
+    ledgerIntegrityDifferenceNAD: roundNAD(ledgerIntegrityDifferenceCents / 100),
+    unverifiedBalanceNAD: 0
+  };
+}
+
+async function updateWalletReconciliationAlert(admin, account, reconciliation) {
+  const now = new Date();
+  if (reconciliation.status !== 'mismatch') {
+    await WalletReconciliationAlert.updateOne(
+      { accountId: account._id, status: 'open' },
+      { $set: { status: 'resolved', resolvedAt: now, lastCheckedAt: now } }
+    );
+    return { adminNotified: false };
+  }
+
+  const pipeline = [{
+    $set: {
+      accountId: account._id,
+      status: 'open',
+      accountBalanceNAD: reconciliation.accountBalanceNAD,
+      ledgerBalanceNAD: reconciliation.ledgerBalanceNAD,
+      expectedBalanceNAD: reconciliation.expectedBalanceNAD,
+      matchedBalanceNAD: reconciliation.matchedBalanceNAD,
+      differenceNAD: reconciliation.differenceNAD,
+      ledgerIntegrityDifferenceNAD: reconciliation.ledgerIntegrityDifferenceNAD,
+      transactionCount: reconciliation.transactionCount,
+      openedAt: {
+        $cond: [
+          { $eq: ['$status', 'open'] },
+          { $ifNull: ['$openedAt', now] },
+          now
+        ]
+      },
+      generation: {
+        $cond: [
+          { $eq: ['$status', 'open'] },
+          { $ifNull: ['$generation', 1] },
+          { $add: [{ $ifNull: ['$generation', 0] }, 1] }
+        ]
+      },
+      resolvedAt: null,
+      lastCheckedAt: now
+    }
+  }];
+  let alert;
+  try {
+    alert = await WalletReconciliationAlert.findOneAndUpdate(
+      { accountId: account._id },
+      pipeline,
+      { upsert: true, new: true }
+    );
+  } catch (error) {
+    if (error?.code !== 11000) throw error;
+    alert = await WalletReconciliationAlert.findOneAndUpdate(
+      { accountId: account._id },
+      pipeline,
+      { new: true }
+    );
+    if (!alert) throw new Error('Could not update the wallet reconciliation alert after a concurrent update.');
+  }
+
+  const claim = await WalletReconciliationAlert.findOneAndUpdate({
+    _id: alert._id,
+    generation: alert.generation,
+    notifiedGeneration: { $ne: alert.generation }
+  }, {
+    $set: { notifiedGeneration: alert.generation }
+  }, { new: true });
+  if (claim) {
+    const differenceDescription = reconciliation.differenceNAD === 0
+      ? `Ledger activity implies N$ ${reconciliation.expectedBalanceNAD.toFixed(2)}, but the final recorded balance is N$ ${reconciliation.ledgerBalanceNAD.toFixed(2)}.`
+      : `The account balance is N$ ${reconciliation.differenceNAD > 0 ? 'higher' : 'lower'} than the ledger by N$ ${Math.abs(reconciliation.differenceNAD).toFixed(2)}.`;
+    const message = `${account.name || 'Unnamed account'} (${account.email}) has a wallet reconciliation discrepancy. ${differenceDescription} Matching balance amount: N$ ${reconciliation.matchedBalanceNAD.toFixed(2)}. Review the account activity before taking action.`;
+    try {
+      await AccountNotification.create({
+        userId: admin._id,
+        createdBy: admin._id,
+        title: 'Wallet reconciliation discrepancy',
+        message,
+        destination: 'account'
+      });
+    } catch (error) {
+      await WalletReconciliationAlert.updateOne(
+        { _id: alert._id, notifiedGeneration: alert.generation },
+        { $set: { notifiedGeneration: null } }
+      );
+      throw error;
+    }
+  }
+  return { adminNotified: Boolean(alert.notifiedGeneration === alert.generation || claim) };
+}
+
+async function getWalletLedgerSummary(userId) {
+  const [totals, first, last] = await Promise.all([
+    WalletTransaction.aggregate([
+      { $match: { userId } },
+      { $group: {
+        _id: null,
+        transactionCount: { $sum: 1 },
+        creditsNAD: { $sum: { $cond: [{ $eq: ['$type', 'seller_credit'] }, '$amountNAD', 0] } },
+        debitsNAD: { $sum: { $cond: [{ $eq: ['$type', 'purchase_debit'] }, '$amountNAD', 0] } },
+        refundsNAD: { $sum: { $cond: [{ $eq: ['$type', 'purchase_refund'] }, '$amountNAD', 0] } }
+      } }
+    ]),
+    WalletTransaction.findOne({ userId }).sort({ createdAt: 1, _id: 1 })
+      .select('type amountNAD balanceAfterNAD').lean(),
+    WalletTransaction.findOne({ userId }).sort({ createdAt: -1, _id: -1 })
+      .select('balanceAfterNAD').lean()
+  ]);
+  if (!totals.length || !first || !last) return null;
+  return {
+    ...totals[0],
+    firstType: first.type,
+    firstAmountNAD: first.amountNAD,
+    firstBalanceAfterNAD: first.balanceAfterNAD,
+    lastBalanceAfterNAD: last.balanceAfterNAD
+  };
+}
+
+function calculateWalletPayment(totalNAD, walletBalanceNAD, paymentMethod) {
+  const total = roundNAD(Number(totalNAD));
+  const balance = roundNAD(Math.max(0, Number(walletBalanceNAD) || 0));
+  const walletUsedNAD = paymentMethod === 'wallet' ? Math.min(balance, total) : 0;
+  return { walletUsedNAD, cardDueNAD: roundNAD(total - walletUsedNAD) };
+}
+
+function isMatchingPromotionWalletDebit(campaign, transaction) {
+  return Boolean(transaction
+    && transaction.reference === `promotion:${campaign._id}`
+    && transaction.type === 'purchase_debit'
+    && transaction.userId.toString() === campaign.sellerId.toString()
+    && transaction.amountNAD === campaign.walletUsedNAD);
+}
+
+function getPromotionPaymentIssue(campaign, walletTransaction) {
+  if (campaign.status !== 'active') return null;
+  const amountNAD = Number(campaign.amountNAD);
+  const walletUsedNAD = Number(campaign.walletUsedNAD || 0);
+  const cardDueNAD = Number(campaign.cardDueNAD || 0);
+  if (!Number.isFinite(amountNAD) || amountNAD <= 0
+    || !Number.isFinite(walletUsedNAD) || walletUsedNAD < 0
+    || !Number.isFinite(cardDueNAD) || cardDueNAD < 0
+    || roundNAD(walletUsedNAD + cardDueNAD) !== roundNAD(amountNAD)) {
+    return 'the payment amounts do not match the promotion price';
+  }
+  if (!campaign.paidAt || !Number.isFinite(new Date(campaign.paidAt).getTime())) {
+    return 'a completed payment timestamp is missing';
+  }
+  if (walletTransaction && !isMatchingPromotionWalletDebit(campaign, walletTransaction)) {
+    return 'the Z-balance debit record does not match';
+  }
+  if (campaign.paymentMethod === 'wallet') {
+    if (walletUsedNAD <= 0) return 'the selected Z-balance payment has no recorded debit amount';
+    if (!isMatchingPromotionWalletDebit(campaign, walletTransaction)) return 'the Z-balance debit is missing';
+    return null;
+  }
+  if (campaign.paymentMethod === 'card') {
+    if (walletUsedNAD !== 0 || cardDueNAD <= 0 || walletTransaction) {
+      return 'the recorded card payment details are inconsistent';
+    }
+    return null;
+  }
+  return 'the payment method is missing or cannot be verified';
+}
+
+function shouldCancelUnpaidPromotion(campaign, walletTransaction) {
+  return getPromotionPaymentIssue(campaign, walletTransaction) !== null;
+}
+
+async function reconcileUnpaidPromotions(sellerId) {
+  const campaigns = await PromotionCampaign.find({
+    sellerId,
+    status: 'active'
+  }).select('_id sellerId productId status amountNAD paymentMethod walletUsedNAD cardDueNAD paidAt').lean();
+  if (!campaigns.length) return 0;
+
+  const references = campaigns.map((campaign) => `promotion:${campaign._id}`);
+  const transactions = await WalletTransaction.find({ reference: { $in: references } })
+    .select('reference userId type amountNAD').lean();
+  const transactionsByReference = new Map(transactions.map((transaction) => [transaction.reference, transaction]));
+  const products = await Product.find({ _id: { $in: campaigns.map((campaign) => campaign.productId) } })
+    .select('_id title').lean();
+  const productTitles = new Map(products.map((product) => [product._id.toString(), product.title]));
+  let cancelledCount = 0;
+
+  for (const campaign of campaigns) {
+    const reference = `promotion:${campaign._id}`;
+    const transaction = transactionsByReference.get(reference);
+    const paymentIssue = getPromotionPaymentIssue(campaign, transaction);
+    if (!paymentIssue) continue;
+
+    const productTitle = productTitles.get(campaign.productId.toString()) || 'your product';
+    const wasCancelled = await withMongoTransaction(async (session) => {
+      const result = await PromotionCampaign.updateOne({
+        _id: campaign._id,
+        sellerId,
+        status: 'active'
+      }, { $set: { status: 'cancelled' } }, { session });
+      if (!result.modifiedCount) return false;
+      await SellerNotification.updateOne({
+        userId: sellerId,
+        promotionId: campaign._id,
+        type: 'promotion_cancelled'
+      }, {
+        $setOnInsert: {
+          title: 'Promotion removed',
+          message: `The promotion for "${productTitle}" was removed because ${paymentIssue}. No additional Z-balance deduction was made. Contact support if you believe this is incorrect.`
+        }
+      }, { upsert: true, session });
+      return true;
+    });
+    if (wasCancelled) cancelledCount += 1;
+  }
+  return cancelledCount;
+}
+
+function isAssistantPlanPaid(shop) {
+  return Boolean(shop?.assistantPlanActive && shop?.assistantPlanPaidAt);
+}
+
+async function withMongoTransaction(operation) {
+  const session = await mongoose.startSession();
+  try {
+    let result;
+    await session.withTransaction(async () => {
+      result = await operation(session);
+    });
+    return result;
+  } finally {
+    await session.endSession();
+  }
+}
+
+async function applyWalletTransaction({
+  userId,
+  reference,
+  type,
+  amountNAD,
+  orderNumber,
+  description,
+  session,
+  insufficientBalanceMessage = 'Your Z balance changed. Refresh checkout and try again.'
+}) {
+  const existing = await WalletTransaction.findOne({ reference }).session(session);
+  if (existing) {
+    if (existing.userId.toString() !== userId.toString() || existing.type !== type || existing.amountNAD !== amountNAD) {
+      throw new Error('Wallet transaction reference was already used for a different transaction.');
+    }
+    return existing;
+  }
+
+  const update = type === 'purchase_debit'
+    ? { $inc: { walletBalanceNAD: -amountNAD } }
+    : { $inc: { walletBalanceNAD: amountNAD } };
+  const balanceCondition = type === 'purchase_debit'
+    ? { $expr: { $gte: [{ $ifNull: ['$walletBalanceNAD', 0] }, amountNAD] } }
+    : {};
+  const user = await User.findOneAndUpdate(
+    { _id: userId, ...balanceCondition },
+    update,
+    { returnDocument: 'after', session }
+  );
+  if (!user && type === 'purchase_debit') throw apiError(409, insufficientBalanceMessage);
+  if (!user) throw new Error('Could not update the Z wallet for this transaction.');
+
+  const [transaction] = await WalletTransaction.create([{
+    userId,
+    reference,
+    type,
+    amountNAD,
+    balanceAfterNAD: roundNAD(user.walletBalanceNAD),
+    orderNumber,
+    description
+  }], { session });
+  return transaction;
 }
 
 function normalizeCartItems(rawItems) {
@@ -1540,7 +2322,7 @@ async function reserveOrderStock(items) {
         status: 'active',
         isAvailable: { $ne: false },
         stock: { $gte: item.quantity }
-      }, { $inc: { stock: -item.quantity } }, { new: true });
+      }, { $inc: { stock: -item.quantity } }, { returnDocument: 'after' });
 
       if (!product) throw apiError(409, 'Stock changed while checking out. Review your cart and try again.');
       reserved.push(item);
@@ -1682,9 +2464,51 @@ async function releaseExpiredReservations() {
       _id: candidate._id,
       paymentStatus: 'pending',
       reservationsReleasedAt: null
-    }, { $set: { paymentStatus: 'expired', reservationsReleasedAt: new Date() } }, { new: true }).select('items');
+    }, { $set: { paymentStatus: 'expired', reservationsReleasedAt: new Date() } }, { returnDocument: 'after' }).select('items');
     if (order) await releaseReservedStock(order.items);
   }
+}
+
+async function creditSellerWallet(orderId, sellerOrderId, now) {
+  await withMongoTransaction(async (session) => {
+    const order = await Order.findOne({ _id: orderId, paymentStatus: 'paid' }).session(session);
+    const sellerOrder = order?.sellerOrders.find((entry) => entry._id.toString() === sellerOrderId.toString());
+    const simulatedPayout = sellerOrder?.payoutStatus === 'paid'
+      && typeof sellerOrder.payoutReference === 'string'
+      && sellerOrder.payoutReference.startsWith('SIM-');
+    if (!sellerOrder
+      || sellerOrder.fulfillmentStatus !== 'delivered'
+      || !sellerOrder.payoutEligibleAt
+      || sellerOrder.payoutEligibleAt > now
+      || (!['held', 'eligible'].includes(sellerOrder.payoutStatus) && !simulatedPayout)) return;
+    if (sellerOrder.payoutStatus === 'eligible' && sellerOrder.walletCreditedAt) return;
+
+    await applyWalletTransaction({
+      userId: sellerOrder.sellerId,
+      reference: `seller-credit:${order.orderNumber}:${sellerOrder._id}`,
+      type: 'seller_credit',
+      amountNAD: roundNAD(sellerOrder.payoutNAD),
+      orderNumber: order.orderNumber,
+      description: `Seller earnings for order ${order.orderNumber}`,
+      session
+    });
+
+    const update = await Order.updateOne({
+      _id: order._id,
+      sellerOrders: { $elemMatch: {
+        _id: sellerOrder._id,
+        payoutStatus: sellerOrder.payoutStatus,
+        ...(simulatedPayout ? { payoutReference: /^SIM-/ } : {})
+      } }
+    }, { $set: {
+      'sellerOrders.$.payoutStatus': 'eligible',
+      'sellerOrders.$.walletCreditedAt': sellerOrder.walletCreditedAt || now,
+      ...(simulatedPayout ? { 'sellerOrders.$.payoutReference': '', 'sellerOrders.$.payoutMarkedAt': null } : {})
+    } }, { session });
+    if (!update.modifiedCount && !sellerOrder.walletCreditedAt) {
+      throw new Error('Could not mark seller earnings as credited to the Z wallet.');
+    }
+  });
 }
 
 async function advancePayoutLifecycle() {
@@ -1693,13 +2517,18 @@ async function advancePayoutLifecycle() {
     paymentStatus: 'paid',
     sellerOrders: { $elemMatch: {
       fulfillmentStatus: 'delivered',
-      payoutStatus: { $in: ['held', 'eligible'] },
-      payoutEligibleAt: { $lte: now }
+      payoutEligibleAt: { $lte: now },
+      $or: [
+        { payoutStatus: { $in: ['held', 'eligible'] } },
+        { payoutStatus: 'paid', payoutReference: /^SIM-/ }
+      ]
     } }
   }).sort({ updatedAt: 1 }).limit(100).select('_id sellerOrders');
 
   const sellerIds = [...new Set(orders.flatMap((order) => order.sellerOrders
-    .filter((sellerOrder) => sellerOrder.fulfillmentStatus === 'delivered' && ['held', 'eligible'].includes(sellerOrder.payoutStatus))
+    .filter((sellerOrder) => sellerOrder.fulfillmentStatus === 'delivered'
+      && (['held', 'eligible'].includes(sellerOrder.payoutStatus)
+        || (sellerOrder.payoutStatus === 'paid' && typeof sellerOrder.payoutReference === 'string' && sellerOrder.payoutReference.startsWith('SIM-'))))
     .map((sellerOrder) => sellerOrder.sellerId.toString())))].map((id) => new mongoose.Types.ObjectId(id));
   const restrictedSellerIds = sellerIds.length
     ? new Set((await Shop.distinct('ownerId', {
@@ -1716,25 +2545,13 @@ async function advancePayoutLifecycle() {
     for (const sellerOrder of order.sellerOrders) {
       if (restrictedSellerIds.has(sellerOrder.sellerId.toString())) continue;
       const currentStatus = sellerOrder.payoutStatus;
-      const nextStatus = resolvePayoutStatus(sellerOrder, now, payoutProcessingDurationMs, simulatedPayoutsEnabled);
-      if (nextStatus === currentStatus) continue;
-
-      const updates = { 'sellerOrders.$.payoutStatus': nextStatus };
-      if (nextStatus === 'paid' && simulatedPayoutsEnabled) {
-        updates['sellerOrders.$.payoutReference'] = `SIM-${randomBytes(6).toString('hex').toUpperCase()}`;
-        updates['sellerOrders.$.payoutMarkedAt'] = now;
+      const nextStatus = resolvePayoutStatus(sellerOrder, now);
+      const simulatedPayout = currentStatus === 'paid'
+        && typeof sellerOrder.payoutReference === 'string'
+        && sellerOrder.payoutReference.startsWith('SIM-');
+      if ((nextStatus === 'eligible' && ['held', 'eligible'].includes(currentStatus)) || simulatedPayout) {
+        await creditSellerWallet(order._id, sellerOrder._id, now);
       }
-
-      await Order.updateOne({
-        _id: order._id,
-        paymentStatus: 'paid',
-        sellerOrders: { $elemMatch: {
-          _id: sellerOrder._id,
-          fulfillmentStatus: 'delivered',
-          payoutStatus: currentStatus,
-          payoutEligibleAt: { $lte: now }
-        } }
-      }, { $set: updates });
     }
   }
 }
@@ -1828,7 +2645,7 @@ app.post('/api/auth/login', async (req, res) => {
           expiresAt: new Date(Date.now() + 10 * 60 * 1000)
         }
       },
-      { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true }
+      { upsert: true, returnDocument: 'after', runValidators: true, setDefaultsOnInsert: true }
     );
     return res.status(403).json({
       error: 'This account is suspended.',
@@ -2011,6 +2828,106 @@ app.post('/api/account/login-activity/read', async (req, res) => {
   return res.json({ ok: true });
 });
 
+app.get('/api/account/seller-notifications', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to view seller notifications.' });
+  const notifications = await SellerNotification.find({ userId: user._id })
+    .sort({ createdAt: -1 }).limit(50).select('title message promotionId readAt createdAt')
+    .populate({ path: 'promotionId', select: 'productId' }).lean();
+  return res.json({
+    notifications: notifications.map((notification) => ({
+      id: notification._id.toString(),
+      title: notification.title,
+      message: notification.message,
+      productId: notification.promotionId?.productId?.toString() || null,
+      readAt: notification.readAt,
+      createdAt: notification.createdAt
+    })),
+    unreadCount: notifications.filter((notification) => !notification.readAt).length
+  });
+});
+
+function notificationDestinationFilter(workspace) {
+  const destinations = workspace === 'seller' ? ['seller', 'both'] : ['account', 'both'];
+  return { $or: [{ destination: { $in: destinations } }, { destination: { $exists: false } }] };
+}
+
+app.get('/api/account/notifications', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to view account notifications.' });
+  const workspace = req.query.workspace || 'account';
+  if (!['account', 'seller'].includes(workspace)) return res.status(400).json({ error: 'Choose the account or seller notification workspace.' });
+  const destinationFilter = notificationDestinationFilter(workspace);
+  const workspaceReadField = workspace === 'seller' ? 'sellerReadAt' : 'accountReadAt';
+  const notificationQueries = [
+    AccountNotification.find({ userId: user._id, ...destinationFilter })
+      .sort({ createdAt: -1 }).limit(50).select(`title message ${workspaceReadField} readAt createdAt`).lean(),
+    AccountNotification.countDocuments({
+      userId: user._id,
+      ...destinationFilter,
+      [workspaceReadField]: null,
+      readAt: null
+    })
+  ];
+  if (workspace === 'seller') {
+    notificationQueries.push(
+      SellerNotification.find({ userId: user._id })
+      .sort({ createdAt: -1 }).limit(50).select('title message promotionId readAt createdAt')
+      .populate({ path: 'promotionId', select: 'productId' }).lean(),
+      SellerNotification.countDocuments({ userId: user._id, readAt: null })
+    );
+  }
+  const [accountNotifications, accountUnreadCount, sellerNotifications = [], sellerUnreadCount = 0] = await Promise.all(notificationQueries);
+  const notifications = [
+    ...accountNotifications.map((notification) => ({
+      ...notification,
+      readAt: notification[workspaceReadField] ?? notification.readAt,
+      type: 'account'
+    })),
+    ...sellerNotifications.map((notification) => ({ ...notification, type: 'seller' }))
+  ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 50);
+  return res.json({
+    notifications: notifications.map((notification) => ({
+      id: notification._id.toString(),
+      type: notification.type,
+      title: notification.title,
+      message: notification.message,
+      productId: notification.type === 'seller' ? notification.promotionId?.productId?.toString() || null : null,
+      readAt: notification.readAt,
+      createdAt: notification.createdAt
+    })),
+    unreadCount: accountUnreadCount + sellerUnreadCount
+  });
+});
+
+app.post('/api/account/notifications/read', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to update account notifications.' });
+  const workspace = req.query.workspace || 'account';
+  if (!['account', 'seller'].includes(workspace)) return res.status(400).json({ error: 'Choose the account or seller notification workspace.' });
+  const readAt = new Date();
+  const workspaceReadField = workspace === 'seller' ? 'sellerReadAt' : 'accountReadAt';
+  const updates = [
+    AccountNotification.updateMany({
+      userId: user._id,
+      ...notificationDestinationFilter(workspace)
+    }, { $set: { [workspaceReadField]: readAt } })
+  ];
+  if (workspace === 'seller') updates.push(SellerNotification.updateMany({ userId: user._id, readAt: null }, { $set: { readAt } }));
+  await Promise.all(updates);
+  return res.json({ ok: true });
+});
+
+app.post('/api/account/seller-notifications/read', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to update seller notifications.' });
+  await SellerNotification.updateMany(
+    { userId: user._id, readAt: null },
+    { $set: { readAt: new Date() } }
+  );
+  return res.json({ ok: true });
+});
+
 app.get('/api/account/support-notifications', async (req, res) => {
   const user = await getSessionUser(req);
   if (!user) return res.status(401).json({ error: 'Sign in to view support notifications.' });
@@ -2177,21 +3094,105 @@ app.post('/api/orders/quote', async (req, res) => {
     })),
     productsSubtotalNAD: quote.productsSubtotalNAD,
     shippingNAD: quote.shippingNAD,
-    totalNAD: quote.totalNAD
+    totalNAD: quote.totalNAD,
+    walletBalanceNAD: roundNAD(user.walletBalanceNAD || 0)
   });
 });
+
+app.get('/api/wallet', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to view your Z balance.' });
+  const transactions = await WalletTransaction.find({ userId: user._id }).sort({ createdAt: -1 }).limit(50).lean();
+  return res.json({
+    balanceNAD: roundNAD(user.walletBalanceNAD || 0),
+    transactions: transactions.map((transaction) => ({
+      type: transaction.type,
+      amountNAD: transaction.amountNAD,
+      balanceAfterNAD: transaction.balanceAfterNAD,
+      orderNumber: transaction.orderNumber,
+      description: transaction.description,
+      createdAt: transaction.createdAt
+    }))
+  });
+});
+
+async function settleOrderPayment(orderNumber, buyerId, payment) {
+  const orderSnapshot = await Order.findOne({ orderNumber, buyerId, paymentStatus: 'pending' });
+  if (!orderSnapshot || orderSnapshot.reservationExpiresAt <= new Date() || orderSnapshot.reservationsReleasedAt) {
+    throw apiError(409, 'This test payment is no longer pending. Create a new order.');
+  }
+  const shops = await Shop.find({ _id: { $in: orderSnapshot.sellerOrders.map((sellerOrder) => sellerOrder.shopId) } })
+    .select('_id autoApprovalEnabled').lean();
+  const autoApprovalByShop = new Map(shops.map((shop) => [shop._id.toString(), Boolean(shop.autoApprovalEnabled)]));
+
+  return withMongoTransaction(async (session) => {
+    const order = await Order.findOne({
+      _id: orderSnapshot._id,
+      buyerId,
+      paymentStatus: 'pending',
+      reservationExpiresAt: { $gt: new Date() },
+      reservationsReleasedAt: null
+    }).session(session);
+    if (!order) throw apiError(409, 'This test payment is no longer pending. Create a new order.');
+
+    if (order.walletUsedNAD > 0) {
+      await applyWalletTransaction({
+        userId: buyerId,
+        reference: `purchase:${order.orderNumber}`,
+        type: 'purchase_debit',
+        amountNAD: order.walletUsedNAD,
+        orderNumber: order.orderNumber,
+        description: `Z balance used for order ${order.orderNumber}`,
+        session
+      });
+    }
+
+    const sellerOrders = order.sellerOrders.map((sellerOrder) => {
+      const autoApprovalEnabled = autoApprovalByShop.get(sellerOrder.shopId.toString()) ?? false;
+      const approvalStatus = resolveSellerApprovalState(autoApprovalEnabled);
+      return {
+        ...sellerOrder.toObject(),
+        approvalStatus,
+        fulfillmentStatus: approvalStatus === 'accepted' ? 'processing' : 'awaiting_payment',
+        payoutStatus: 'held'
+      };
+    });
+    const paidOrder = await Order.findOneAndUpdate({
+      _id: order._id,
+      buyerId,
+      paymentStatus: 'pending',
+      reservationExpiresAt: { $gt: new Date() },
+      reservationsReleasedAt: null
+    }, { $set: {
+      paymentStatus: 'paid',
+      paymentReference: payment?.reference || '',
+      paidAt: payment?.confirmedAt || new Date(),
+      sellerOrders
+    } }, { returnDocument: 'after', session });
+    if (!paidOrder) throw apiError(409, 'Order changed before the test payment was confirmed.');
+    return paidOrder;
+  });
+}
 
 app.post('/api/orders', async (req, res) => {
   const user = await getSessionUser(req);
   if (!user) return res.status(401).json({ error: 'Sign in to place an order.' });
   if (!isEmailVerified(user)) return res.status(403).json({ error: 'Verify your email address in your account before placing an order.' });
-  if (!mockPaymentsEnabled) return res.status(503).json({ error: 'Mock checkout is disabled. A live payment provider is not configured.' });
+  const paymentMethod = req.body?.paymentMethod ?? 'card';
+  if (!['card', 'wallet'].includes(paymentMethod)) return res.status(400).json({ error: 'Choose card or Z balance at checkout.' });
   await releaseExpiredReservations();
   const quote = await buildOrderQuote(req.body?.items, req.body?.deliveryTown);
+  const { walletUsedNAD, cardDueNAD } = calculateWalletPayment(quote.totalNAD, user.walletBalanceNAD, paymentMethod);
+  if (paymentMethod === 'wallet' && walletUsedNAD <= 0) {
+    return res.status(409).json({ error: 'Your Z balance is empty. Choose card checkout instead.' });
+  }
+  if (cardDueNAD > 0 && !mockPaymentsEnabled) {
+    return res.status(503).json({ error: 'Test card checkout is disabled. A live card provider is not configured.' });
+  }
   await reserveOrderStock(quote.items);
 
   const orderNumber = `Z-${Date.now()}-${randomBytes(2).toString('hex').toUpperCase()}`;
-  const paymentIntent = paymentAdapter.createIntent(orderNumber);
+  const paymentIntent = cardDueNAD > 0 ? paymentAdapter.createIntent(orderNumber) : null;
   let order;
   try {
     order = await Order.create({
@@ -2205,8 +3206,11 @@ app.post('/api/orders', async (req, res) => {
       commissionNAD: quote.commissionNAD,
       commissionRate: quote.commissionRate,
       totalNAD: quote.totalNAD,
+      paymentMethod,
+      walletUsedNAD,
+      cardDueNAD,
       paymentMode: 'mock',
-      paymentReference: paymentIntent.reference,
+      paymentReference: paymentIntent?.reference || '',
       reservationExpiresAt: new Date(Date.now() + reservationDurationMs)
     });
   } catch (error) {
@@ -2218,6 +3222,9 @@ app.post('/api/orders', async (req, res) => {
     orderNumber: order.orderNumber,
     paymentStatus: order.paymentStatus,
     paymentMode: order.paymentMode,
+    paymentMethod: order.paymentMethod,
+    walletUsedNAD: order.walletUsedNAD,
+    cardDueNAD: order.cardDueNAD,
     paymentIntent,
     reservationExpiresAt: order.reservationExpiresAt,
     sellerOrders: order.sellerOrders.map((sellerOrder) => ({
@@ -2238,7 +3245,6 @@ app.post('/api/orders', async (req, res) => {
 app.post('/api/orders/:orderNumber/mock-payment', async (req, res) => {
   const user = await getSessionUser(req);
   if (!user) return res.status(401).json({ error: 'Sign in to confirm this test payment.' });
-  if (!mockPaymentsEnabled) return res.status(503).json({ error: 'Mock payments are disabled.' });
   await releaseExpiredReservations();
 
   const order = await Order.findOne({ orderNumber: req.params.orderNumber, buyerId: user._id });
@@ -2246,38 +3252,24 @@ app.post('/api/orders/:orderNumber/mock-payment', async (req, res) => {
   if (order.paymentStatus !== 'pending' || order.reservationExpiresAt <= new Date()) {
     return res.status(409).json({ error: 'This test payment is no longer pending. Create a new order.' });
   }
-
-  const payment = paymentAdapter.confirmIntent(order.paymentReference);
-  const shops = await Shop.find({ _id: { $in: order.sellerOrders.map((sellerOrder) => sellerOrder.shopId) } }).select('_id autoApprovalEnabled').lean();
-  const autoApprovalByShop = new Map(shops.map((shop) => [shop._id.toString(), Boolean(shop.autoApprovalEnabled)]));
-  const sellerOrders = order.sellerOrders.map((sellerOrder) => {
-    const autoApprovalEnabled = autoApprovalByShop.get(sellerOrder.shopId.toString()) ?? false;
-    const approvalStatus = resolveSellerApprovalState(autoApprovalEnabled);
-    return {
-      ...sellerOrder.toObject ? sellerOrder.toObject() : sellerOrder,
-      approvalStatus,
-      fulfillmentStatus: approvalStatus === 'accepted' ? 'processing' : 'awaiting_payment',
-      payoutStatus: 'held'
-    };
+  let payment = null;
+  if (order.cardDueNAD > 0) {
+    if (!mockPaymentsEnabled) return res.status(503).json({ error: 'Test card checkout is disabled. A live card provider is not configured.' });
+    payment = paymentAdapter.confirmIntent(order.paymentReference);
+  }
+  const paidOrder = await settleOrderPayment(order.orderNumber, user._id, payment);
+  const message = order.cardDueNAD > 0
+    ? `Test card payment of N$ ${order.cardDueNAD.toFixed(2)} recorded${order.walletUsedNAD > 0 ? ` with N$ ${order.walletUsedNAD.toFixed(2)} from your Z balance` : ''}. No money was charged.`
+    : `N$ ${order.walletUsedNAD.toFixed(2)} paid from your Z balance. No money left Z Namibia.`;
+  return res.json({
+    orderNumber: paidOrder.orderNumber,
+    paymentStatus: paidOrder.paymentStatus,
+    paymentMethod: paidOrder.paymentMethod,
+    walletUsedNAD: paidOrder.walletUsedNAD,
+    cardDueNAD: paidOrder.cardDueNAD,
+    mock: order.cardDueNAD > 0,
+    message
   });
-
-  const paidOrder = await Order.findOneAndUpdate({
-    _id: order._id,
-    buyerId: user._id,
-    paymentStatus: 'pending',
-    reservationExpiresAt: { $gt: new Date() },
-    reservationsReleasedAt: null
-  }, {
-    $set: {
-      paymentStatus: 'paid',
-      paymentReference: payment.reference,
-      paidAt: payment.confirmedAt,
-      sellerOrders
-    }
-  }, { new: true });
-
-  if (!paidOrder) return res.status(409).json({ error: 'Order changed before the mock payment was confirmed.' });
-  return res.json({ orderNumber: paidOrder.orderNumber, paymentStatus: paidOrder.paymentStatus, mock: true, message: 'Test payment recorded. No money was charged.' });
 });
 
 app.get('/api/orders/mine', async (req, res) => {
@@ -2588,10 +3580,7 @@ app.get('/api/seller/orders', async (req, res) => {
       buyerName: getBuyerDisplayName(order),
       buyerId: order.buyerId ? { id: order.buyerId._id?.toString?.() || order.buyerId.toString?.(), name: order.buyerId.name || 'Customer' } : null,
       ...sellerOrder,
-      payoutMode: simulatedPayoutsEnabled ? 'simulated' : 'manual',
-      payoutProcessingAt: sellerOrder.payoutEligibleAt
-        ? new Date(new Date(sellerOrder.payoutEligibleAt).getTime() + payoutProcessingDurationMs)
-        : null
+      payoutMode: 'wallet'
     })));
   return res.json({ sellerOrders });
 });
@@ -2638,7 +3627,7 @@ app.post('/api/seller/orders/:orderNumber/:sellerOrderId/decision', async (req, 
     'sellerOrders.$.approvalStatus': decision === 'accept' ? 'accepted' : 'rejected',
     'sellerOrders.$.fulfillmentStatus': decision === 'accept' ? 'processing' : 'disputed',
     'sellerOrders.$.payoutStatus': decision === 'accept' ? 'held' : 'disputed'
-  } }, { new: true });
+  } }, { returnDocument: 'after' });
   if (!order) return res.status(404).json({ error: 'An order awaiting approval was not found.' });
   return res.json({ orderNumber: order.orderNumber, approvalStatus: decision === 'accept' ? 'accepted' : 'rejected', fulfillmentStatus: order.sellerOrders.find((sellerOrder) => sellerOrder._id.toString() === req.params.sellerOrderId)?.fulfillmentStatus || 'disputed' });
 });
@@ -2654,7 +3643,7 @@ app.patch('/api/seller/orders/:orderNumber/:sellerOrderId/shipping', async (req,
     orderNumber: req.params.orderNumber,
     paymentStatus: 'paid',
     sellerOrders: { $elemMatch: { _id: req.params.sellerOrderId, sellerId: user._id, approvalStatus: 'accepted', fulfillmentStatus: 'processing' } }
-  }, { $set: { 'sellerOrders.$.fulfillmentStatus': 'shipped', 'sellerOrders.$.trackingReference': trackingReference } }, { new: true });
+  }, { $set: { 'sellerOrders.$.fulfillmentStatus': 'shipped', 'sellerOrders.$.trackingReference': trackingReference } }, { returnDocument: 'after' });
   if (!order) return res.status(404).json({ error: 'An accepted seller order was not found.' });
   return res.json({ orderNumber: order.orderNumber, status: 'shipped', trackingReference });
 });
@@ -2673,14 +3662,26 @@ app.post('/api/orders/:orderNumber/cancel', async (req, res) => {
     update['sellerOrders.$[].payoutStatus'] = 'disputed';
   }
 
-  const cancelledOrder = await Order.findOneAndUpdate({
-    _id: order._id,
-    buyerId: user._id,
-    paymentStatus: { $in: ['pending', 'paid'] }
-  }, {
-    $set: update
-  }, { new: true });
-  if (!cancelledOrder) return res.status(409).json({ error: 'This order changed before it could be cancelled.' });
+  const cancelledOrder = await withMongoTransaction(async (session) => {
+    if (order.paymentStatus === 'paid' && order.walletUsedNAD > 0) {
+      await applyWalletTransaction({
+        userId: user._id,
+        reference: `refund:${order.orderNumber}`,
+        type: 'purchase_refund',
+        amountNAD: order.walletUsedNAD,
+        orderNumber: order.orderNumber,
+        description: `Z balance refund for cancelled order ${order.orderNumber}`,
+        session
+      });
+    }
+    const updatedOrder = await Order.findOneAndUpdate({
+      _id: order._id,
+      buyerId: user._id,
+      paymentStatus: { $in: ['pending', 'paid'] }
+    }, { $set: update }, { returnDocument: 'after', session });
+    if (!updatedOrder) throw apiError(409, 'This order changed before it could be cancelled.');
+    return updatedOrder;
+  });
 
   await releaseReservedStock(cancelledOrder.items);
   return res.json({ ok: true, orderNumber: cancelledOrder.orderNumber, paymentStatus: cancelledOrder.paymentStatus });
@@ -2702,7 +3703,7 @@ app.post('/api/orders/:orderNumber/:sellerOrderId/confirm-delivery', async (req,
     'sellerOrders.$.deliveredAt': now,
     'sellerOrders.$.payoutEligibleAt': payoutEligibleAt,
     'sellerOrders.$.payoutStatus': 'held'
-  } }, { new: true });
+  } }, { returnDocument: 'after' });
   if (!order) return res.status(404).json({ error: 'A shipped seller order was not found.' });
   return res.json({ orderNumber: order.orderNumber, fulfillmentStatus: 'delivered', payoutStatus: 'held', payoutEligibleAt });
 });
@@ -2710,11 +3711,17 @@ app.post('/api/orders/:orderNumber/:sellerOrderId/confirm-delivery', async (req,
 app.get('/api/seller/payout-ledger', async (req, res) => {
   const user = await getSessionUser(req);
   if (!user) return res.status(401).json({ error: 'Sign in to view seller balances.' });
+  const cancelledUnpaidPromotions = await reconcileUnpaidPromotions(user._id);
   await advancePayoutLifecycle();
   const shop = await Shop.findOne({ ownerId: user._id })
     .select('sellerSuspended sellerRestrictionStatus sellerRestrictedUntil').lean();
   const payoutRestricted = isSellerInventoryRestricted(shop);
+  const updatedUser = await User.findById(user._id).select('walletBalanceNAD').lean();
   const orders = await Order.find({ 'sellerOrders.sellerId': user._id, paymentStatus: 'paid' }).sort({ createdAt: -1 }).lean();
+  const walletTransactions = await WalletTransaction.find({
+    userId: user._id,
+    type: { $in: ['purchase_debit', 'purchase_refund'] }
+  }).sort({ createdAt: -1 }).limit(50).lean();
   const now = new Date();
   const entries = orders.flatMap((order) => order.sellerOrders
     .filter((sellerOrder) => sellerOrder.sellerId.toString() === user._id.toString())
@@ -2722,18 +3729,621 @@ app.get('/api/seller/payout-ledger', async (req, res) => {
       orderNumber: order.orderNumber,
       shopName: sellerOrder.shopName,
       payoutNAD: sellerOrder.payoutNAD,
-      payoutStatus: payoutRestricted && sellerOrder.payoutStatus !== 'paid'
+      payoutStatus: payoutRestricted && !sellerOrder.walletCreditedAt && sellerOrder.payoutStatus !== 'paid'
         ? 'held'
-        : resolvePayoutStatus(sellerOrder, now, payoutProcessingDurationMs, simulatedPayoutsEnabled),
+        : resolvePayoutStatus(sellerOrder, now),
       payoutEligibleAt: sellerOrder.payoutEligibleAt,
-      payoutProcessingAt: sellerOrder.payoutEligibleAt
-        ? new Date(new Date(sellerOrder.payoutEligibleAt).getTime() + payoutProcessingDurationMs)
-        : null,
+      walletCreditedAt: sellerOrder.walletCreditedAt,
       payoutMarkedAt: sellerOrder.payoutMarkedAt,
+      createdAt: order.createdAt,
       payoutReference: sellerOrder.payoutReference,
       simulated: typeof sellerOrder.payoutReference === 'string' && sellerOrder.payoutReference.startsWith('SIM-')
     })));
-  return res.json({ entries, mode: simulatedPayoutsEnabled ? 'simulated' : 'manual' });
+  return res.json({
+    entries,
+    walletTransactions: walletTransactions.map((transaction) => ({
+      type: transaction.type,
+      amountNAD: transaction.amountNAD,
+      balanceAfterNAD: transaction.balanceAfterNAD,
+      orderNumber: transaction.orderNumber,
+      description: transaction.description,
+      createdAt: transaction.createdAt
+    })),
+    walletBalanceNAD: roundNAD(updatedUser?.walletBalanceNAD || 0),
+    cancelledUnpaidPromotions,
+    mode: 'wallet'
+  });
+});
+
+app.post('/api/seller/statements', sellerStatementRateLimit, async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to generate a Z-balance statement.' });
+  const key = getStatementSigningKey(process.env.Z_STATEMENT_SIGNING_KEY);
+  if (!key) {
+    return res.status(503).json({ error: 'Signed statements are unavailable until Z_STATEMENT_SIGNING_KEY is configured with a 32-byte hexadecimal key.' });
+  }
+  const shop = await Shop.findOne({ ownerId: user._id })
+    .select('name sellerSuspended sellerRestrictionStatus sellerRestrictedUntil').lean();
+  if (!shop) return res.status(404).json({ error: 'Seller shop not found.' });
+  const payoutRestricted = isSellerInventoryRestricted(shop);
+  const baseUrl = resolveAppBaseUrl();
+  if (!baseUrl) return res.status(503).json({ error: 'The public application URL is not configured for statement verification.' });
+
+  await reconcileUnpaidPromotions(user._id);
+  await advancePayoutLifecycle();
+  const [account, orders, walletTransactions] = await Promise.all([
+    User.findById(user._id).select('walletBalanceNAD').lean(),
+    Order.find({ 'sellerOrders.sellerId': user._id, paymentStatus: 'paid' }).sort({ createdAt: -1 }).lean(),
+    WalletTransaction.find({
+      userId: user._id,
+      type: { $in: ['purchase_debit', 'purchase_refund'] }
+    }).sort({ createdAt: -1 }).limit(50).lean()
+  ]);
+  const now = new Date();
+  const entries = orders.flatMap((order) => order.sellerOrders
+    .filter((sellerOrder) => sellerOrder.sellerId.toString() === user._id.toString())
+    .map((sellerOrder) => ({
+      orderNumber: order.orderNumber,
+      shopName: sellerOrder.shopName,
+      payoutNAD: sellerOrder.payoutNAD,
+      payoutStatus: payoutRestricted && !sellerOrder.walletCreditedAt && sellerOrder.payoutStatus !== 'paid'
+        ? 'held'
+        : resolvePayoutStatus(sellerOrder, now),
+      payoutEligibleAt: sellerOrder.payoutEligibleAt || null,
+      walletCreditedAt: sellerOrder.walletCreditedAt || null,
+      payoutMarkedAt: sellerOrder.payoutMarkedAt || null,
+      createdAt: order.createdAt,
+      simulated: typeof sellerOrder.payoutReference === 'string' && sellerOrder.payoutReference.startsWith('SIM-')
+    })));
+  const statement = {
+    version: 1,
+    issuer: 'Z Namibia',
+    statementId: randomUUID(),
+    issuedAt: now,
+    shopName: shop.name,
+    walletBalanceNAD: roundNAD(account?.walletBalanceNAD || 0),
+    entries,
+    walletTransactions: walletTransactions.map((transaction) => ({
+      type: transaction.type,
+      amountNAD: transaction.amountNAD,
+      balanceAfterNAD: transaction.balanceAfterNAD,
+      orderNumber: transaction.orderNumber,
+      description: transaction.description,
+      createdAt: transaction.createdAt
+    })),
+    walletTransactionLimit: 50
+  };
+  const signature = signStatement(statement, key);
+  await SellerStatement.create({
+    statementId: statement.statementId,
+    userId: user._id,
+    snapshot: statement,
+    signature
+  });
+  return res.status(201).json({
+    statement,
+    signature,
+    verificationUrl: `${baseUrl}/statement-verification?id=${encodeURIComponent(statement.statementId)}`
+  });
+});
+
+app.get('/api/statements/:statementId/verify', async (req, res) => {
+  const key = getStatementSigningKey(process.env.Z_STATEMENT_SIGNING_KEY);
+  if (!key) {
+    return res.status(503).json({ error: 'Statement verification is unavailable because the signing key is not configured.' });
+  }
+  if (!/^[\da-f-]{36}$/i.test(req.params.statementId)) {
+    return res.status(400).json({ error: 'Invalid statement reference.' });
+  }
+  const record = await SellerStatement.findOne({ statementId: req.params.statementId }).lean();
+  if (!record) return res.status(404).json({ error: 'No Z Namibia statement matches this reference.' });
+  const verified = verifyStatement(record.snapshot, record.signature, key)
+    && record.snapshot.statementId === record.statementId;
+  if (!verified) return res.status(409).json({ error: 'This statement failed its authenticity check. Do not rely on it.' });
+  return res.json({ verified: true, statement: record.snapshot, signature: record.signature });
+});
+
+app.get('/api/developer/apps', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to manage developer applications.' });
+  if (!isEmailVerified(user)) return res.status(403).json({ error: 'Verify your email address before creating API credentials.' });
+  const applications = await DeveloperApplication.find({ ownerId: user._id }).sort({ createdAt: -1 }).lean();
+  return res.json({
+    maxApplications: 5,
+    applications: applications.map((application) => ({
+      appId: application.appId,
+      name: application.name,
+      tokenLast4: application.tokenLast4,
+      revokedAt: application.revokedAt,
+      lastUsedAt: application.lastUsedAt,
+      createdAt: application.createdAt
+    }))
+  });
+});
+
+app.post('/api/developer/apps', developerAppRateLimit, async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to create a developer application.' });
+  if (!isEmailVerified(user)) return res.status(403).json({ error: 'Verify your email address before creating API credentials.' });
+  const name = normalizeDeveloperAppName(req.body?.name);
+  if (!name) return res.status(400).json({ error: 'Enter an application name between 1 and 80 characters.' });
+  const applicationCount = await DeveloperApplication.countDocuments({ ownerId: user._id, revokedAt: null });
+  if (applicationCount >= 5) return res.status(409).json({ error: 'Each developer account can have up to five applications.' });
+
+  const credentials = createDeveloperCredentials();
+  const application = await DeveloperApplication.create({
+    ownerId: user._id,
+    name,
+    ...credentials
+  });
+  return res.status(201).json({
+    application: {
+      appId: application.appId,
+      name: application.name,
+      tokenLast4: application.tokenLast4,
+      createdAt: application.createdAt
+    },
+    apiToken: credentials.token,
+    warning: 'Copy this API token now. It cannot be viewed again; create a new application if it is lost.'
+  });
+});
+
+app.delete('/api/developer/apps/:appId', developerAppRateLimit, async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to revoke a developer application.' });
+  if (!/^[\da-f-]{36}$/i.test(req.params.appId)) {
+    return res.status(404).json({ error: 'Developer application not found.' });
+  }
+  const application = await DeveloperApplication.findOneAndUpdate({
+    ownerId: user._id,
+    appId: req.params.appId,
+    revokedAt: null
+  }, { $set: { revokedAt: new Date() } }, { returnDocument: 'after' });
+  if (!application) return res.status(404).json({ error: 'Active developer application not found.' });
+  return res.json({ revoked: true, appId: application.appId });
+});
+
+app.get('/api/admin/developer-api/usage', async (req, res, next) => {
+  const user = await getSessionUser(req);
+  if (!user || !isAdminUser(user)) {
+    return res.status(403).json({ error: 'Super Admin access is required.' });
+  }
+  const days = Number(req.query.days || 30);
+  if (![7, 30, 90].includes(days)) {
+    return res.status(400).json({ error: 'Choose a 7, 30, or 90 day reporting period.' });
+  }
+
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const start = new Date(today.getTime() - (days - 1) * 24 * 60 * 60 * 1000);
+  try {
+    const records = await DeveloperApiUsage.aggregate([
+      { $match: { day: { $gte: start, $lte: today } } },
+      {
+        $group: {
+          _id: { day: '$day', endpoint: '$endpoint', appId: '$appId' },
+          requests: { $sum: '$requests' },
+          successes: { $sum: '$successes' },
+          verified: { $sum: '$verified' },
+          mismatched: { $sum: '$mismatched' },
+          clientErrors: { $sum: '$clientErrors' },
+          serverErrors: { $sum: '$serverErrors' },
+          totalDurationMs: { $sum: '$totalDurationMs' }
+        }
+      },
+      { $sort: { '_id.day': 1 } }
+    ]);
+
+    const dailyByDate = new Map();
+    const endpoints = new Map();
+    const applications = new Map();
+    const totals = { requests: 0, successes: 0, verified: 0, mismatched: 0, clientErrors: 0, serverErrors: 0, totalDurationMs: 0 };
+    for (let offset = 0; offset < days; offset += 1) {
+      const day = new Date(start.getTime() + offset * 24 * 60 * 60 * 1000);
+      dailyByDate.set(day.toISOString().slice(0, 10), {
+        day: day.toISOString().slice(0, 10),
+        requests: 0,
+        verified: 0,
+        mismatched: 0
+      });
+    }
+
+    for (const record of records) {
+      const dateKey = record._id.day.toISOString().slice(0, 10);
+      const daily = dailyByDate.get(dateKey);
+      if (daily) {
+        daily.requests += record.requests;
+        daily.verified += record.verified || 0;
+        daily.mismatched += record.mismatched || 0;
+      }
+      for (const field of ['requests', 'successes', 'verified', 'mismatched', 'clientErrors', 'serverErrors', 'totalDurationMs']) {
+        totals[field] += record[field] || 0;
+      }
+      const endpoint = endpoints.get(record._id.endpoint) || {
+        endpoint: record._id.endpoint,
+        requests: 0,
+        successes: 0,
+        verified: 0,
+        mismatched: 0,
+        clientErrors: 0,
+        serverErrors: 0,
+        totalDurationMs: 0
+      };
+      for (const field of ['requests', 'successes', 'verified', 'mismatched', 'clientErrors', 'serverErrors', 'totalDurationMs']) {
+        endpoint[field] += record[field] || 0;
+      }
+      endpoints.set(record._id.endpoint, endpoint);
+      if (record._id.appId) {
+        const application = applications.get(record._id.appId) || {
+          appId: record._id.appId,
+          requests: 0,
+          successes: 0,
+          verified: 0,
+          mismatched: 0,
+          clientErrors: 0,
+          serverErrors: 0,
+          totalDurationMs: 0
+        };
+        for (const field of ['requests', 'successes', 'verified', 'mismatched', 'clientErrors', 'serverErrors', 'totalDurationMs']) {
+          application[field] += record[field] || 0;
+        }
+        applications.set(record._id.appId, application);
+      }
+    }
+
+    const topApplications = [...applications.values()]
+      .sort((left, right) => right.requests - left.requests)
+      .slice(0, 10);
+    const applicationNames = await DeveloperApplication.find({
+      appId: { $in: topApplications.map((application) => application.appId) }
+    }).select('appId name').lean();
+    const namesById = new Map(applicationNames.map((application) => [application.appId, application.name]));
+    const activeApplications = await DeveloperApplication.countDocuments({
+      revokedAt: null,
+      lastUsedAt: { $gte: start }
+    });
+
+    return res.json({
+      days,
+      totals: {
+        ...totals,
+        averageDurationMs: totals.requests ? Math.round(totals.totalDurationMs / totals.requests) : 0,
+        activeApplications
+      },
+      daily: [...dailyByDate.values()],
+      endpoints: [...endpoints.values()]
+        .sort((left, right) => right.requests - left.requests)
+        .map((endpoint) => ({
+          ...endpoint,
+          averageDurationMs: endpoint.requests ? Math.round(endpoint.totalDurationMs / endpoint.requests) : 0
+        })),
+      applications: topApplications.map((application) => ({
+        ...application,
+        name: namesById.get(application.appId) || 'Revoked or unavailable application',
+        averageDurationMs: application.requests ? Math.round(application.totalDurationMs / application.requests) : 0
+      }))
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.post('/api/developer/statements/verify-upload', statementApiRateLimit, async (req, res, next) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to verify a statement PDF.' });
+  if (!isEmailVerified(user)) return res.status(403).json({ error: 'Verify your email address before using developer tools.' });
+
+  statementPdfUpload.single('statement')(req, res, async (uploadError) => {
+    if (uploadError) return next(uploadError);
+    try {
+      const appId = typeof req.body?.appId === 'string' ? req.body.appId.trim() : '';
+      if (!/^[\da-f-]{36}$/i.test(appId)) {
+        return res.status(400).json({ error: 'Choose an active developer application.' });
+      }
+      const application = await DeveloperApplication.findOne({ appId, ownerId: user._id, revokedAt: null }).select('_id').lean();
+      if (!application) return res.status(403).json({ error: 'Choose an active application owned by your developer account.' });
+      if (!req.file || !req.file.buffer.subarray(0, 5).equals(Buffer.from('%PDF-'))) {
+        return res.status(400).json({ error: 'Upload a valid PDF statement.' });
+      }
+
+      const parser = new PDFParse({ data: req.file.buffer });
+      let parsedText;
+      try {
+        const parsedPdf = await parser.getText();
+        parsedText = parsedPdf.text;
+      } catch {
+        return res.status(400).json({ error: 'The uploaded PDF could not be read. Upload an unencrypted statement PDF.' });
+      } finally {
+        await parser.destroy();
+      }
+      const extractedStatementId = parsedText.match(/\b[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}\b/i)?.[0] || '';
+      const providedStatementId = typeof req.body?.statementId === 'string' ? req.body.statementId.trim() : '';
+      if (providedStatementId && !/^[\da-f-]{36}$/i.test(providedStatementId)) {
+        return res.status(400).json({ error: 'The statement reference must be a valid reference ID.' });
+      }
+      if (providedStatementId && extractedStatementId && providedStatementId.toLowerCase() !== extractedStatementId.toLowerCase()) {
+        return res.status(409).json({ verified: false, error: 'The supplied reference does not match the reference printed in the PDF.' });
+      }
+      const statementId = extractedStatementId || providedStatementId;
+      if (!statementId) {
+        return res.status(400).json({ error: 'No statement reference was found in the PDF. Enter it manually and try again.' });
+      }
+      const key = getStatementSigningKey(process.env.Z_STATEMENT_SIGNING_KEY);
+      if (!key) return res.status(503).json({ error: 'Statement verification is temporarily unavailable.' });
+      const record = await SellerStatement.findOne({ statementId }).lean();
+      if (!record) return res.status(404).json({ verified: false, error: 'No Z Namibia statement matches the PDF reference.' });
+      if (!verifyStatement(record.snapshot, record.signature, key) || record.snapshot.statementId !== record.statementId) {
+        return res.status(409).json({ verified: false, error: 'The official statement record failed its signature check.' });
+      }
+      const checks = getStatementPdfChecks(record.snapshot, parsedText);
+      const verified = checks.length > 0 && checks.every((check) => check.matched);
+      return res.json({
+        verified,
+        recordVerified: true,
+        statementId,
+        message: verified
+          ? 'The signed record is valid and the uploaded PDF text matches its statement values.'
+          : 'The signed record is valid, but one or more uploaded PDF values do not match it.',
+        checks
+      });
+    } catch (error) {
+      return next(error);
+    }
+  });
+});
+
+app.get('/api/v1/statements/:statementId/verify', trackDeveloperApiUsage('reference'), statementApiRateLimit, async (req, res, next) => {
+  const application = await authenticateDeveloperApplication(req, res);
+  if (!application) return;
+  if (!/^[\da-f-]{36}$/i.test(req.params.statementId)) {
+    return res.status(400).json({ error: 'Invalid statement reference.' });
+  }
+  const key = getStatementSigningKey(process.env.Z_STATEMENT_SIGNING_KEY);
+  if (!key) return res.status(503).json({ error: 'Statement verification is temporarily unavailable.' });
+  try {
+    const record = await SellerStatement.findOne({ statementId: req.params.statementId }).lean();
+    if (!record) return res.status(404).json({ verified: false, error: 'No Z Namibia statement matches this reference.' });
+    const verified = verifyStatement(record.snapshot, record.signature, key)
+      && record.snapshot.statementId === record.statementId;
+    if (!verified) {
+      req.developerApiOutcome = 'mismatched';
+      return res.status(409).json({ verified: false, error: 'The official statement record failed its signature check.' });
+    }
+    req.developerApiOutcome = 'verified';
+    return res.json({ verified: true, statement: record.snapshot, signature: record.signature });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.post('/api/v1/statements/verify-pdf', trackDeveloperApiUsage('pdf'), statementApiRateLimit, async (req, res, next) => {
+  const application = await authenticateDeveloperApplication(req, res);
+  if (!application) return;
+  statementPdfUpload.single('statement')(req, res, async (uploadError) => {
+    if (uploadError) return next(uploadError);
+    try {
+      if (!req.file || !req.file.buffer.subarray(0, 5).equals(Buffer.from('%PDF-'))) {
+        return res.status(400).json({ error: 'Upload a valid PDF statement.' });
+      }
+      const parser = new PDFParse({ data: req.file.buffer });
+      let parsedText;
+      try {
+        const parsedPdf = await parser.getText();
+        parsedText = parsedPdf.text;
+      } catch {
+        return res.status(400).json({ error: 'The uploaded PDF could not be read. Upload an unencrypted statement PDF.' });
+      } finally {
+        await parser.destroy();
+      }
+      const extractedStatementId = parsedText.match(/\b[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}\b/i)?.[0] || '';
+      const providedStatementId = typeof req.body?.statementId === 'string' ? req.body.statementId.trim() : '';
+      if (providedStatementId && !/^[\da-f-]{36}$/i.test(providedStatementId)) {
+        return res.status(400).json({ error: 'The statement reference must be a valid reference ID.' });
+      }
+      if (providedStatementId && extractedStatementId && providedStatementId.toLowerCase() !== extractedStatementId.toLowerCase()) {
+        req.developerApiOutcome = 'mismatched';
+        return res.status(409).json({ verified: false, error: 'The supplied reference does not match the reference printed in the PDF.' });
+      }
+      const statementId = extractedStatementId || providedStatementId;
+      if (!statementId) {
+        return res.status(400).json({ error: 'No statement reference was found in the PDF. Provide statementId if it cannot be read.' });
+      }
+      const key = getStatementSigningKey(process.env.Z_STATEMENT_SIGNING_KEY);
+      if (!key) return res.status(503).json({ error: 'Statement verification is temporarily unavailable.' });
+      const record = await SellerStatement.findOne({ statementId }).lean();
+      if (!record) return res.status(404).json({ verified: false, error: 'No Z Namibia statement matches the PDF reference.' });
+      if (!verifyStatement(record.snapshot, record.signature, key) || record.snapshot.statementId !== record.statementId) {
+        req.developerApiOutcome = 'mismatched';
+        return res.status(409).json({ verified: false, error: 'The official statement record failed its signature check.' });
+      }
+      const checks = getStatementPdfChecks(record.snapshot, parsedText);
+      const verified = checks.length > 0 && checks.every((check) => check.matched);
+      req.developerApiOutcome = verified ? 'verified' : 'mismatched';
+      return res.json({
+        verified,
+        recordVerified: true,
+        statementId,
+        message: verified
+          ? 'The signed record is valid and the uploaded PDF text matches its statement values.'
+          : 'The signed record is valid, but one or more uploaded PDF values do not match it.',
+        checks
+      });
+    } catch (error) {
+      return next(error);
+    }
+  });
+});
+
+app.post('/api/admin/statements/read-reference', adminStatementRateLimit, async (req, res, next) => {
+  const user = await getSessionUser(req);
+  if (!user || !isAdminUser(user)) return res.status(403).json({ error: 'Admin access is required to read statement references.' });
+  statementPdfUpload.single('statement')(req, res, async (uploadError) => {
+    if (uploadError) return next(uploadError);
+    if (!req.file || !req.file.buffer.subarray(0, 5).equals(Buffer.from('%PDF-'))) {
+      return res.status(400).json({ error: 'Upload a valid PDF statement.' });
+    }
+    const parser = new PDFParse({ data: req.file.buffer });
+    try {
+      const parsedPdf = await parser.getText();
+      const statementId = parsedPdf.text.match(/\b[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}\b/i)?.[0] || '';
+      if (!statementId) return res.status(422).json({ error: 'No statement reference could be read from this PDF.' });
+      return res.json({ statementId });
+    } catch {
+      return res.status(400).json({ error: 'The uploaded PDF could not be read. Upload an unencrypted statement PDF.' });
+    } finally {
+      await parser.destroy();
+    }
+  });
+});
+
+app.post('/api/admin/statements/verify-upload', adminStatementRateLimit, async (req, res, next) => {
+  const user = await getSessionUser(req);
+  if (!user || !isAdminUser(user)) return res.status(403).json({ error: 'Admin access is required to verify uploaded statements.' });
+  const key = getStatementSigningKey(process.env.Z_STATEMENT_SIGNING_KEY);
+  if (!key) return res.status(503).json({ error: 'Statement verification is unavailable because the signing key is not configured.' });
+
+  statementPdfUpload.single('statement')(req, res, async (uploadError) => {
+    if (uploadError) return next(uploadError);
+    try {
+      if (!req.file || !req.file.buffer.subarray(0, 5).equals(Buffer.from('%PDF-'))) {
+        return res.status(400).json({ error: 'Upload a valid PDF statement.' });
+      }
+      const providedStatementId = typeof req.body?.statementId === 'string' ? req.body.statementId.trim() : '';
+      if (providedStatementId && !/^[\da-f-]{36}$/i.test(providedStatementId)) {
+        return res.status(400).json({ error: 'The statement reference must be a valid reference ID.' });
+      }
+
+      const parser = new PDFParse({ data: req.file.buffer });
+      let parsedText;
+      try {
+        const parsedPdf = await parser.getText();
+        parsedText = parsedPdf.text;
+      } catch {
+        return res.status(400).json({ error: 'The uploaded PDF could not be read. Upload an unencrypted statement PDF.' });
+      } finally {
+        await parser.destroy();
+      }
+      const extractedStatementId = parsedText.match(/\b[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}\b/i)?.[0] || '';
+      const statementId = providedStatementId || extractedStatementId;
+      if (!statementId) {
+        return res.status(400).json({ error: 'No statement reference was found in the PDF. Enter the reference manually and try again.' });
+      }
+      const record = await SellerStatement.findOne({ statementId }).lean();
+      if (!record) return res.status(404).json({ error: 'No Z Namibia statement matches the reference found in the PDF.' });
+      if (!verifyStatement(record.snapshot, record.signature, key) || record.snapshot.statementId !== record.statementId) {
+        return res.status(409).json({ error: 'The official statement record failed its signature check.' });
+      }
+      const checks = getStatementPdfChecks(record.snapshot, parsedText);
+      const matched = checks.length > 0 && checks.every((check) => check.matched);
+      return res.json({
+        verified: matched,
+        recordVerified: true,
+        message: matched
+          ? 'The signed Z Namibia record is valid and the uploaded PDF text matches its statement values.'
+          : 'The signed record is valid, but one or more uploaded PDF values do not match it.',
+        statement: record.snapshot,
+        signature: record.signature,
+        checks
+      });
+    } catch (error) {
+      return next(error);
+    }
+  });
+});
+
+app.get('/api/seller/payout-settings', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to view payout settings.' });
+  const shop = await Shop.findOne({ ownerId: user._id })
+    .select('_id sellerSuspended sellerRestrictionStatus sellerRestrictedUntil').lean();
+  if (!shop) return res.status(404).json({ error: 'Seller shop not found.' });
+  const [account, requests] = await Promise.all([
+    User.findById(user._id).select('walletBalanceNAD payoutBankAccount').lean(),
+    SimulatedPayoutRequest.find({ userId: user._id }).sort({ createdAt: -1 }).limit(50).lean()
+  ]);
+  return res.json({
+    simulated: true,
+    walletBalanceNAD: roundNAD(account?.walletBalanceNAD || 0),
+    payoutAccount: account?.payoutBankAccount?.accountLast4 ? {
+      bankName: account.payoutBankAccount.bankName,
+      accountName: account.payoutBankAccount.accountName,
+      accountLast4: account.payoutBankAccount.accountLast4
+    } : null,
+    requests: requests.map((request) => ({
+      id: request._id.toString(),
+      amountNAD: request.amountNAD,
+      status: request.status,
+      mode: request.mode,
+      destination: {
+        bankName: request.destination.bankName,
+        accountName: request.destination.accountName,
+        accountLast4: request.destination.accountLast4
+      },
+      createdAt: request.createdAt
+    }))
+  });
+});
+
+app.put('/api/seller/payout-settings', sellerPayoutRateLimit, async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to save payout details.' });
+  const shop = await Shop.findOne({ ownerId: user._id }).select('_id').lean();
+  if (!shop) return res.status(404).json({ error: 'Seller shop not found.' });
+  const normalized = normalizeBankPayoutAccount(req.body);
+  if (normalized.error) return res.status(400).json({ error: normalized.error });
+
+  const updatedUser = await User.findByIdAndUpdate(user._id, {
+    $set: { payoutBankAccount: normalized.account }
+  }, { returnDocument: 'after', runValidators: true }).select('payoutBankAccount').lean();
+  if (!updatedUser) return res.status(404).json({ error: 'Seller account not found.' });
+  return res.json({
+    simulated: true,
+    payoutAccount: {
+      bankName: updatedUser.payoutBankAccount.bankName,
+      accountName: updatedUser.payoutBankAccount.accountName,
+      accountLast4: updatedUser.payoutBankAccount.accountLast4
+    }
+  });
+});
+
+app.post('/api/seller/payout-requests', sellerPayoutRateLimit, async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to create a payout request.' });
+  const shop = await Shop.findOne({ ownerId: user._id })
+    .select('_id sellerSuspended sellerRestrictionStatus sellerRestrictedUntil').lean();
+  if (!shop) return res.status(404).json({ error: 'Seller shop not found.' });
+  const restrictionError = sellerRestrictionError(shop);
+  if (restrictionError) return res.status(403).json({ error: restrictionError });
+  const account = await User.findById(user._id).select('walletBalanceNAD payoutBankAccount').lean();
+  if (!account?.payoutBankAccount?.accountLast4) {
+    return res.status(409).json({ error: 'Save a simulated bank payout destination first.' });
+  }
+  const normalized = normalizePayoutRequestAmount(req.body?.amountNAD, account.walletBalanceNAD);
+  if (normalized.error) return res.status(400).json({ error: normalized.error });
+
+  const request = await SimulatedPayoutRequest.create({
+    userId: user._id,
+    shopId: shop._id,
+    amountNAD: normalized.amountNAD,
+    status: 'simulated',
+    mode: 'simulated',
+    destination: {
+      bankName: account.payoutBankAccount.bankName,
+      accountName: account.payoutBankAccount.accountName,
+      accountLast4: account.payoutBankAccount.accountLast4
+    }
+  });
+  return res.status(201).json({
+    simulated: true,
+    fundsMoved: false,
+    request: {
+      id: request._id.toString(),
+      amountNAD: request.amountNAD,
+      status: request.status,
+      createdAt: request.createdAt
+    },
+    message: 'Simulated request recorded. No funds were sent, reserved, or deducted.'
+  });
 });
 
 app.get('/api/admin/payout-report', async (req, res) => {
@@ -2770,21 +4380,19 @@ app.get('/api/admin/payout-report', async (req, res) => {
         shippingNAD: sellerOrder.shippingNAD,
         commissionNAD: sellerOrder.commissionNAD,
         payoutNAD: sellerOrder.payoutNAD,
-        payoutStatus: sellerRestricted && sellerOrder.payoutStatus !== 'paid' ? 'held' : sellerOrder.payoutStatus,
+        payoutStatus: sellerRestricted && !sellerOrder.walletCreditedAt && sellerOrder.payoutStatus !== 'paid' ? 'held' : sellerOrder.payoutStatus,
         payoutEligibleAt: sellerOrder.payoutEligibleAt,
-        payoutProcessingAt: sellerOrder.payoutEligibleAt
-          ? new Date(new Date(sellerOrder.payoutEligibleAt).getTime() + payoutProcessingDurationMs)
-          : null,
+        walletCreditedAt: sellerOrder.walletCreditedAt,
         payoutMarkedAt: sellerOrder.payoutMarkedAt,
         payoutReference: sellerOrder.payoutReference,
-        eligible: !sellerRestricted && (sellerOrder.payoutStatus === 'eligible' || sellerOrder.payoutStatus === 'paid'),
+        eligible: Boolean(sellerOrder.walletCreditedAt) || (!sellerRestricted && (sellerOrder.payoutStatus === 'eligible' || sellerOrder.payoutStatus === 'paid')),
         sellerRestricted,
         sellerRestrictionStatus: sellerRestriction?.sellerRestrictionStatus || 'active',
         sellerRestrictedUntil: sellerRestriction?.sellerRestrictedUntil || null,
         simulated: simulatedPayoutsEnabled && sellerOrder.payoutStatus === 'paid'
       };
     }));
-  return res.json({ entries, generatedAt: now, mode: simulatedPayoutsEnabled ? 'simulated' : 'manual' });
+  return res.json({ entries, generatedAt: now, mode: 'wallet' });
 });
 
 app.get('/api/admin/support-requests', async (req, res) => {
@@ -2831,40 +4439,7 @@ app.patch('/api/admin/support-requests/:id', async (req, res) => {
 app.post('/api/admin/payout-report/:orderNumber/:sellerOrderId/mark-paid', async (req, res) => {
   const user = await getSessionUser(req);
   if (!user || !isAdminUser(user)) return res.status(403).json({ error: 'Admin access is not configured for this account.' });
-  if (simulatedPayoutsEnabled) return res.status(409).json({ error: 'Manual payout recording is disabled while mock payouts are being simulated.' });
-  if (!mongoose.isValidObjectId(req.params.sellerOrderId)) return res.status(404).json({ error: 'Eligible payout not found.' });
-  const reference = typeof req.body?.reference === 'string' ? req.body.reference.trim() : '';
-  if (reference.length < 2 || reference.length > 100) return res.status(400).json({ error: 'Enter the manual EFT reference (2 to 100 characters).'});
-
-  const payoutOrder = await Order.findOne({
-    orderNumber: req.params.orderNumber,
-    sellerOrders: { $elemMatch: { _id: req.params.sellerOrderId } }
-  }).select('sellerOrders');
-  const payoutSellerOrder = payoutOrder?.sellerOrders.find((entry) => entry._id.toString() === req.params.sellerOrderId);
-  if (!payoutSellerOrder) return res.status(404).json({ error: 'Eligible payout not found.' });
-  const sellerShop = await Shop.findOne({ ownerId: payoutSellerOrder.sellerId })
-    .select('sellerSuspended sellerRestrictionStatus sellerRestrictedUntil').lean();
-  if (isSellerInventoryRestricted(sellerShop)) {
-    return res.status(409).json({ error: 'This seller payout cannot be recorded while seller access is restricted.' });
-  }
-
-  const order = await Order.findOneAndUpdate({
-    orderNumber: req.params.orderNumber,
-    paymentStatus: 'paid',
-    sellerOrders: { $elemMatch: {
-      _id: req.params.sellerOrderId,
-      fulfillmentStatus: 'delivered',
-      payoutStatus: 'eligible',
-      payoutEligibleAt: { $lte: new Date() }
-    } }
-  }, { $set: {
-    'sellerOrders.$.payoutStatus': 'paid',
-    'sellerOrders.$.payoutReference': reference,
-    'sellerOrders.$.payoutMarkedAt': new Date()
-  } }, { new: true });
-
-  if (!order) return res.status(409).json({ error: 'This payout is not eligible or has already been recorded.' });
-  return res.json({ ok: true, orderNumber: order.orderNumber, payoutStatus: 'paid', reference });
+  return res.status(409).json({ error: 'EFT payouts are not enabled. Eligible seller earnings are credited to the Z virtual balance automatically.' });
 });
 
 app.get('/api/admin/platform', async (req, res) => {
@@ -2884,6 +4459,108 @@ app.get('/api/admin/platform', async (req, res) => {
   });
 });
 
+app.get('/api/admin/login-wallpaper', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user || !isModeratorUser(user)) return res.status(403).json({ error: 'Moderator access is not configured for this account.' });
+  res.set('Cache-Control', 'no-store');
+  const [saved, products] = await Promise.all([
+    LoginWallpaper.findOne({ key: 'login' }).lean(),
+    getActivePromotedProducts()
+  ]);
+  const settings = serializeLoginWallpaper(saved);
+  if (settings.rotatePromotions && !settings.productIds.length) {
+    settings.productIds = products.map((product) => product.id);
+  }
+  return res.json({
+    settings,
+    products
+  });
+});
+
+app.put('/api/admin/login-wallpaper', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user || !isModeratorUser(user)) return res.status(403).json({ error: 'Moderator access is not configured for this account.' });
+
+  const normalized = normalizeLoginWallpaper(req.body);
+  if (normalized.error) return res.status(400).json({ error: normalized.error });
+  const activeProducts = await getActivePromotedProducts();
+  const activeProductIds = new Set(activeProducts.map((product) => product.id));
+  if (normalized.settings.productIds.some((id) => !activeProductIds.has(id))) {
+    return res.status(400).json({ error: 'Every selected product must have an active promotion.' });
+  }
+  const setting = await LoginWallpaper.findOneAndUpdate(
+    { key: 'login' },
+    {
+      $set: {
+        ...normalized.settings,
+        productIds: normalized.settings.productIds.map((id) => new mongoose.Types.ObjectId(id)),
+        productId: normalized.settings.rotatePromotions ? null : new mongoose.Types.ObjectId(normalized.settings.productIds[0]),
+        rotatePromotions: normalized.settings.rotatePromotions
+      }
+    },
+    { returnDocument: 'after', upsert: true, runValidators: true, setDefaultsOnInsert: true }
+  );
+  return res.json({ settings: serializeLoginWallpaper(setting.toObject()) });
+});
+
+app.get('/api/admin/server-config', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user || !isAdminUser(user)) return res.status(403).json({ error: 'Super-admin access is not configured for this account.' });
+  res.set('Cache-Control', 'no-store');
+  return res.json(getServerDiagnostics({
+    appVersion: require('./package.json').version,
+    databaseReadyState: mongoose.connection.readyState,
+    platform: os.platform(),
+    osRelease: os.release(),
+    architecture: os.arch(),
+    processUptimeSeconds: process.uptime(),
+    hostUptimeSeconds: os.uptime(),
+    memoryUsage: process.memoryUsage(),
+    totalMemoryBytes: os.totalmem(),
+    freeMemoryBytes: os.freemem(),
+    nodeEnvironment: process.env.NODE_ENV
+  }));
+});
+
+app.get('/api/admin/commands/tests', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user || !isAdminUser(user)) return res.status(403).json({ error: 'Super-admin access is not configured for this account.' });
+  res.set('Cache-Control', 'no-store');
+  return res.json({ tests: listAllowedTests() });
+});
+
+app.post('/api/admin/commands/tests/run-all', async (req, res, next) => {
+  const user = await getSessionUser(req);
+  if (!user || !isAdminUser(user)) return res.status(403).json({ error: 'Super-admin access is not configured for this account.' });
+  return next();
+}, commandTestRateLimit, async (req, res) => {
+  try {
+    const result = await runAllAllowedTests();
+    res.set('Cache-Control', 'no-store');
+    return res.json(result);
+  } catch (error) {
+    if (error.code === 'TEST_RUN_IN_PROGRESS') return res.status(409).json({ error: error.message });
+    throw error;
+  }
+});
+
+app.post('/api/admin/commands/tests/:testId/run', async (req, res, next) => {
+  const user = await getSessionUser(req);
+  if (!user || !isAdminUser(user)) return res.status(403).json({ error: 'Super-admin access is not configured for this account.' });
+  return next();
+}, commandTestRateLimit, async (req, res) => {
+
+  try {
+    const result = await runAllowedTest(req.params.testId);
+    res.set('Cache-Control', 'no-store');
+    return res.json(result);
+  } catch (error) {
+    if (error.code === 'INVALID_TEST') return res.status(404).json({ error: error.message });
+    if (error.code === 'TEST_RUN_IN_PROGRESS') return res.status(409).json({ error: error.message });
+    throw error;
+  }
+});
+
 app.patch('/api/admin/platform/commission', async (req, res) => {
   const user = await getSessionUser(req);
   if (!user || !isAdminUser(user)) return res.status(403).json({ error: 'Super-admin access is not configured for this account.' });
@@ -2894,7 +4571,7 @@ app.patch('/api/admin/platform/commission', async (req, res) => {
   const setting = await PlatformSetting.findOneAndUpdate(
     { key: 'commission_rate' },
     { $set: { commissionRate: ratePercent / 100 } },
-    { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
+    { returnDocument: 'after', upsert: true, runValidators: true, setDefaultsOnInsert: true }
   );
   return res.json({ commissionRatePercent: setting.commissionRate * 100 });
 });
@@ -3029,7 +4706,7 @@ app.patch('/api/admin/seller-restrictions/:shopId', async (req, res) => {
     $set: decision === 'release'
       ? { sellerRestrictionStatus: 'active', sellerRestrictedUntil: null, sellerRestrictionReason: '' }
       : { sellerRestrictionStatus: 'banned', sellerRestrictedUntil: null, sellerRestrictionReason: 'Permanently restricted by Super Admin after review.' }
-  }, { new: true }).select('_id ownerId name sellerRestrictionStatus');
+  }, { returnDocument: 'after' }).select('_id ownerId name sellerRestrictionStatus');
   if (!shop) return res.status(404).json({ error: 'Active temporary seller restriction not found.' });
   const owner = await User.findById(shop.ownerId).select('name email').lean();
   await recordModerationAudit({
@@ -3146,13 +4823,13 @@ app.patch('/api/admin/reports/:id', async (req, res) => {
     const dismissedReport = await ListingReport.findOneAndUpdate(
       { _id: report._id, status: 'pending' },
       { $set: { status: 'dismissed', reviewedBy: user._id, reviewedAt: new Date() } },
-      { new: true }
+      { returnDocument: 'after' }
     );
     if (!dismissedReport) return res.status(404).json({ error: 'Pending report not found.' });
     const reporter = await User.findByIdAndUpdate(
       dismissedReport.reporterId,
       { $inc: { dismissedListingReportCount: 1 } },
-      { new: true }
+      { returnDocument: 'after' }
     ).select('dismissedListingReportCount').lean();
     const [remainingStats] = await ListingReport.aggregate([
       { $match: { productId: dismissedReport.productId, status: 'pending' } },
@@ -3170,7 +4847,7 @@ app.patch('/api/admin/reports/:id', async (req, res) => {
         moderationSource: 'report_threshold'
       }, {
         $set: { moderationStatus: 'visible', moderationSource: null, moderatedAt: null }
-      }, { new: true }).select('title').lean();
+      }, { returnDocument: 'after' }).select('title').lean();
     }
     await recordModerationAudit({
       actorId: user._id,
@@ -3207,7 +4884,7 @@ app.patch('/api/admin/reports/:id', async (req, res) => {
       moderationSource: decision === 'hide' ? 'moderator' : null,
       moderatedAt: decision === 'hide' ? new Date() : null
     }
-  }, { new: true }).select('title').lean();
+  }, { returnDocument: 'after' }).select('title').lean();
   await ListingReport.updateMany({ productId: report.productId, status: 'pending' }, {
     $set: { status: 'actioned', reviewedBy: user._id, reviewedAt: new Date() }
   });
@@ -3233,7 +4910,7 @@ app.get('/api/admin/review-queue', async (req, res) => {
       .limit(100)
       .lean(),
     Product.find({ reviewStatus: 'pending', status: 'active' })
-      .select('title description category priceNAD imageUrl createdAt shopId')
+      .select('title description category priceNAD imageUrl createdAt shopId reviewReasons')
       .populate('shopId', 'name slug')
       .sort({ createdAt: 1 })
       .limit(100)
@@ -3258,7 +4935,8 @@ app.get('/api/admin/review-queue', async (req, res) => {
       priceNAD: product.priceNAD,
       imageUrl: product.imageUrl,
       submittedAt: product.createdAt,
-      shopName: product.shopId?.name || 'Unknown shop'
+      shopName: product.shopId?.name || 'Unknown shop',
+      reviewReasons: product.reviewReasons || []
     }))
   });
 });
@@ -3275,7 +4953,7 @@ app.patch('/api/admin/shops/:id/approval', async (req, res) => {
   const shop = await Shop.findOneAndUpdate(
     { _id: req.params.id, approvalStatus: 'pending' },
     { $set: { approvalStatus: decision === 'approve' ? 'approved' : 'rejected', approvalNote } },
-    { new: true, runValidators: true }
+    { returnDocument: 'after', runValidators: true }
   );
   if (!shop) return res.status(404).json({ error: 'Pending shop not found.' });
   return res.json({ ok: true, approvalStatus: shop.approvalStatus, approvalNote: shop.approvalNote });
@@ -3287,10 +4965,17 @@ app.patch('/api/admin/products/:id/review', async (req, res) => {
   if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: 'Pending listing not found.' });
   const decision = req.body?.decision;
   if (!['approve', 'reject'].includes(decision)) return res.status(400).json({ error: 'Choose approve or reject.' });
+  if (decision === 'approve') {
+    const product = await Product.findOne({ _id: req.params.id, reviewStatus: 'pending' })
+      .select('title description category imageUrl imageUrls priceNAD stock').lean();
+    if (!product) return res.status(404).json({ error: 'Pending listing not found.' });
+    const dataIssues = getProductBasicDataIssues(product);
+    if (dataIssues.length) return res.status(409).json({ error: `Complete the basic product checks before approval: ${dataIssues.join(' ')}` });
+  }
   const product = await Product.findOneAndUpdate(
     { _id: req.params.id, reviewStatus: 'pending' },
     { $set: { reviewStatus: decision === 'approve' ? 'approved' : 'rejected' } },
-    { new: true, runValidators: true }
+    { returnDocument: 'after', runValidators: true }
   );
   if (!product) return res.status(404).json({ error: 'Pending listing not found.' });
   return res.json({ ok: true, reviewStatus: product.reviewStatus });
@@ -3389,18 +5074,855 @@ app.get('/api/admin/users', async (req, res) => {
   });
 });
 
+app.get('/api/admin/users/:id/transactions', async (req, res) => {
+  const admin = await getSessionUser(req);
+  if (!admin || !isAdminUser(admin)) return res.status(403).json({ error: 'Admin access is not configured for this account.' });
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: 'Account not found.' });
+
+  const type = typeof req.query.type === 'string' ? req.query.type : 'buyer-orders';
+  const page = req.query.page === undefined ? 1 : Number(req.query.page);
+  const pageSize = req.query.pageSize === undefined ? 25 : Number(req.query.pageSize);
+  const supportedTypes = [
+    'buyer-orders', 'seller-orders', 'wallet', 'payouts', 'promotions',
+    'cart', 'wishlist',
+    'listings', 'reviews-written', 'listing-reports', 'reports-on-listings',
+    'listing-moderation', 'listing-engagement', 'support-requests', 'login-activity',
+    'appeals', 'notifications', 'seller-notifications', 'developer-applications',
+    'developer-usage', 'statements', 'account-audit', 'submitted-report-moderation',
+    'listing-review-actions', 'reviews-received', 'threshold-events',
+    'support-notifications', 'sessions', 'password-resets', 'email-verifications',
+    'appeal-access', 'referrals'
+  ];
+  if (!supportedTypes.includes(type)) return res.status(400).json({ error: 'Choose a supported transaction type.' });
+  if (!Number.isSafeInteger(page) || page < 1 || !Number.isSafeInteger(pageSize) || pageSize < 1 || pageSize > 100 || !Number.isSafeInteger((page - 1) * pageSize)) {
+    return res.status(400).json({ error: 'Page must be a positive integer and page size must be between 1 and 100.' });
+  }
+
+  const account = await User.findById(req.params.id).select('name email').lean();
+  if (!account) return res.status(404).json({ error: 'Account not found.' });
+  const skip = (page - 1) * pageSize;
+  let records;
+  let total;
+
+  if (type === 'cart' || type === 'wishlist') {
+    const field = type === 'cart' ? 'cartItems' : 'wishlistProductIds';
+    const [result] = await User.aggregate([
+      { $match: { _id: account._id } },
+      { $project: { items: { $ifNull: [`$${field}`, []] } } },
+      { $facet: {
+        records: [
+          { $unwind: { path: '$items', includeArrayIndex: 'index' } },
+          { $sort: { index: 1 } },
+          { $skip: skip },
+          { $limit: pageSize },
+          { $project: {
+            _id: 0,
+            productId: type === 'cart' ? '$items.productId' : '$items',
+            quantity: type === 'cart' ? '$items.quantity' : { $literal: 1 }
+          } }
+        ],
+        total: [{ $project: { count: { $size: '$items' } } }, { $group: { _id: null, count: { $sum: '$count' } } }]
+      } }
+    ]);
+    records = result?.records || [];
+    total = result?.total?.[0]?.count || 0;
+  } else if (type === 'buyer-orders') {
+    [records, total] = await Promise.all([
+      Order.find({ buyerId: account._id }).sort({ createdAt: -1, _id: -1 }).skip(skip).limit(pageSize)
+        .select('buyerId orderNumber sellerOrders items productsSubtotalNAD shippingNAD commissionNAD commissionRate totalNAD paymentStatus paymentMethod paymentMode paymentReference walletUsedNAD cardDueNAD deliveryTown reservationExpiresAt reservationsReleasedAt paidAt createdAt updatedAt').lean(),
+      Order.countDocuments({ buyerId: account._id })
+    ]);
+  } else if (type === 'seller-orders') {
+    [records, total] = await Promise.all([
+      Order.aggregate([
+        { $unwind: '$sellerOrders' },
+        { $match: { 'sellerOrders.sellerId': account._id } },
+        { $sort: { createdAt: -1, _id: -1, 'sellerOrders._id': -1 } },
+        { $skip: skip },
+        { $limit: pageSize },
+        { $project: {
+          _id: 0,
+          orderId: { $toString: '$_id' },
+          sellerOrderId: { $toString: '$sellerOrders._id' },
+          orderNumber: 1,
+          totalNAD: 1,
+          paymentStatus: 1,
+          paymentMethod: 1,
+          paymentMode: 1,
+          paymentReference: 1,
+          walletUsedNAD: 1,
+          cardDueNAD: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          paidAt: 1,
+          shopId: '$sellerOrders.shopId',
+          shopName: '$sellerOrders.shopName',
+          sellerTown: '$sellerOrders.sellerTown',
+          deliveryTown: '$sellerOrders.deliveryTown',
+          shippingZone: '$sellerOrders.shippingZone',
+          items: '$sellerOrders.items',
+          productsSubtotalNAD: '$sellerOrders.productsSubtotalNAD',
+          shippingNAD: '$sellerOrders.shippingNAD',
+          commissionNAD: '$sellerOrders.commissionNAD',
+          commissionRate: '$sellerOrders.commissionRate',
+          payoutNAD: '$sellerOrders.payoutNAD',
+          approvalStatus: '$sellerOrders.approvalStatus',
+          fulfillmentStatus: '$sellerOrders.fulfillmentStatus',
+          payoutStatus: '$sellerOrders.payoutStatus',
+          trackingReference: '$sellerOrders.trackingReference',
+          deliveredAt: '$sellerOrders.deliveredAt',
+          payoutEligibleAt: '$sellerOrders.payoutEligibleAt',
+          walletCreditedAt: '$sellerOrders.walletCreditedAt',
+          payoutReference: '$sellerOrders.payoutReference',
+          payoutMarkedAt: '$sellerOrders.payoutMarkedAt'
+        } }
+      ]),
+      Order.countDocuments({ 'sellerOrders.sellerId': account._id })
+    ]);
+  } else if (type === 'wallet') {
+    [records, total] = await Promise.all([
+      WalletTransaction.find({ userId: account._id }).sort({ createdAt: -1, _id: -1 }).skip(skip).limit(pageSize)
+        .select('type amountNAD balanceAfterNAD orderNumber description reference createdAt updatedAt').lean(),
+      WalletTransaction.countDocuments({ userId: account._id })
+    ]);
+  } else if (type === 'payouts') {
+    [records, total] = await Promise.all([
+      SimulatedPayoutRequest.find({ userId: account._id }).sort({ createdAt: -1, _id: -1 }).skip(skip).limit(pageSize)
+        .select('shopId amountNAD status mode destination createdAt updatedAt').lean(),
+      SimulatedPayoutRequest.countDocuments({ userId: account._id })
+    ]);
+  } else if (type === 'promotions') {
+    [records, total] = await Promise.all([
+      PromotionCampaign.find({ sellerId: account._id }).sort({ createdAt: -1, _id: -1 }).skip(skip).limit(pageSize)
+        .populate('productId', 'title').select('productId shopId amountNAD durationDays status paymentMethod walletUsedNAD cardDueNAD paymentExpiresAt paidAt startsAt expiresAt createdAt updatedAt').lean(),
+      PromotionCampaign.countDocuments({ sellerId: account._id })
+    ]);
+  } else {
+    const shop = ['listings', 'reports-on-listings', 'listing-moderation', 'listing-engagement', 'reviews-received', 'threshold-events'].includes(type)
+      ? await Shop.findOne({ ownerId: account._id }).select('_id').lean()
+      : null;
+    const simpleQueries = {
+      listings: shop ? [Product, { shopId: shop._id }, 'title description priceNAD stock isAvailable category town imageUrl imageUrls status reviewStatus reviewReasons moderationStatus moderationSource moderatedAt createdAt updatedAt', null, { createdAt: -1, _id: -1 }] : null,
+      'reviews-written': [ShopReview, { userId: account._id }, 'shopId rating comment createdAt updatedAt', { path: 'shopId', select: 'name' }, { createdAt: -1, _id: -1 }],
+      'listing-reports': [ListingReport, { reporterId: account._id }, 'productId reviewedBy reason details status credibilityPoints verifiedBuyer sellerReporter createdAt updatedAt reviewedAt', [{ path: 'productId', select: 'title' }, { path: 'reviewedBy', select: 'name' }], { createdAt: -1, _id: -1 }],
+      'support-requests': [SupportRequest, { buyerId: account._id }, 'orderId orderNumber category topic message status adminResponse createdAt updatedAt', null, { createdAt: -1, _id: -1 }],
+      'login-activity': [LoginActivity, { userId: account._id }, 'device client_ip country_code city isp_provider readAt expiresAt createdAt updatedAt', null, { createdAt: -1, _id: -1 }],
+      appeals: [SuspensionAppeal, { accountEmail: account.email }, 'reason referenceId status createdAt updatedAt', null, { createdAt: -1, _id: -1 }],
+      notifications: [AccountNotification, { userId: account._id }, 'createdBy title message destination accountReadAt sellerReadAt createdAt updatedAt', { path: 'createdBy', select: 'name' }, { createdAt: -1, _id: -1 }],
+      'seller-notifications': [SellerNotification, { userId: account._id }, 'type promotionId title message readAt createdAt updatedAt', { path: 'promotionId', select: 'status startsAt expiresAt' }, { createdAt: -1, _id: -1 }],
+      'developer-applications': [DeveloperApplication, { ownerId: account._id }, 'appId name tokenLast4 revokedAt lastUsedAt createdAt updatedAt', null, { createdAt: -1, _id: -1 }],
+      statements: [SellerStatement, { userId: account._id }, 'statementId snapshot createdAt updatedAt', null, { createdAt: -1, _id: -1 }],
+      'listing-review-actions': [ListingReport, { reviewedBy: account._id }, 'productId reporterId reason status reviewedAt createdAt', [{ path: 'productId', select: 'title' }, { path: 'reporterId', select: 'name' }], { reviewedAt: -1, _id: -1 }],
+      'reviews-received': shop ? [ShopReview, { shopId: shop._id }, 'userId rating comment createdAt updatedAt', { path: 'userId', select: 'name email' }, { createdAt: -1, _id: -1 }] : null,
+      'threshold-events': shop ? [ListingThresholdEvent, { shopId: shop._id }, 'shopId productId triggeredAt', null, { triggeredAt: -1, _id: -1 }] : null,
+      'support-notifications': [SupportNotification, { userId: account._id }, 'supportRequestId readAt createdAt updatedAt', { path: 'supportRequestId', select: 'topic status createdAt' }, { createdAt: -1, _id: -1 }],
+      sessions: [Session, { userId: account._id }, 'createdAt updatedAt expiresAt', null, { createdAt: -1, _id: -1 }],
+      'password-resets': [PasswordReset, { userId: account._id }, 'createdAt expiresAt', null, { createdAt: -1, _id: -1 }],
+      'email-verifications': [EmailVerification, { userId: account._id }, 'createdAt expiresAt', null, { createdAt: -1, _id: -1 }],
+      'appeal-access': [SuspensionAppealAccess, { accountEmail: account.email }, 'createdAt expiresAt', null, { createdAt: -1, _id: -1 }],
+      referrals: [User, { referredBy: account._id }, 'name email createdAt', null, { createdAt: -1, _id: -1 }]
+    };
+
+    if (simpleQueries[type]) {
+      const [Model, filter, fields, populate, sort] = simpleQueries[type];
+      [records, total] = await Promise.all([
+        (() => {
+          let query = Model.find(filter).sort(sort).skip(skip).limit(pageSize);
+          if (populate) query = Array.isArray(populate)
+            ? populate.reduce((current, option) => current.populate(option), query)
+            : query.populate(populate);
+          return query.select(fields).lean();
+        })(),
+        Model.countDocuments(filter)
+      ]);
+    } else if (Object.prototype.hasOwnProperty.call(simpleQueries, type)) {
+      records = [];
+      total = 0;
+    } else if (type === 'account-audit') {
+      const filter = { $or: [{ targetType: 'account', targetId: account._id.toString() }, { actorId: account._id }] };
+      [records, total] = await Promise.all([
+        ModerationAudit.find(filter).sort({ createdAt: -1, _id: -1 }).skip(skip).limit(pageSize)
+          .populate('actorId', 'name').select('action details targetType targetId targetLabel actorId actorType createdAt').lean(),
+        ModerationAudit.countDocuments(filter)
+      ]);
+    } else if (['reports-on-listings', 'listing-moderation', 'listing-engagement'].includes(type)) {
+      if (!shop) {
+        records = [];
+        total = 0;
+      } else if (type === 'listing-engagement') {
+        const [result] = await PromotionEngagement.aggregate([
+          { $match: { shopId: shop._id } },
+          { $group: { _id: { campaignId: '$campaignId', date: '$date', eventType: '$eventType', placement: '$placement' }, count: { $sum: 1 } } },
+          { $sort: { '_id.date': -1, '_id.campaignId': 1, '_id.eventType': 1, '_id.placement': 1 } },
+          { $facet: {
+            records: [{ $skip: skip }, { $limit: pageSize }],
+            total: [{ $count: 'count' }]
+          } }
+        ]);
+        records = (result?.records || []).map((entry) => ({
+          campaignId: entry._id.campaignId,
+          date: entry._id.date,
+          eventType: entry._id.eventType,
+          placement: entry._id.placement,
+          count: entry.count
+        }));
+        total = result?.total?.[0]?.count || 0;
+      } else {
+        const listingIds = await Product.distinct('_id', { shopId: shop._id });
+        const filter = type === 'reports-on-listings'
+          ? { productId: { $in: listingIds } }
+          : { targetType: 'listing', targetId: { $in: listingIds.map((id) => id.toString()) } };
+        const Model = type === 'reports-on-listings' ? ListingReport : ModerationAudit;
+        let query = Model.find(filter).sort({ createdAt: -1, _id: -1 }).skip(skip).limit(pageSize);
+        if (type === 'reports-on-listings') {
+          query = query.populate('productId', 'title').populate('reporterId', 'name').populate('reviewedBy', 'name')
+            .select('productId reporterId reviewedBy reason details status credibilityPoints verifiedBuyer sellerReporter createdAt reviewedAt');
+        } else {
+          query = query.populate('actorId', 'name').select('action details targetLabel actorId actorType createdAt');
+        }
+        [records, total] = await Promise.all([query.lean(), Model.countDocuments(filter)]);
+      }
+    } else if (type === 'submitted-report-moderation') {
+      const reportIds = await ListingReport.distinct('_id', { reporterId: account._id });
+      const filter = { targetType: 'listing_report', targetId: { $in: reportIds.map((id) => id.toString()) } };
+      [records, total] = await Promise.all([
+        ModerationAudit.find(filter).sort({ createdAt: -1, _id: -1 }).skip(skip).limit(pageSize)
+          .populate('actorId', 'name').select('action details targetId targetLabel actorId actorType createdAt').lean(),
+        ModerationAudit.countDocuments(filter)
+      ]);
+    } else if (type === 'developer-usage') {
+      const appIds = await DeveloperApplication.distinct('appId', { ownerId: account._id });
+      const filter = { appId: { $in: appIds } };
+      [records, total] = await Promise.all([
+        DeveloperApiUsage.find(filter).sort({ day: -1, endpoint: 1, appId: 1 }).skip(skip).limit(pageSize)
+          .select('appId day endpoint requests successes verified mismatched clientErrors serverErrors totalDurationMs expiresAt').lean(),
+        DeveloperApiUsage.countDocuments(filter)
+      ]);
+    }
+  }
+
+  return res.json({
+    account: { id: account._id.toString(), name: account.name, email: account.email },
+    type,
+    records,
+    page,
+    pageSize,
+    total,
+    pages: Math.ceil(total / pageSize)
+  });
+});
+
+app.get('/api/admin/users/:id/details', async (req, res) => {
+  const admin = await getSessionUser(req);
+  if (!admin || !isAdminUser(admin)) return res.status(403).json({ error: 'Admin access is not configured for this account.' });
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: 'Account not found.' });
+
+  const account = await User.findById(req.params.id)
+    .select('name email phone town role emailVerified isSuspended walletBalanceNAD payoutBankAccount dismissedListingReportCount referralCode referredBy createdAt updatedAt')
+    .lean();
+  if (!account) return res.status(404).json({ error: 'Account not found.' });
+
+  const [accountCollections] = await User.aggregate([
+    { $match: { _id: account._id } },
+    { $project: {
+      cartItems: { $slice: [{ $ifNull: ['$cartItems', []] }, 10] },
+      cartItemCount: { $size: { $ifNull: ['$cartItems', []] } },
+      wishlistProductIds: { $slice: [{ $ifNull: ['$wishlistProductIds', []] }, 10] },
+      wishlistCount: { $size: { $ifNull: ['$wishlistProductIds', []] } }
+    } }
+  ]);
+  const cartItemsPreview = accountCollections?.cartItems || [];
+  const wishlistPreview = accountCollections?.wishlistProductIds || [];
+  const sellerShop = await Shop.findOne({ ownerId: account._id }).select('-kycDocumentId -nameKey -__v').lean();
+  const [
+    listings, listingCount, buyerOrderCount, paidBuyerTotals, sellerOrderCount,
+    sellerPayoutTotals, walletTotals, walletTransactionCount, payoutRequestCount, promotionCount, reviews, reviewCount, cartProducts,
+    submittedReports, submittedReportCount, supportRequests, supportRequestCount, loginActivities,
+    appeals, notifications, sellerNotifications, developerApplications, statements, sessions,
+    passwordResets, emailVerifications, supportNotifications, accountAuditEvents, listingReviewActions,
+    receivedReviews, thresholdEvents, appealAccessRecords
+  ] = await Promise.all([
+    sellerShop
+      ? Product.find({ shopId: sellerShop._id }).sort({ createdAt: -1 }).limit(10).lean()
+      : Promise.resolve([]),
+    sellerShop ? Product.countDocuments({ shopId: sellerShop._id }) : Promise.resolve(0),
+    Order.countDocuments({ buyerId: account._id }),
+    Order.aggregate([
+      { $match: { buyerId: account._id, paymentStatus: 'paid' } },
+      { $group: { _id: null, totalNAD: { $sum: '$totalNAD' }, count: { $sum: 1 } } }
+    ]),
+    Order.countDocuments({ 'sellerOrders.sellerId': account._id }),
+    Order.aggregate([
+      { $match: { paymentStatus: 'paid' } },
+      { $unwind: '$sellerOrders' },
+      { $match: { 'sellerOrders.sellerId': account._id } },
+      { $group: {
+        _id: null,
+        totalPayoutNAD: { $sum: '$sellerOrders.payoutNAD' },
+        creditedToWalletNAD: {
+          $sum: { $cond: [{ $ne: [{ $ifNull: ['$sellerOrders.walletCreditedAt', null] }, null] }, '$sellerOrders.payoutNAD', 0] }
+        },
+        awaitingWalletCreditNAD: {
+          $sum: { $cond: [{ $eq: [{ $ifNull: ['$sellerOrders.walletCreditedAt', null] }, null] }, '$sellerOrders.payoutNAD', 0] }
+        },
+        orderCount: { $sum: 1 }
+      } }
+    ]),
+    WalletTransaction.aggregate([
+      { $match: { userId: account._id } },
+      { $group: { _id: '$type', amountNAD: { $sum: '$amountNAD' }, count: { $sum: 1 } } }
+    ]),
+    WalletTransaction.countDocuments({ userId: account._id }),
+    SimulatedPayoutRequest.countDocuments({ userId: account._id }),
+    PromotionCampaign.countDocuments({ sellerId: account._id }),
+    ShopReview.find({ userId: account._id }).sort({ createdAt: -1 }).limit(10)
+      .populate('shopId', 'name').select('shopId rating comment createdAt updatedAt').lean(),
+    ShopReview.countDocuments({ userId: account._id }),
+    Product.find({
+      _id: { $in: [...cartItemsPreview.map((item) => item.productId), ...wishlistPreview] }
+    }).select('title priceNAD status').lean(),
+    ListingReport.find({ reporterId: account._id }).sort({ createdAt: -1 }).limit(10)
+      .populate('productId', 'title').populate('reviewedBy', 'name')
+      .select('productId reviewedBy reason details status credibilityPoints verifiedBuyer sellerReporter createdAt updatedAt reviewedAt').lean(),
+    ListingReport.countDocuments({ reporterId: account._id }),
+    SupportRequest.find({ buyerId: account._id }).sort({ createdAt: -1 }).limit(10)
+      .select('orderNumber category topic message status adminResponse createdAt updatedAt').lean(),
+    SupportRequest.countDocuments({ buyerId: account._id }),
+    LoginActivity.find({ userId: account._id }).sort({ createdAt: -1 }).limit(10)
+      .select('device client_ip country_code city isp_provider readAt expiresAt createdAt updatedAt').lean(),
+    SuspensionAppeal.find({ accountEmail: account.email }).sort({ createdAt: -1 }).limit(10)
+      .select('reason referenceId status createdAt updatedAt').lean(),
+    AccountNotification.find({ userId: account._id }).sort({ createdAt: -1 }).limit(10)
+      .populate('createdBy', 'name').select('createdBy title message destination accountReadAt sellerReadAt createdAt updatedAt').lean(),
+    SellerNotification.find({ userId: account._id }).sort({ createdAt: -1 }).limit(10)
+      .populate('promotionId', 'status startsAt expiresAt').select('type promotionId title message readAt createdAt updatedAt').lean(),
+    DeveloperApplication.find({ ownerId: account._id }).sort({ createdAt: -1 }).limit(10)
+      .select('appId name tokenLast4 revokedAt lastUsedAt createdAt updatedAt').lean(),
+    SellerStatement.find({ userId: account._id }).sort({ createdAt: -1 }).limit(10)
+      .select('statementId snapshot createdAt updatedAt').lean(),
+    Session.find({ userId: account._id }).sort({ createdAt: -1 }).limit(10)
+      .select('createdAt updatedAt expiresAt').lean(),
+    PasswordReset.find({ userId: account._id }).sort({ createdAt: -1 }).limit(10)
+      .select('createdAt expiresAt').lean(),
+    EmailVerification.find({ userId: account._id }).sort({ createdAt: -1 }).limit(10)
+      .select('createdAt expiresAt').lean(),
+    SupportNotification.find({ userId: account._id }).sort({ createdAt: -1 }).limit(10)
+      .populate('supportRequestId', 'topic status createdAt').select('supportRequestId readAt createdAt updatedAt').lean(),
+    ModerationAudit.find({
+      $or: [
+        { targetType: 'account', targetId: account._id.toString() },
+        { actorId: account._id }
+      ]
+    }).sort({ createdAt: -1 }).limit(10).populate('actorId', 'name').lean(),
+    ListingReport.find({ reviewedBy: account._id }).sort({ reviewedAt: -1 }).limit(10)
+      .populate('productId', 'title').populate('reporterId', 'name')
+      .select('productId reporterId reason status reviewedAt createdAt').lean(),
+    sellerShop
+      ? ShopReview.find({ shopId: sellerShop._id }).sort({ createdAt: -1 }).limit(10)
+        .populate('userId', 'name email').lean()
+      : Promise.resolve([]),
+    sellerShop
+      ? ListingThresholdEvent.find({ shopId: sellerShop._id }).sort({ triggeredAt: -1 }).limit(10).lean()
+      : Promise.resolve([]),
+    SuspensionAppealAccess.find({ accountEmail: account.email }).sort({ createdAt: -1 }).limit(10)
+      .select('createdAt expiresAt').lean()
+  ]);
+  const listingIds = sellerShop ? await Product.distinct('_id', { shopId: sellerShop._id }) : [];
+  const submittedReportIds = await ListingReport.distinct('_id', { reporterId: account._id });
+  const [reportsOnListings, listingModerationEvents, listingEngagement, referredUsers, submittedReportModerationEvents] = await Promise.all([
+    listingIds.length
+      ? ListingReport.find({ productId: { $in: listingIds } }).sort({ createdAt: -1 }).limit(10)
+        .populate('productId', 'title').populate('reporterId', 'name').populate('reviewedBy', 'name')
+        .select('productId reporterId reviewedBy reason details status credibilityPoints verifiedBuyer sellerReporter createdAt reviewedAt').lean()
+      : Promise.resolve([]),
+    listingIds.length
+      ? ModerationAudit.find({ targetType: 'listing', targetId: { $in: listingIds.map((id) => id.toString()) } })
+        .sort({ createdAt: -1 }).limit(10).populate('actorId', 'name').lean()
+      : Promise.resolve([]),
+    sellerShop
+      ? PromotionEngagement.aggregate([
+        { $match: { shopId: sellerShop._id } },
+        { $group: { _id: { campaignId: '$campaignId', date: '$date', eventType: '$eventType', placement: '$placement' }, count: { $sum: 1 } } },
+        { $sort: { '_id.date': -1 } },
+        { $limit: 10 }
+      ])
+      : Promise.resolve([]),
+    User.find({ referredBy: account._id }).sort({ createdAt: -1 }).limit(10)
+      .select('name email createdAt').lean(),
+    submittedReportIds.length
+      ? ModerationAudit.find({
+        targetType: 'listing_report',
+        targetId: { $in: submittedReportIds.map((id) => id.toString()) }
+      }).sort({ createdAt: -1 }).limit(10).populate('actorId', 'name').lean()
+      : Promise.resolve([])
+  ]);
+  const listingReportCount = listingIds.length
+    ? await ListingReport.countDocuments({ productId: { $in: listingIds } })
+    : 0;
+  const listingModerationEventCount = listingIds.length
+    ? await ModerationAudit.countDocuments({ targetType: 'listing', targetId: { $in: listingIds.map((id) => id.toString()) } })
+    : 0;
+  const developerUsage = developerApplications.length
+    ? await DeveloperApiUsage.aggregate([
+      { $match: { appId: { $in: developerApplications.map((application) => application.appId) } } },
+      { $group: {
+        _id: '$appId',
+        requests: { $sum: '$requests' },
+        verified: { $sum: '$verified' },
+        mismatched: { $sum: '$mismatched' },
+        lastActivity: { $max: '$day' }
+      } }
+    ])
+    : [];
+  const allDeveloperAppIds = await DeveloperApplication.distinct('appId', { ownerId: account._id });
+  const developerUsageRecords = allDeveloperAppIds.length
+    ? await DeveloperApiUsage.find({ appId: { $in: allDeveloperAppIds } })
+      .sort({ day: -1, endpoint: 1 }).limit(10)
+      .select('appId day endpoint requests successes verified mismatched clientErrors serverErrors totalDurationMs expiresAt').lean()
+    : [];
+  const accountAuditFilter = {
+    $or: [
+      { targetType: 'account', targetId: account._id.toString() },
+      { actorId: account._id }
+    ]
+  };
+  const submittedReportAuditFilter = {
+    targetType: 'listing_report',
+    targetId: { $in: submittedReportIds.map((id) => id.toString()) }
+  };
+  const [
+    sellerNotificationCount, statementCount, sessionCount, passwordResetCount,
+    emailVerificationCount, supportNotificationCount, accountAuditCount,
+    listingReviewActionCount, receivedReviewCount, thresholdEventCount,
+    appealAccessCount, developerUsageCount, submittedReportModerationCount,
+    listingEngagementCount, referralCount, appealCount, notificationCount,
+    developerApplicationCount, loginActivityCount
+  ] = await Promise.all([
+    SellerNotification.countDocuments({ userId: account._id }),
+    SellerStatement.countDocuments({ userId: account._id }),
+    Session.countDocuments({ userId: account._id }),
+    PasswordReset.countDocuments({ userId: account._id }),
+    EmailVerification.countDocuments({ userId: account._id }),
+    SupportNotification.countDocuments({ userId: account._id }),
+    ModerationAudit.countDocuments(accountAuditFilter),
+    ListingReport.countDocuments({ reviewedBy: account._id }),
+    sellerShop ? ShopReview.countDocuments({ shopId: sellerShop._id }) : Promise.resolve(0),
+    sellerShop ? ListingThresholdEvent.countDocuments({ shopId: sellerShop._id }) : Promise.resolve(0),
+    SuspensionAppealAccess.countDocuments({ accountEmail: account.email }),
+    allDeveloperAppIds.length ? DeveloperApiUsage.countDocuments({ appId: { $in: allDeveloperAppIds } }) : Promise.resolve(0),
+    submittedReportIds.length ? ModerationAudit.countDocuments(submittedReportAuditFilter) : Promise.resolve(0),
+    sellerShop
+      ? PromotionEngagement.aggregate([
+        { $match: { shopId: sellerShop._id } },
+        { $group: { _id: { campaignId: '$campaignId', date: '$date', eventType: '$eventType', placement: '$placement' } } },
+        { $count: 'count' }
+      ]).then((result) => result[0]?.count || 0)
+      : Promise.resolve(0),
+    User.countDocuments({ referredBy: account._id }),
+    SuspensionAppeal.countDocuments({ accountEmail: account.email }),
+    AccountNotification.countDocuments({ userId: account._id }),
+    DeveloperApplication.countDocuments({ ownerId: account._id }),
+    LoginActivity.countDocuments({ userId: account._id })
+  ]);
+  const referralSource = account.referredBy
+    ? await User.findById(account.referredBy).select('name email createdAt').lean()
+    : null;
+  const usageByApplication = new Map(developerUsage.map((usage) => [usage._id, usage]));
+  const walletTotalsByType = Object.fromEntries(walletTotals.map((entry) => [entry._id, {
+    amountNAD: roundNAD(entry.amountNAD),
+    count: entry.count
+  }]));
+  const sellerPayoutSummary = sellerPayoutTotals[0] || {
+    totalPayoutNAD: 0,
+    creditedToWalletNAD: 0,
+    awaitingWalletCreditNAD: 0,
+    orderCount: 0
+  };
+  return res.json({
+    details: {
+      profile: {
+        id: account._id.toString(),
+        name: account.name,
+        email: account.email,
+        phone: account.phone || '',
+        town: account.town || '',
+        payoutBankAccount: account.payoutBankAccount ? {
+          bankName: account.payoutBankAccount.bankName || '',
+          accountName: account.payoutBankAccount.accountName || '',
+          accountLast4: account.payoutBankAccount.accountLast4 || ''
+        } : null,
+        dismissedListingReportCount: account.dismissedListingReportCount || 0,
+        accountType: sellerShop ? 'Seller' : 'Buyer',
+        role: getPublicRole(account),
+        emailVerified: Boolean(account.emailVerified),
+        isSuspended: Boolean(account.isSuspended),
+        isModerator: isModeratorUser(account),
+        isSuperAdmin: isAdminUser(account),
+        isConfiguredAdminIdentity: isConfiguredAdminIdentity(account),
+        walletBalanceNAD: roundNAD(account.walletBalanceNAD || 0),
+        referralCode: account.referralCode || '',
+        referredBy: account.referredBy?.toString?.() || '',
+        cartItems: cartItemsPreview.map((item) => ({
+          productId: item.productId.toString(),
+          quantity: item.quantity
+        })),
+        cartItemCount: accountCollections?.cartItemCount || 0,
+        wishlistProductIds: wishlistPreview.map((id) => id.toString()),
+        wishlistCount: accountCollections?.wishlistCount || 0,
+        referralSource,
+        createdAt: account.createdAt,
+        updatedAt: account.updatedAt
+      },
+      seller: sellerShop ? {
+        id: sellerShop._id.toString(),
+        name: sellerShop.name,
+        slug: sellerShop.slug,
+        description: sellerShop.description,
+        coverImageUrl: sellerShop.coverImageUrl,
+        town: sellerShop.town,
+        approvalStatus: sellerShop.approvalStatus,
+        approvalNote: sellerShop.approvalNote,
+        sellerSuspended: isSellerInventoryRestricted(sellerShop),
+        sellerRestrictionStatus: sellerShop.sellerRestrictionStatus || 'active',
+        sellerRestrictedUntil: sellerShop.sellerRestrictedUntil,
+        sellerRestrictionLastTriggeredAt: sellerShop.sellerRestrictionLastTriggeredAt,
+        sellerRestrictionReason: sellerShop.sellerRestrictionReason,
+        autoApprovalEnabled: sellerShop.autoApprovalEnabled,
+        shippingRates: sellerShop.shippingRates,
+        assistantPlanActive: sellerShop.assistantPlanActive,
+        assistantPlanPaidAt: sellerShop.assistantPlanPaidAt,
+        assistantEnabled: sellerShop.assistantEnabled,
+        kycStatus: sellerShop.kycStatus || 'not_submitted',
+        kycBusinessName: sellerShop.kycBusinessName || '',
+        kycDocumentType: sellerShop.kycDocumentType || '',
+        kycDocumentMime: sellerShop.kycDocumentMime || '',
+        kycDocumentAvailable: Boolean(sellerShop.kycDocumentId),
+        kycDocumentUrl: sellerShop.kycStatus === 'pending' && sellerShop.kycDocumentId
+          ? `/api/admin/kyc/${sellerShop._id}/document`
+          : '',
+        kycSubmittedAt: sellerShop.kycSubmittedAt,
+        kycReviewedAt: sellerShop.kycReviewedAt,
+        kycReviewedBy: sellerShop.kycReviewedBy?.toString?.() || '',
+        kycReviewNote: sellerShop.kycReviewNote || '',
+        createdAt: sellerShop.createdAt,
+        updatedAt: sellerShop.updatedAt
+      } : null,
+      activity: {
+        buyerOrders: buyerOrderCount,
+        sellerOrders: sellerOrderCount,
+        listings: listingCount,
+        reviews: reviewCount,
+        listingReports: submittedReportCount,
+        reportsOnListings: listingReportCount,
+        listingModerationEvents: listingModerationEventCount,
+        submittedReportModerationEvents: submittedReportModerationCount,
+        listingThresholdEvents: thresholdEventCount,
+        supportRequests: supportRequestCount,
+        loginActivities: loginActivityCount,
+        appeals: appealCount,
+        notifications: notificationCount,
+        sellerNotifications: sellerNotificationCount,
+        supportNotifications: supportNotificationCount,
+        statements: statementCount,
+        sessions: sessionCount,
+        passwordResetRequests: passwordResetCount,
+        emailVerificationRequests: emailVerificationCount,
+        suspensionAppealAccessRequests: appealAccessCount,
+        reviewsReceived: receivedReviewCount,
+        developerApplications: developerApplicationCount
+      },
+      balances: {
+        currentWalletNAD: roundNAD(account.walletBalanceNAD || 0),
+        buyerPurchasesNAD: roundNAD(paidBuyerTotals[0]?.totalNAD || 0),
+        buyerPaidOrderCount: paidBuyerTotals[0]?.count || 0,
+        sellerPayout: {
+          totalNAD: roundNAD(sellerPayoutSummary.totalPayoutNAD),
+          creditedToWalletNAD: roundNAD(sellerPayoutSummary.creditedToWalletNAD),
+          awaitingWalletCreditNAD: roundNAD(sellerPayoutSummary.awaitingWalletCreditNAD),
+          orderCount: sellerPayoutSummary.orderCount
+        },
+        walletLedger: walletTotalsByType
+      },
+      transactions: {
+        buyerOrders: buyerOrderCount,
+        sellerOrders: sellerOrderCount,
+        wallet: walletTransactionCount,
+        payouts: payoutRequestCount,
+        promotions: promotionCount,
+        referrals: referralCount
+      },
+      records: {
+        counts: {
+          cart: accountCollections?.cartItemCount || 0,
+          wishlist: accountCollections?.wishlistCount || 0,
+          listings: listingCount,
+          reviewsWritten: reviewCount,
+          listingReports: submittedReportCount,
+          reportsOnListings: listingReportCount,
+          listingModeration: listingModerationEventCount,
+          listingEngagement: listingEngagementCount,
+          supportRequests: supportRequestCount,
+          loginActivity: loginActivityCount,
+          appeals: appealCount,
+          notifications: notificationCount,
+          sellerNotifications: sellerNotificationCount,
+          developerApplications: developerApplicationCount,
+          developerUsage: developerUsageCount,
+          statements: statementCount,
+          accountAudit: accountAuditCount,
+          submittedReportModeration: submittedReportModerationCount,
+          listingReviewActions: listingReviewActionCount,
+          reviewsReceived: receivedReviewCount,
+          thresholdEvents: thresholdEventCount,
+          supportNotifications: supportNotificationCount,
+          sessions: sessionCount,
+          passwordResets: passwordResetCount,
+          emailVerifications: emailVerificationCount,
+          appealAccess: appealAccessCount,
+          referrals: referralCount
+        },
+        referralSource,
+        cart: cartItemsPreview.map((item) => {
+          const product = cartProducts.find((entry) => entry._id.toString() === item.productId.toString());
+          return {
+            ...(product || {}),
+            title: product?.title || 'Listing unavailable',
+            productId: item.productId.toString(),
+            quantity: item.quantity,
+            status: product?.status || 'unavailable'
+          };
+        }),
+        wishlist: wishlistPreview.map((productId) => {
+          const product = cartProducts.find((entry) => entry._id.toString() === productId.toString());
+          return {
+            ...(product || {}),
+            title: product?.title || 'Listing unavailable',
+            productId: productId.toString(),
+            status: product?.status || 'unavailable'
+          };
+        }),
+        referrals: referredUsers,
+        listings,
+        reviews: reviews.map((review) => ({
+          shopName: review.shopId?.name || 'Shop unavailable',
+          rating: review.rating,
+          comment: review.comment,
+          createdAt: review.createdAt,
+          updatedAt: review.updatedAt
+        })),
+        listingReports: submittedReports.map((report) => ({
+          productTitle: report.productId?.title || 'Listing unavailable',
+          reviewedBy: report.reviewedBy?.name || '',
+          reason: report.reason,
+          details: report.details,
+          status: report.status,
+          credibilityPoints: report.credibilityPoints,
+          verifiedBuyer: report.verifiedBuyer,
+          sellerReporter: report.sellerReporter,
+          createdAt: report.createdAt,
+          reviewedAt: report.reviewedAt
+        })),
+        supportRequests,
+        loginActivities,
+        appeals,
+        notifications,
+        sellerNotifications,
+        reportsOnListings: reportsOnListings.map((report) => ({
+          productTitle: report.productId?.title || 'Listing unavailable',
+          reporterName: report.reporterId?.name || 'Unknown user',
+          reviewedBy: report.reviewedBy?.name || '',
+          reason: report.reason,
+          details: report.details,
+          status: report.status,
+          createdAt: report.createdAt,
+          reviewedAt: report.reviewedAt
+        })),
+        listingModerationEvents: listingModerationEvents.map((event) => ({
+          action: event.action,
+          details: event.details,
+          targetLabel: event.targetLabel,
+          actorType: event.actorType,
+          actorName: event.actorId?.name || '',
+          createdAt: event.createdAt
+        })),
+        listingEngagement: listingEngagement.map((entry) => ({
+          campaignId: entry._id.campaignId,
+          date: entry._id.date,
+          eventType: entry._id.eventType,
+          placement: entry._id.placement,
+          count: entry.count
+        })),
+        accountAuditEvents: accountAuditEvents.map((event) => ({
+          action: event.action,
+          details: event.details,
+          targetType: event.targetType,
+          targetId: event.targetId,
+          targetLabel: event.targetLabel,
+          actorType: event.actorType,
+          actorName: event.actorId?.name || '',
+          createdAt: event.createdAt
+        })),
+        submittedReportModerationEvents: submittedReportModerationEvents.map((event) => ({
+          action: event.action,
+          details: event.details,
+          targetId: event.targetId,
+          targetLabel: event.targetLabel,
+          actorType: event.actorType,
+          actorName: event.actorId?.name || '',
+          createdAt: event.createdAt
+        })),
+        listingReviewActions: listingReviewActions.map((report) => ({
+          productTitle: report.productId?.title || 'Listing unavailable',
+          reporterName: report.reporterId?.name || 'Unknown user',
+          reason: report.reason,
+          status: report.status,
+          createdAt: report.createdAt,
+          reviewedAt: report.reviewedAt
+        })),
+        receivedReviews: receivedReviews.map((review) => ({
+          reviewerName: review.userId?.name || 'Account unavailable',
+          reviewerEmail: review.userId?.email || '',
+          rating: review.rating,
+          comment: review.comment,
+          createdAt: review.createdAt,
+          updatedAt: review.updatedAt
+        })),
+        thresholdEvents,
+        payoutBankAccount: account.payoutBankAccount ? {
+          bankName: account.payoutBankAccount.bankName || '',
+          accountName: account.payoutBankAccount.accountName || '',
+          accountLast4: account.payoutBankAccount.accountLast4 || ''
+        } : null,
+        dismissedListingReportCount: account.dismissedListingReportCount || 0,
+        statements: statements.map(({ statementId, snapshot, createdAt, updatedAt }) => ({
+          statementId,
+          snapshot,
+          createdAt,
+          updatedAt
+        })),
+        security: {
+          sessions,
+          passwordResetRequests: passwordResets,
+          emailVerificationRequests: emailVerifications,
+          suspensionAppealAccessRequests: appealAccessRecords
+        },
+        supportNotifications,
+        developerUsageRecords,
+        developerApplications: developerApplications.map((application) => {
+          const usage = usageByApplication.get(application.appId);
+          return {
+            appId: application.appId,
+            name: application.name,
+            tokenLast4: application.tokenLast4,
+            revokedAt: application.revokedAt,
+            lastUsedAt: application.lastUsedAt,
+            createdAt: application.createdAt,
+            updatedAt: application.updatedAt,
+            usage: {
+              requests: usage?.requests || 0,
+              verified: usage?.verified || 0,
+              mismatched: usage?.mismatched || 0,
+              lastActivity: usage?.lastActivity || null
+            }
+          };
+        })
+      }
+    }
+  });
+});
+
+function normalizeAdminNotificationInput(input) {
+  const title = typeof input?.title === 'string' ? input.title.trim() : '';
+  const message = typeof input?.message === 'string' ? input.message.trim() : '';
+  const audience = input?.audience;
+  const recipientIds = input?.recipientIds;
+  const destination = input?.destination === undefined ? 'both' : input.destination;
+  if (!title || title.length > 120 || !message || message.length > 1000) {
+    return { error: 'Enter a title (up to 120 characters) and message (up to 1,000 characters).' };
+  }
+  if (!['all', 'selected'].includes(audience)) {
+    return { error: 'Choose all accounts or selected accounts.' };
+  }
+  if (!['account', 'seller', 'both'].includes(destination)) {
+    return { error: 'Choose the account dashboard, seller workspace, or both as the destination.' };
+  }
+  if (audience !== 'selected') {
+    if (recipientIds !== undefined && (!Array.isArray(recipientIds) || recipientIds.length > 0)) {
+      return { error: 'Individual accounts can only be included for a selected-account notification.' };
+    }
+    return { title, message, audience, destination, recipientIds: [] };
+  }
+  if (!Array.isArray(recipientIds) || recipientIds.length < 1 || recipientIds.length > 100
+    || recipientIds.some((id) => typeof id !== 'string' || !mongoose.isValidObjectId(id))) {
+    return { error: 'Select between 1 and 100 valid accounts.' };
+  }
+  const uniqueIds = [...new Set(recipientIds.map((id) => id.toString()))];
+  if (uniqueIds.length > 100) return { error: 'Select between 1 and 100 valid accounts.' };
+  return { title, message, audience, destination, recipientIds: uniqueIds };
+}
+
+app.post('/api/admin/notifications', async (req, res) => {
+  const admin = await getSessionUser(req);
+  if (!admin || !isAdminUser(admin)) return res.status(403).json({ error: 'Admin access is not configured for this account.' });
+
+  const input = normalizeAdminNotificationInput(req.body);
+  if (input.error) return res.status(400).json({ error: input.error });
+
+  let recipientIds;
+  if (input.audience === 'all') {
+    recipientIds = await User.find({}).distinct('_id');
+  } else {
+    const matchedUsers = await User.find({ _id: { $in: input.recipientIds } }).select('_id').lean();
+    if (matchedUsers.length !== input.recipientIds.length) {
+      return res.status(400).json({ error: 'One or more selected accounts could not be found. Refresh the account search and try again.' });
+    }
+    recipientIds = matchedUsers.map((account) => account._id);
+  }
+
+  if (input.destination === 'seller') {
+    const sellerIds = await Shop.distinct('ownerId', { ownerId: { $in: recipientIds } });
+    if (sellerIds.length !== recipientIds.length) {
+      return res.status(400).json({ error: 'Seller workspace delivery is only available to seller accounts. Choose seller accounts or select only sellers.' });
+    }
+  }
+
+  let deliveredCount = 0;
+  for (let index = 0; index < recipientIds.length; index += 500) {
+    const batch = recipientIds.slice(index, index + 500).map((userId) => ({
+      userId,
+      createdBy: admin._id,
+      title: input.title,
+      message: input.message,
+      destination: input.destination
+    }));
+    try {
+      await AccountNotification.insertMany(batch, { ordered: true });
+      deliveredCount += batch.length;
+    } catch (error) {
+      console.error(`Admin notification delivery failed after ${deliveredCount} of ${recipientIds.length} recipients:`, error.message);
+      return res.status(500).json({
+        error: deliveredCount
+          ? `Notification delivery stopped after reaching ${deliveredCount} of ${recipientIds.length} accounts.`
+          : 'Notification could not be delivered.',
+        deliveredCount
+      });
+    }
+  }
+  return res.status(201).json({ ok: true, deliveredCount });
+});
+
 app.get('/api/admin/users/:id/activity', async (req, res) => {
   const admin = await getSessionUser(req);
   if (!admin || !isAdminUser(admin)) return res.status(403).json({ error: 'Admin access is not configured for this account.' });
   if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: 'Account not found.' });
 
   const account = await User.findById(req.params.id)
-    .select('name email role emailVerified isSuspended dismissedListingReportCount createdAt')
+    .select('name email role emailVerified isSuspended dismissedListingReportCount walletBalanceNAD createdAt')
     .lean();
   if (!account) return res.status(404).json({ error: 'Account not found.' });
 
   const now = new Date();
-  const [shops, loginActivities, submittedReports, submittedStats, supportRequests, appeals, accountActions, buyerOrders, sellerOrders, reviewsWritten, referrals] = await Promise.all([
+  const [shops, loginActivities, submittedReports, submittedStats, supportRequests, appeals, accountActions, buyerOrders, sellerOrders, reviewsWritten, referrals, walletLedgerSummary] = await Promise.all([
     Shop.find({ ownerId: account._id }).select('_id name sellerSuspended sellerRestrictionStatus sellerRestrictedUntil sellerRestrictionReason approvalStatus').lean(),
     LoginActivity.find({ userId: account._id, expiresAt: { $gt: now } })
       .sort({ createdAt: -1 }).limit(25)
@@ -3441,8 +5963,11 @@ app.get('/api/admin/users/:id/activity', async (req, res) => {
       } }
     ]),
     ShopReview.countDocuments({ userId: account._id }),
-    User.countDocuments({ referredBy: account._id })
+    User.countDocuments({ referredBy: account._id }),
+    getWalletLedgerSummary(account._id)
   ]);
+  const walletReconciliation = reconcileWalletBalance(account.walletBalanceNAD || 0, walletLedgerSummary);
+  const { adminNotified } = await updateWalletReconciliationAlert(admin, account, walletReconciliation);
   const shopIds = shops.map((shop) => shop._id);
   const [receivedReportStats, receivedReports, reportHiddenListings] = shopIds.length
     ? await Promise.all([
@@ -3491,7 +6016,12 @@ app.get('/api/admin/users/:id/activity', async (req, res) => {
       role: getPublicRole(account),
       emailVerified: Boolean(account.emailVerified),
       isSuspended: Boolean(account.isSuspended),
+      walletBalanceNAD: roundNAD(account.walletBalanceNAD || 0),
       createdAt: account.createdAt
+    },
+    financialReconciliation: {
+      ...walletReconciliation,
+      adminNotified
     },
     riskSignals: {
       dismissedReportCount: account.dismissedListingReportCount || 0,
@@ -3828,7 +6358,25 @@ app.get('/api/products', async (req, res) => {
   });
 });
 
-app.get('/api/promotions/active', async (req, res) => {
+function serializeLoginWallpaper(setting) {
+  const settings = { ...DEFAULT_LOGIN_WALLPAPER };
+  for (const key of Object.keys(settings)) {
+    if (key === 'productIds') {
+      settings.productIds = Array.isArray(setting?.productIds) && setting.productIds.length
+        ? setting.productIds.map((id) => id.toString())
+        : setting?.productId ? [setting.productId.toString()] : [];
+    } else if (key === 'rotatePromotions') {
+      settings.rotatePromotions = typeof setting?.rotatePromotions === 'boolean'
+        ? setting.rotatePromotions
+        : !setting?.productId;
+    } else if (setting?.[key] !== undefined) {
+      settings[key] = setting[key];
+    }
+  }
+  return settings;
+}
+
+async function getActivePromotedProducts() {
   const now = new Date();
   await PromotionCampaign.updateMany(
     { status: 'active', expiresAt: { $lte: now } },
@@ -3842,28 +6390,36 @@ app.get('/api/promotions/active', async (req, res) => {
     .populate({ path: 'productId', match: { status: 'active', isAvailable: { $ne: false }, stock: { $gt: 0 }, reviewStatus: { $in: ['approved', null] }, moderationStatus: { $ne: 'hidden' } } })
     .populate({ path: 'shopId', match: getPublicShopFilter(now), select: 'name slug' })
     .lean();
-  return res.json({
-    products: campaigns.flatMap((campaign) => {
-      const product = campaign.productId;
-      const shop = campaign.shopId;
-      if (!product || !shop) return [];
-      return [{
-        id: product._id.toString(),
-        campaignId: campaign._id.toString(),
-        title: product.title,
-        description: product.description,
-        priceNAD: product.priceNAD,
-        stock: product.stock ?? null,
-        category: product.category,
-        town: product.town,
-        imageUrl: product.imageUrl || '',
-        shopName: shop.name,
-        shopSlug: shop.slug,
-        promoted: true,
-        promotionExpiresAt: campaign.expiresAt
-      }];
-    })
+  return campaigns.flatMap((campaign) => {
+    const product = campaign.productId;
+    const shop = campaign.shopId;
+    if (!product || !shop) return [];
+    return [{
+      id: product._id.toString(),
+      campaignId: campaign._id.toString(),
+      title: product.title,
+      description: product.description,
+      priceNAD: product.priceNAD,
+      stock: product.stock ?? null,
+      category: product.category,
+      town: product.town,
+      imageUrl: product.imageUrl || '',
+      shopName: shop.name,
+      shopSlug: shop.slug,
+      promoted: true,
+      promotionExpiresAt: campaign.expiresAt
+    }];
   });
+}
+
+app.get('/api/promotions/active', async (req, res) => {
+  return res.json({ products: await getActivePromotedProducts() });
+});
+
+app.get('/api/login-wallpaper', async (req, res) => {
+  const saved = await LoginWallpaper.findOne({ key: 'login' }).lean();
+  res.set('Cache-Control', 'no-store');
+  return res.json({ settings: serializeLoginWallpaper(saved) });
 });
 
 app.post('/api/promotions/:id/engagement', promotionEngagementRateLimit, async (req, res) => {
@@ -3914,6 +6470,43 @@ app.post('/api/promotions/:id/engagement', promotionEngagementRateLimit, async (
     if (error.code === 11000) return res.status(202).json({ recorded: false });
     throw error;
   }
+});
+
+app.get('/api/seller/billing', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to view billing history.' });
+  const shop = await Shop.findOne({ ownerId: user._id }).select('_id').lean();
+  if (!shop) return res.status(404).json({ error: 'Seller shop not found.' });
+
+  const campaigns = await PromotionCampaign.find({ shopId: shop._id })
+    .sort({ createdAt: -1 })
+    .limit(200)
+    .populate({ path: 'productId', select: 'title' })
+    .lean();
+  const entries = campaigns.map((campaign) => ({
+    id: campaign._id.toString(),
+    productName: campaign.productId?.title || 'Deleted listing',
+    amountNAD: campaign.amountNAD,
+    status: campaign.status,
+    paymentMethod: campaign.paymentMethod,
+    walletUsedNAD: campaign.walletUsedNAD || 0,
+    cardDueNAD: campaign.cardDueNAD || 0,
+    paidAt: campaign.paidAt,
+    createdAt: campaign.createdAt,
+    startsAt: campaign.startsAt,
+    expiresAt: campaign.expiresAt
+  }));
+  const paidEntries = entries.filter((entry) => entry.paidAt);
+  return res.json({
+    entries,
+    hasMore: campaigns.length === 200,
+    totals: {
+      paidNAD: roundNAD(paidEntries.reduce((total, entry) => total + entry.amountNAD, 0)),
+      walletNAD: roundNAD(paidEntries.reduce((total, entry) => total + entry.walletUsedNAD, 0)),
+      cardNAD: roundNAD(paidEntries.reduce((total, entry) => total + entry.cardDueNAD, 0)),
+      paidCount: paidEntries.length
+    }
+  });
 });
 
 app.get('/api/seller/promotions/stats', async (req, res) => {
@@ -4097,7 +6690,8 @@ app.get('/api/shops/:slug', async (req, res) => {
   const reviewCount = reviews.length;
   const averageRating = reviewCount ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviewCount : 0;
   const ownReview = viewer ? reviews.find((review) => review.userId && review.userId._id.toString() === viewer._id.toString()) || null : null;
-  const assistantServiceConfigured = shop.assistantPlanActive && shop.assistantEnabled
+  const assistantPlanPaid = isAssistantPlanPaid(shop);
+  const assistantServiceConfigured = assistantPlanPaid && shop.assistantEnabled
     ? await isAssistantModelReady()
     : false;
 
@@ -4111,7 +6705,7 @@ app.get('/api/shops/:slug', async (req, res) => {
       description: shop.description,
       town: shop.town,
       coverImageUrl: shop.coverImageUrl || '',
-      assistantAvailable: Boolean(shop.assistantPlanActive && shop.assistantEnabled && assistantServiceConfigured),
+      assistantAvailable: Boolean(assistantPlanPaid && shop.assistantEnabled && assistantServiceConfigured),
       averageRating: Number(averageRating.toFixed(1)),
       reviewCount
     },
@@ -4161,6 +6755,7 @@ app.post('/api/shops/:slug/assistant', shopAssistantRateLimit, async (req, res) 
     slug: req.params.slug,
     ...getPublicShopFilter(),
     assistantPlanActive: true,
+    assistantPlanPaidAt: { $ne: null },
     assistantEnabled: true
   }).lean();
   if (!shop) return res.status(404).json({ error: 'This shop assistant is not available.' });
@@ -4211,7 +6806,7 @@ app.post('/api/shops/:slug/reviews', async (req, res) => {
   const review = await ShopReview.findOneAndUpdate(
     { shopId: shop._id, userId: user._id },
     { $set: { rating, comment } },
-    { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
+    { returnDocument: 'after', upsert: true, runValidators: true, setDefaultsOnInsert: true }
   );
 
   const allReviews = await ShopReview.find({ shopId: shop._id }).sort({ createdAt: -1 }).lean();
@@ -4336,7 +6931,8 @@ app.get('/api/seller/shop', async (req, res) => {
   return res.json({
     shop,
     assistantServiceConfigured: await isAssistantModelReady(),
-    assistantPurchaseSimulationAvailable: mockPaymentsEnabled
+    assistantPurchaseSimulationAvailable: mockPaymentsEnabled,
+    assistantPriceNAD
   });
 });
 
@@ -4420,17 +7016,89 @@ app.post('/api/seller/shop/assistant/simulate-purchase', async (req, res) => {
   const user = await getSessionUser(req);
   if (!user) return res.status(401).json({ error: 'Sign in to purchase the shop assistant.' });
   if (!mockPaymentsEnabled) return res.status(503).json({ error: 'Assistant purchase simulation is only available in development.' });
+  const paymentMethod = req.body?.paymentMethod;
+  if (!['card', 'wallet'].includes(paymentMethod)) {
+    return res.status(400).json({ error: 'Choose card or Z balance for the assistant purchase.' });
+  }
 
-  const shop = await Shop.findOneAndUpdate(
-    { ownerId: user._id },
-    { $set: { assistantPlanActive: true } },
-    { new: true, runValidators: true }
-  );
+  const shopSnapshot = await Shop.findOne({ ownerId: user._id });
+  if (!shopSnapshot) return res.status(404).json({ error: 'Shop not found.' });
+  const restrictionError = sellerRestrictionError(shopSnapshot);
+  if (restrictionError) return res.status(403).json({ error: restrictionError });
+  if (isAssistantPlanPaid(shopSnapshot)) {
+    return res.json({
+      shop: {
+        assistantPlanActive: shopSnapshot.assistantPlanActive,
+        assistantPlanPaidAt: shopSnapshot.assistantPlanPaidAt,
+        assistantEnabled: shopSnapshot.assistantEnabled
+      },
+      assistantServiceConfigured: await isAssistantModelReady(),
+      message: 'The shop assistant add-on is already active. You were not charged again.'
+    });
+  }
+
+  const { walletUsedNAD, cardDueNAD } = calculateWalletPayment(assistantPriceNAD, user.walletBalanceNAD, paymentMethod);
+  if (paymentMethod === 'wallet' && walletUsedNAD <= 0) {
+    return res.status(409).json({ error: 'Your Z balance is empty. Choose card payment instead.' });
+  }
+  const paymentIntent = cardDueNAD > 0 ? paymentAdapter.createIntent(`ASSISTANT-${shopSnapshot._id}`) : null;
+  const payment = paymentIntent
+    ? paymentAdapter.confirmIntent(paymentIntent.reference)
+    : { status: 'paid', confirmedAt: new Date() };
+  if (payment.status !== 'paid') return res.status(402).json({ error: 'Assistant payment was not completed.' });
+
+  const purchase = await withMongoTransaction(async (session) => {
+    const currentShop = await Shop.findOne({
+      _id: shopSnapshot._id,
+      ownerId: user._id
+    }).session(session);
+    if (!currentShop) throw apiError(404, 'Shop not found.');
+    if (isAssistantPlanPaid(currentShop)) return { shop: currentShop, alreadyPaid: true };
+
+    if (walletUsedNAD > 0) {
+      await applyWalletTransaction({
+        userId: user._id,
+        reference: `assistant:${currentShop._id}`,
+        type: 'purchase_debit',
+        amountNAD: walletUsedNAD,
+        orderNumber: `AI-${currentShop._id}`,
+        description: 'Shop AI assistant add-on',
+        session,
+        insufficientBalanceMessage: 'Your Z balance changed. Refresh and choose a payment method.'
+      });
+    }
+
+    currentShop.assistantPlanActive = true;
+    currentShop.assistantPlanPaidAt = payment.confirmedAt || new Date();
+    await currentShop.save({ session });
+    return { shop: currentShop, alreadyPaid: false };
+  });
+  const { shop } = purchase;
   if (!shop) return res.status(404).json({ error: 'Shop not found.' });
+  if (purchase.alreadyPaid) {
+    return res.json({
+      shop: {
+        assistantPlanActive: shop.assistantPlanActive,
+        assistantPlanPaidAt: shop.assistantPlanPaidAt,
+        assistantEnabled: shop.assistantEnabled
+      },
+      assistantServiceConfigured: await isAssistantModelReady(),
+      message: 'The shop assistant add-on is already active. You were not charged again.'
+    });
+  }
   return res.json({
-    shop: { assistantPlanActive: shop.assistantPlanActive, assistantEnabled: shop.assistantEnabled },
+    shop: {
+      assistantPlanActive: shop.assistantPlanActive,
+      assistantPlanPaidAt: shop.assistantPlanPaidAt,
+      assistantEnabled: shop.assistantEnabled
+    },
     assistantServiceConfigured: await isAssistantModelReady(),
-    simulated: true
+    simulated: true,
+    message: walletUsedNAD > 0 && cardDueNAD > 0
+      ? `N$ ${walletUsedNAD.toFixed(2)} deducted from your Z balance and N$ ${cardDueNAD.toFixed(2)} simulated on a test card. The one-time assistant add-on is active.`
+      : walletUsedNAD > 0
+        ? `N$ ${walletUsedNAD.toFixed(2)} deducted from your Z balance. The one-time assistant add-on is active.`
+        : `N$ ${cardDueNAD.toFixed(2)} simulated on a test card; no real payment was processed. The one-time assistant add-on is active.`
   });
 });
 
@@ -4450,7 +7118,7 @@ app.patch('/api/seller/shop/shipping', async (req, res) => {
   const rawAutoApproval = req.body?.autoApprovalEnabled;
   const autoApprovalEnabled = typeof rawAutoApproval === 'boolean' ? rawAutoApproval : Boolean(rawAutoApproval === 'true');
 
-  const shop = await Shop.findOneAndUpdate({ ownerId: user._id }, { $set: { shippingRates, autoApprovalEnabled } }, { new: true, runValidators: true });
+  const shop = await Shop.findOneAndUpdate({ ownerId: user._id }, { $set: { shippingRates, autoApprovalEnabled } }, { returnDocument: 'after', runValidators: true });
   if (!shop) return res.status(404).json({ error: 'Shop not found.' });
   return res.json({ shippingRates: shop.shippingRates, autoApprovalEnabled: shop.autoApprovalEnabled });
 });
@@ -4468,7 +7136,7 @@ app.patch('/api/seller/shop/assistant', async (req, res) => {
   if (!shop) return res.status(404).json({ error: 'Shop not found.' });
   const restrictionError = sellerRestrictionError(shop);
   if (restrictionError) return res.status(403).json({ error: restrictionError });
-  if (assistantEnabled && !shop.assistantPlanActive) {
+  if (assistantEnabled && !isAssistantPlanPaid(shop)) {
     return res.status(402).json({ error: 'Purchase the shop assistant add-on before turning it on.' });
   }
 
@@ -4477,6 +7145,7 @@ app.patch('/api/seller/shop/assistant', async (req, res) => {
   return res.json({
     assistantEnabled: shop.assistantEnabled,
     assistantPlanActive: shop.assistantPlanActive,
+    assistantPlanPaidAt: shop.assistantPlanPaidAt,
     assistantServiceConfigured: await isAssistantModelReady()
   });
 });
@@ -4561,7 +7230,7 @@ app.patch('/api/seller/shop/cover', async (req, res) => {
     return res.status(400).json({ error: 'Upload a storefront photo to Z through Cloudinary first.' });
   }
 
-  const shop = await Shop.findOneAndUpdate({ ownerId: user._id }, { $set: { coverImageUrl } }, { new: true, runValidators: true });
+  const shop = await Shop.findOneAndUpdate({ ownerId: user._id }, { $set: { coverImageUrl } }, { returnDocument: 'after', runValidators: true });
   if (!shop) return res.status(404).json({ error: 'Shop not found.' });
   return res.json({ coverImageUrl: shop.coverImageUrl });
 });
@@ -4569,8 +7238,9 @@ app.patch('/api/seller/shop/cover', async (req, res) => {
 app.get('/api/seller/products', async (req, res) => {
   const user = await getSessionUser(req);
   if (!user) return res.status(401).json({ error: 'Sign in to manage listings.' });
+  const cancelledUnpaidPromotions = await reconcileUnpaidPromotions(user._id);
   const shop = await Shop.findOne({ ownerId: user._id });
-  if (!shop) return res.json({ products: [] });
+  if (!shop) return res.json({ products: [], cancelledUnpaidPromotions });
   const now = new Date();
   await PromotionCampaign.updateMany(
     { shopId: shop._id, status: 'active', expiresAt: { $lte: now } },
@@ -4599,7 +7269,7 @@ app.get('/api/seller/products', async (req, res) => {
         paymentExpiresAt: campaign.paymentExpiresAt
       } : null
     };
-  }) });
+  }), cancelledUnpaidPromotions });
 });
 
 app.post('/api/seller/products/:id/promotions', promotionWriteRateLimit, async (req, res) => {
@@ -4677,6 +7347,10 @@ app.post('/api/seller/promotions/:id/simulate-payment', promotionWriteRateLimit,
   if (!user) return res.status(401).json({ error: 'Sign in to complete promotion payment.' });
   if (!mockPaymentsEnabled) return res.status(503).json({ error: 'Promotion payments are unavailable until a live payment provider is configured.' });
   if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: 'Promotion not found.' });
+  const paymentMethod = req.body?.paymentMethod;
+  if (!['card', 'wallet'].includes(paymentMethod)) {
+    return res.status(400).json({ error: 'Choose card or Z balance for the promotion payment.' });
+  }
 
   const now = new Date();
   const campaign = await PromotionCampaign.findOne({
@@ -4705,36 +7379,112 @@ app.post('/api/seller/promotions/:id/simulate-payment', promotionWriteRateLimit,
     return res.status(409).json({ error: 'This listing is no longer eligible for promotion.' });
   }
 
-  const payment = paymentAdapter.confirmIntent(campaign.paymentReference);
+  const { walletUsedNAD, cardDueNAD } = calculateWalletPayment(campaign.amountNAD, user.walletBalanceNAD, paymentMethod);
+  if (paymentMethod === 'wallet' && walletUsedNAD <= 0) {
+    return res.status(409).json({ error: 'Your Z balance is empty. Choose card payment instead.' });
+  }
+  const payment = cardDueNAD > 0 ? paymentAdapter.confirmIntent(campaign.paymentReference) : { status: 'paid', confirmedAt: now };
   if (payment.status !== 'paid') return res.status(402).json({ error: 'Promotion payment was not completed.' });
   const schedule = buildPromotionSchedule(payment.confirmedAt || now);
   try {
-    const activated = await PromotionCampaign.findOneAndUpdate({
-      _id: campaign._id,
-      sellerId: user._id,
-      status: 'pending',
-      paymentExpiresAt: { $gt: now }
-    }, {
-      $set: { status: 'active', paidAt: schedule.startsAt, startsAt: schedule.startsAt, expiresAt: schedule.expiresAt }
-    }, { new: true, runValidators: true });
-    if (!activated) return res.status(409).json({ error: 'This promotion payment is no longer pending.' });
+    const activated = await withMongoTransaction(async (session) => {
+      if (walletUsedNAD > 0) {
+        await applyWalletTransaction({
+          userId: user._id,
+          reference: `promotion:${campaign._id}`,
+          type: 'purchase_debit',
+          amountNAD: walletUsedNAD,
+          orderNumber: `PROMO-${campaign._id}`,
+          description: `Promotion for ${product.title}`,
+          session,
+          insufficientBalanceMessage: 'Your Z balance changed. Refresh and choose a payment method.'
+        });
+      }
+      const promotion = await PromotionCampaign.findOneAndUpdate({
+        _id: campaign._id,
+        sellerId: user._id,
+        status: 'pending',
+        paymentExpiresAt: { $gt: now }
+      }, {
+        $set: {
+          status: 'active',
+          paymentMethod,
+          walletUsedNAD,
+          cardDueNAD,
+          paidAt: schedule.startsAt,
+          startsAt: schedule.startsAt,
+          expiresAt: schedule.expiresAt
+        }
+      }, { returnDocument: 'after', runValidators: true, session });
+      if (!promotion) throw apiError(409, 'This promotion payment is no longer pending.');
+      return promotion;
+    });
     return res.json({
       promotion: {
         id: activated._id.toString(),
         productId: activated.productId.toString(),
         status: activated.status,
         amountNAD: activated.amountNAD,
+        paymentMethod: activated.paymentMethod,
+        walletUsedNAD: activated.walletUsedNAD,
+        cardDueNAD: activated.cardDueNAD,
         startsAt: activated.startsAt,
         expiresAt: activated.expiresAt
       },
       mock: true,
-      message: 'Test payment recorded. No money was charged.'
+      message: walletUsedNAD > 0 && cardDueNAD > 0
+        ? `N$ ${walletUsedNAD.toFixed(2)} deducted from your Z balance and N$ ${cardDueNAD.toFixed(2)} simulated on a test card. Promotion is live for 7 days.`
+        : walletUsedNAD > 0
+          ? `N$ ${walletUsedNAD.toFixed(2)} deducted from your Z balance. Promotion is live for 7 days.`
+          : `N$ ${cardDueNAD.toFixed(2)} simulated on a test card; no real payment was processed. Promotion is live for 7 days.`
     });
   } catch (error) {
     if (error.code === 11000) return res.status(409).json({ error: 'This product already has an active promotion.' });
     throw error;
   }
 });
+
+function normalizeProductListingInput(input) {
+  const title = typeof input?.title === 'string' ? input.title.trim() : '';
+  const description = typeof input?.description === 'string' ? input.description.trim() : '';
+  const category = typeof input?.category === 'string' ? input.category.trim() : '';
+  const rawPriceNAD = Number(input?.priceNAD);
+  const rawStock = Number(input?.stock);
+  const imageUrls = normalizeImageUrls(input?.imageUrls || input?.imageUrl || []);
+  if (title.length > 100 || description.length > 1500 || category.length > 100) {
+    return { error: 'Product title, description, or category is too long.' };
+  }
+  if ((Number.isFinite(rawPriceNAD) && rawPriceNAD > 10000000)
+    || (Number.isFinite(rawStock) && rawStock > 100000)
+    || (Number.isFinite(rawStock) && !Number.isInteger(rawStock))) {
+    return { error: 'Price or stock is outside the supported range.' };
+  }
+  if (!imageUrls.every((url) => validateImageUrl(url))) {
+    return { error: 'Product images must use valid HTTPS image URLs.' };
+  }
+  return {
+    title,
+    description,
+    category,
+    priceNAD: Number.isFinite(rawPriceNAD) && rawPriceNAD >= 0.01 && rawPriceNAD <= 10000000 ? rawPriceNAD : 0,
+    stock: Number.isInteger(rawStock) && rawStock > 0 && rawStock <= 100000 ? rawStock : 0,
+    imageUrls,
+    imageUrl: imageUrls[0] || ''
+  };
+}
+
+function getListingReviewDecision({ shop, seller, product }) {
+  return getProductReviewDecision({
+    product,
+    sellerEmailVerified: Boolean(seller.emailVerified),
+    sellerAccountSuspicious: Boolean(
+      seller.isSuspended
+      || shop.sellerSuspended
+      || shop.sellerRestrictionStatus === 'banned'
+      || isSellerAutoRestricted(shop)
+    )
+  });
+}
 
 app.post('/api/seller/products', async (req, res) => {
   const user = await getSessionUser(req);
@@ -4744,33 +7494,44 @@ app.post('/api/seller/products', async (req, res) => {
   const restrictionError = sellerRestrictionError(shop);
   if (restrictionError) return res.status(403).json({ error: restrictionError });
 
-  const title = typeof req.body?.title === 'string' ? req.body.title.trim() : '';
-  const description = typeof req.body?.description === 'string' ? req.body.description.trim() : '';
-  const priceNAD = Number(req.body?.priceNAD);
-  const stock = Number(req.body?.stock);
-  const category = req.body?.category;
-  const imageUrls = normalizeImageUrls(req.body?.imageUrls || req.body?.imageUrl || []);
-  const imageUrl = imageUrls[0] || '';
-  const imageIsValid = imageUrls.length === 0 || imageUrls.every((url) => validateImageUrl(url));
-  const duplicateKey = buildProductDuplicateKey({ title, description, category: typeof category === 'string' ? category : '' });
-
-  if (!title || title.length > 100 || !description || description.length > 1500 || !Number.isFinite(priceNAD) || priceNAD < 0.01 || priceNAD > 10000000 || !Number.isInteger(stock) || stock < 0 || stock > 100000 || !productCategories.includes(category) || !imageIsValid) {
-    return res.status(400).json({ error: 'Check the product details, price, stock, category, and image URL.' });
-  }
+  const listing = normalizeProductListingInput(req.body);
+  if (listing.error) return res.status(400).json({ error: listing.error });
+  const duplicateKey = buildProductDuplicateKey(listing);
   if (await findDuplicateProduct(shop._id, duplicateKey)) {
     return res.status(409).json({ error: 'A matching product listing already exists in your shop.' });
   }
 
+  const reviewDecision = getListingReviewDecision({ shop, seller: user, product: listing });
   let product;
   try {
-    product = await Product.create({ shopId: shop._id, duplicateKey, title, description, priceNAD, stock, isAvailable: stock > 0, category, town: shop.town, imageUrl, imageUrls, reviewStatus: 'pending' });
+    product = await Product.create({
+      shopId: shop._id,
+      duplicateKey,
+      ...listing,
+      isAvailable: listing.stock > 0,
+      town: shop.town,
+      reviewStatus: reviewDecision.reviewStatus,
+      reviewReasons: reviewDecision.reviewReasons
+    });
   } catch (error) {
     if (error.code === 11000 && error.keyPattern?.duplicateKey) {
       return res.status(409).json({ error: 'A matching product listing already exists in your shop.' });
     }
     throw error;
   }
-  return res.status(201).json({ product: { id: product._id.toString(), title: product.title, priceNAD: product.priceNAD, stock: product.stock, category: product.category, reviewStatus: product.reviewStatus } });
+  const notificationError = await notifyProductReviewDecision({ product, shop, seller: user, reviewDecision });
+  return res.status(201).json({
+    product: {
+      id: product._id.toString(),
+      title: product.title,
+      priceNAD: product.priceNAD,
+      stock: product.stock,
+      category: product.category,
+      reviewStatus: product.reviewStatus,
+      reviewReasons: product.reviewReasons
+    },
+    notificationError
+  });
 });
 
 app.patch('/api/seller/products/:id', async (req, res) => {
@@ -4784,40 +7545,62 @@ app.patch('/api/seller/products/:id', async (req, res) => {
   if (!product) return res.status(404).json({ error: 'Listing not found.' });
 
   let updates;
+  let reviewDecision = null;
   if (req.body?.status !== undefined) {
     if (!['active', 'archived'].includes(req.body.status)) return res.status(400).json({ error: 'Invalid listing status.' });
     updates = { status: req.body.status };
   } else {
-    const title = typeof req.body?.title === 'string' ? req.body.title.trim() : '';
-    const description = typeof req.body?.description === 'string' ? req.body.description.trim() : '';
-    const priceNAD = Number(req.body?.priceNAD);
-    const stock = Number(req.body?.stock);
-    const category = req.body?.category;
-    const imageUrls = normalizeImageUrls(req.body?.imageUrls || req.body?.imageUrl || []);
-    const imageUrl = imageUrls[0] || '';
-    const imageIsValid = imageUrls.length === 0 || imageUrls.every((url) => validateImageUrl(url));
-    const duplicateKey = buildProductDuplicateKey({ title, description, category: typeof category === 'string' ? category : '' });
-
-    if (!title || title.length > 100 || !description || description.length > 1500 || !Number.isFinite(priceNAD) || priceNAD < 0.01 || priceNAD > 10000000 || !Number.isInteger(stock) || stock < 0 || stock > 100000 || !productCategories.includes(category) || !imageIsValid) {
-      return res.status(400).json({ error: 'Check the product details, price, stock, category, and image URL.' });
-    }
+    const listing = normalizeProductListingInput(req.body);
+    if (listing.error) return res.status(400).json({ error: listing.error });
+    const duplicateKey = buildProductDuplicateKey(listing);
     if (await findDuplicateProduct(shop._id, duplicateKey, product._id)) {
       return res.status(409).json({ error: 'A matching product listing already exists in your shop.' });
     }
 
-    updates = { duplicateKey, title, description, priceNAD, stock, isAvailable: stock > 0, category, imageUrl, imageUrls, reviewStatus: 'pending' };
+    reviewDecision = getListingReviewDecision({ shop, seller: user, product: listing });
+    updates = {
+      duplicateKey,
+      ...listing,
+      isAvailable: listing.stock > 0,
+      reviewStatus: reviewDecision.reviewStatus,
+      reviewReasons: reviewDecision.reviewReasons
+    };
   }
 
   let updated;
   try {
-    updated = await Product.findByIdAndUpdate(product._id, { $set: updates }, { new: true, runValidators: true }).lean();
+    updated = await Product.findByIdAndUpdate(product._id, { $set: updates }, { returnDocument: 'after', runValidators: true }).lean();
   } catch (error) {
     if (error.code === 11000 && error.keyPattern?.duplicateKey) {
       return res.status(409).json({ error: 'A matching product listing already exists in your shop.' });
     }
     throw error;
   }
-  return res.json({ product: { id: updated._id.toString(), title: updated.title, description: updated.description, priceNAD: updated.priceNAD, stock: updated.stock, category: updated.category, imageUrl: updated.imageUrl, imageUrls: updated.imageUrls || [], status: updated.status, reviewStatus: updated.reviewStatus } });
+  let notificationError = null;
+  if (reviewDecision) {
+    notificationError = await notifyProductReviewDecision({
+      product: updated,
+      shop,
+      seller: user,
+      reviewDecision
+    });
+  }
+  return res.json({
+    product: {
+      id: updated._id.toString(),
+      title: updated.title,
+      description: updated.description,
+      priceNAD: updated.priceNAD,
+      stock: updated.stock,
+      category: updated.category,
+      imageUrl: updated.imageUrl,
+      imageUrls: updated.imageUrls || [],
+      status: updated.status,
+      reviewStatus: updated.reviewStatus,
+      reviewReasons: updated.reviewReasons || []
+    },
+    notificationError
+  });
 });
 
 app.delete('/api/seller/products/:id', async (req, res) => {
@@ -4882,14 +7665,14 @@ async function startServer() {
   }
 
   await mongoose.connect(process.env.MONGODB_URI);
-  await Promise.all([User.init(), Session.init(), PasswordReset.init(), Shop.init(), Product.init(), PromotionCampaign.init(), PromotionEngagement.init(), Order.init(), ListingReport.init(), ListingThresholdEvent.init(), ModerationAudit.init(), SupportRequest.init(), SupportNotification.init(), SuspensionAppeal.init(), SuspensionAppealAccess.init(), PlatformSetting.init()]);
+  await Promise.all([User.init(), Session.init(), PasswordReset.init(), Shop.init(), Product.init(), PromotionCampaign.init(), PromotionEngagement.init(), Order.init(), WalletTransaction.init(), WalletReconciliationAlert.init(), ListingReport.init(), ListingThresholdEvent.init(), ModerationAudit.init(), SupportRequest.init(), SupportNotification.init(), SellerNotification.init(), AccountNotification.init(), SuspensionAppeal.init(), SuspensionAppealAccess.init(), PlatformSetting.init(), LoginWallpaper.init()]);
   const reservationSweep = setInterval(() => {
     releaseExpiredReservations().catch((error) => console.error('Reservation cleanup failed:', error.message));
   }, 60 * 1000);
   reservationSweep.unref();
   await advancePayoutLifecycle();
   const payoutSweep = setInterval(() => {
-    advancePayoutLifecycle().catch((error) => console.error('Payout simulation failed:', error.message));
+    advancePayoutLifecycle().catch((error) => console.error('Seller wallet credit sweep failed:', error.message));
   }, payoutSweepIntervalMs);
   payoutSweep.unref();
   await processAutomaticSellerRestrictions();
@@ -4956,6 +7739,13 @@ module.exports = {
   validateImageUrl,
   hasValidImageSignature,
   resolvePayoutStatus,
+  calculateWalletPayment,
+  reconcileWalletBalance,
+  isMatchingPromotionWalletDebit,
+  getPromotionPaymentIssue,
+  shouldCancelUnpaidPromotion,
+  normalizeAdminNotificationInput,
+  isAssistantPlanPaid,
   assertProductionPaymentConfiguration,
   assertProductionAdminConfiguration
 };

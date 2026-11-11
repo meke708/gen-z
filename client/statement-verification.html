@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f4f1e8">
+    <title>Verify statement | Z Namibia</title>
+    <style>
+        :root { color-scheme: light; --ink: #17231e; --muted: #68736d; --paper: #f4f1e8; --white: #fffefa; --forest: #18382e; --line: #d9d9cf; }
+        * { box-sizing: border-box; }
+        body { margin: 0; color: var(--ink); background: var(--paper); font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
+        header { padding: 18px max(24px, calc((100vw - 960px) / 2)); border-bottom: 1px solid var(--line); background: var(--white); font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+        main { width: min(960px, calc(100% - 36px)); margin: 40px auto; }
+        h1 { margin: 0; font: 400 clamp(34px, 5vw, 48px) Georgia, serif; letter-spacing: -.03em; }
+        .intro { color: var(--muted); font-size: 13px; line-height: 1.7; }
+        .result, .record { margin-top: 20px; padding: 20px; border: 1px solid var(--line); background: var(--white); }
+        .result[data-valid="true"] { border-color: #9ab99c; background: #edf4e9; }
+        .result[data-valid="false"] { border-color: #ce9486; background: #f8e9e5; }
+        .result p { margin: 0; font-size: 13px; line-height: 1.6; }
+        dl { display: grid; grid-template-columns: minmax(130px, .35fr) 1fr; gap: 10px 18px; margin: 18px 0 0; font-size: 12px; }
+        dt { color: var(--muted); }
+        dd { margin: 0; overflow-wrap: anywhere; }
+        code, pre { font-family: Consolas, "Courier New", monospace; }
+        code { font-size: 11px; overflow-wrap: anywhere; }
+        details { margin-top: 20px; }
+        summary { cursor: pointer; font-size: 12px; font-weight: 700; }
+        pre { max-height: 520px; overflow: auto; padding: 14px; background: #f5f5ef; font-size: 10px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+        @media (max-width: 560px) { dl { grid-template-columns: 1fr; gap: 4px; } dd { margin-bottom: 10px; } }
+    </style>
+</head>
+<body>
+    <header>Z Namibia · Statement verification · <a href="/developers">Developer API</a></header>
+    <main>
+        <p class="intro">Check a Z-balance statement against the official record. A valid result confirms the issued statement data has not been changed. It does not prevent someone from editing a PDF or copying a genuine signature onto different content.</p>
+        <h1>Statement verification</h1>
+        <section class="result" id="verification-result" aria-live="polite">
+            <p id="verification-message">Checking the official record…</p>
+        </section>
+        <section class="record" id="statement-record" hidden>
+            <dl>
+                <dt>Statement reference</dt><dd id="statement-id"></dd>
+                <dt>Issued by</dt><dd id="statement-issuer"></dd>
+                <dt>Shop</dt><dd id="statement-shop"></dd>
+                <dt>Issue date</dt><dd id="statement-date"></dd>
+                <dt>Z balance</dt><dd id="statement-balance"></dd>
+                <dt>Signature (HMAC-SHA-256)</dt><dd><code id="statement-signature"></code></dd>
+            </dl>
+            <details>
+                <summary>Show complete signed record data</summary>
+                <pre id="statement-json"></pre>
+            </details>
+        </section>
+    </main>
+    <script>
+        const resultBox = document.querySelector("#verification-result");
+        const message = document.querySelector("#verification-message");
+        const record = document.querySelector("#statement-record");
+        const money = new Intl.NumberFormat("en-NA", { style: "currency", currency: "NAD", minimumFractionDigits: 2 });
+        const statementId = new URLSearchParams(window.location.search).get("id");
+
+        async function verifyStatement() {
+            if (!statementId) throw new Error("No statement reference was provided.");
+            const response = await fetch(`/api/statements/${encodeURIComponent(statementId)}/verify`);
+            let result;
+            try {
+                result = await response.json();
+            } catch {
+                throw new Error("The verification service returned an invalid response.");
+            }
+            if (!response.ok) throw new Error(result.error || "This statement could not be verified.");
+
+            const statement = result.statement;
+            resultBox.dataset.valid = "true";
+            message.textContent = "Verified: this statement matches the record signed by Z Namibia.";
+            document.querySelector("#statement-id").textContent = statement.statementId;
+            document.querySelector("#statement-issuer").textContent = statement.issuer;
+            document.querySelector("#statement-shop").textContent = statement.shopName;
+            document.querySelector("#statement-date").textContent = new Date(statement.issuedAt).toLocaleString();
+            document.querySelector("#statement-balance").textContent = money.format(Number(statement.walletBalanceNAD));
+            document.querySelector("#statement-signature").textContent = result.signature;
+            document.querySelector("#statement-json").textContent = JSON.stringify(statement, null, 2);
+            record.hidden = false;
+        }
+
+        verifyStatement().catch((error) => {
+            resultBox.dataset.valid = "false";
+            message.textContent = error.message || "Verification failed. Do not rely on this statement.";
+        });
+    </script>
+</body>
+</html>

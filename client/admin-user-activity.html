@@ -22,6 +22,24 @@
         .identity strong { color: var(--ink); }
         .disclaimer { margin: 20px 0; padding: 12px 14px; border-left: 3px solid var(--amber); color: var(--muted); font-size: 11px; line-height: 1.6; }
         h2 { margin: 30px 0 12px; font-family: Georgia, "Times New Roman", serif; font-size: 24px; font-weight: 400; }
+        .snapshot-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+        .snapshot-card { min-width: 0; padding: 14px; border: 1px solid var(--line); background: var(--white); }
+        .snapshot-card strong { display: block; color: var(--forest); font-size: 22px; overflow-wrap: anywhere; }
+        .snapshot-card span { display: block; margin-top: 6px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+        .finance-summary { padding: 14px; border: 1px solid var(--line); background: var(--white); }
+        .finance-summary.is-mismatch { border-left: 4px solid var(--warning); }
+        .finance-summary.is-matched { border-left: 4px solid var(--forest); }
+        .finance-summary.is-unverified { border-left: 4px solid var(--amber); }
+        .finance-summary p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+        .finance-summary strong { color: var(--ink); }
+        .finance-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+        .finance-metric { min-width: 0; padding: 10px; background: #f7f5ee; }
+        .finance-metric strong { display: block; color: var(--forest); font-size: 15px; overflow-wrap: anywhere; }
+        .finance-metric span { display: block; margin-top: 5px; color: var(--muted); font-size: 9px; line-height: 1.45; }
+        .review-notes { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+        .review-note { padding: 11px 13px; border-left: 3px solid var(--amber); background: var(--white); color: var(--muted); font-size: 11px; line-height: 1.6; }
+        .review-note strong { color: var(--ink); }
+        .review-note.is-clear { border-left-color: var(--forest); }
         .risk-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
         .risk-card { min-height: 100px; padding: 13px; }
         .risk-card strong { display: block; color: var(--forest); font-size: 23px; }
@@ -39,6 +57,8 @@
         .status-message, .empty { color: var(--muted); font-size: 12px; line-height: 1.6; }
         .status-message.is-error { color: var(--warning); }
         @media (max-width: 760px) {
+            .snapshot-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .finance-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .risk-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .section-grid { grid-template-columns: 1fr; }
         }
@@ -47,15 +67,17 @@
             nav { gap: 9px; }
             main { width: calc(100% - 36px); padding-top: 30px; }
             h1 { font-size: 30px; }
+            .snapshot-grid { grid-template-columns: 1fr 1fr; }
             .risk-grid { grid-template-columns: 1fr 1fr; }
         }
     </style>
     <link rel="stylesheet" href="/loading.css">
     <script src="/loading.js"></script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 </head>
 <body>
     <header class="site-header">
-        <a class="brand" href="/admin/accounts"><span class="brand-mark" aria-hidden="true">Z</span><span>User accounts</span></a>
+        <a class="brand" href="/admin/accounts"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Operations</span></a>
         <nav aria-label="Super-admin navigation">
             <a href="/admin/accounts">Accounts</a>
             <a href="/admin/moderation">Moderation</a>
@@ -67,6 +89,19 @@
         <h1 id="account-name">Loading user activity...</h1>
         <div class="identity" id="account-identity" aria-live="polite"></div>
         <p class="status-message" id="activity-status" role="status" aria-live="polite">Loading account activity...</p>
+        <section aria-labelledby="snapshot-title">
+            <h2 id="snapshot-title">Account snapshot</h2>
+            <div class="snapshot-grid" id="account-snapshot"></div>
+        </section>
+        <section aria-labelledby="finance-title">
+            <h2 id="finance-title">Wallet balance reconciliation</h2>
+            <div class="finance-summary" id="finance-summary" aria-live="polite"></div>
+        </section>
+        <section aria-labelledby="review-notes-title">
+            <h2 id="review-notes-title">Activity worth reviewing</h2>
+            <p class="disclaimer">Notes below are explainable review prompts based on retained records, not findings of wrongdoing. Location and network differences can result from travel, shared networks, mobile carriers, or VPNs. Confirm context before acting.</p>
+            <ul class="review-notes" id="review-notes"></ul>
+        </section>
         <section aria-labelledby="signals-title">
             <h2 id="signals-title">Automated risk signals</h2>
             <p class="disclaimer">These are rule-based moderation signals, not proof of fraud or an automated decision. Report points measure queue priority and are not a fraud probability. Review the underlying activity before taking action.</p>
@@ -78,6 +113,9 @@
         const accountName = document.querySelector("#account-name");
         const accountIdentity = document.querySelector("#account-identity");
         const activityStatus = document.querySelector("#activity-status");
+        const accountSnapshot = document.querySelector("#account-snapshot");
+        const financeSummary = document.querySelector("#finance-summary");
+        const reviewNotes = document.querySelector("#review-notes");
         const riskSignals = document.querySelector("#risk-signals");
         const activitySections = document.querySelector("#activity-sections");
         const accountId = window.location.pathname.split("/").filter(Boolean).at(-2);
@@ -107,8 +145,90 @@
             return value ? new Date(value).toLocaleString() : "Date unavailable";
         }
 
+        function addSnapshotCard(label, value, note) {
+            const card = document.createElement("article");
+            card.className = "snapshot-card";
+            const metric = document.createElement("strong");
+            metric.textContent = value;
+            const title = document.createElement("span");
+            title.textContent = label;
+            const description = document.createElement("span");
+            description.textContent = note;
+            card.append(metric, title, description);
+            accountSnapshot.append(card);
+        }
+
+        function addReviewNote(title, message, isClear = false) {
+            const item = document.createElement("li");
+            item.className = `review-note${isClear ? " is-clear" : ""}`;
+            const heading = document.createElement("strong");
+            heading.textContent = `${title}: `;
+            item.append(heading, document.createTextNode(message));
+            reviewNotes.append(item);
+        }
+
+        function formatMoney(value) {
+            return value === null || value === undefined ? "Not available" : `N$ ${Number(value).toFixed(2)}`;
+        }
+
+        function renderFinancialReconciliation(reconciliation) {
+            financeSummary.replaceChildren();
+            financeSummary.className = `finance-summary is-${reconciliation.status}`;
+            const summary = document.createElement("p");
+            if (reconciliation.status === "matched") {
+                summary.textContent = `Matched: the current account balance equals the latest wallet ledger balance, and the recorded credits, debits, and refunds reconcile across ${reconciliation.transactionCount} wallet transaction(s).`;
+            } else if (reconciliation.status === "mismatch") {
+                const notification = reconciliation.adminNotified ? " An admin notification was sent." : " This discrepancy is already open for admin review.";
+                const balanceComparison = reconciliation.differenceNAD === 0
+                    ? "The account balance matches the latest recorded ledger balance."
+                    : `The account balance is ${formatMoney(Math.abs(reconciliation.differenceNAD))} ${reconciliation.differenceNAD < 0 ? "lower" : "higher"} than the latest ledger balance.`;
+                const ledgerComparison = reconciliation.ledgerIntegrityDifferenceNAD === 0
+                    ? ""
+                    : ` Ledger activity totals differ from the final recorded ledger snapshot by ${formatMoney(Math.abs(reconciliation.ledgerIntegrityDifferenceNAD))}.`;
+                summary.textContent = `Discrepancy found. The amount present in both balance records is ${formatMoney(reconciliation.matchedBalanceNAD)}. ${balanceComparison}${ledgerComparison}${notification}`;
+            } else {
+                summary.textContent = `No wallet transactions are recorded. The current ${formatMoney(reconciliation.accountBalanceNAD)} balance is treated as an unverified opening balance, not a confirmed mismatch.`;
+            }
+            const metrics = document.createElement("div");
+            metrics.className = "finance-grid";
+            const values = reconciliation.status === "unverified"
+                ? [
+                    ["Current account balance", formatMoney(reconciliation.accountBalanceNAD)],
+                    ["Balance verified by ledger", "Not verifiable"],
+                    ["Balance without ledger evidence", formatMoney(reconciliation.unverifiedBalanceNAD)],
+                    ["Wallet transactions recorded", String(reconciliation.transactionCount)],
+                    ["Recorded wallet credits", formatMoney(reconciliation.creditsNAD)],
+                    ["Recorded purchase debits", formatMoney(reconciliation.debitsNAD)],
+                    ["Recorded purchase refunds", formatMoney(reconciliation.refundsNAD)]
+                ]
+                : [
+                    ["Current account balance", formatMoney(reconciliation.accountBalanceNAD)],
+                    ["Latest ledger balance", formatMoney(reconciliation.ledgerBalanceNAD)],
+                    ["Balance amount matching both", formatMoney(reconciliation.matchedBalanceNAD)],
+                    ["Inferred opening balance", formatMoney(reconciliation.openingBalanceNAD)],
+                    ["Wallet credits", formatMoney(reconciliation.creditsNAD)],
+                    ["Purchase debits", formatMoney(reconciliation.debitsNAD)],
+                    ["Purchase refunds", formatMoney(reconciliation.refundsNAD)],
+                    ["Balance implied by all ledger entries", formatMoney(reconciliation.expectedBalanceNAD)]
+                ];
+            for (const [label, value] of values) {
+                const metric = document.createElement("div");
+                metric.className = "finance-metric";
+                const amount = document.createElement("strong");
+                amount.textContent = value;
+                const caption = document.createElement("span");
+                caption.textContent = label;
+                metric.append(amount, caption);
+                metrics.append(metric);
+            }
+            const note = document.createElement("p");
+            note.style.marginTop = "12px";
+            note.textContent = "This checks Z wallet ledger entries only. Card payments and other external payment methods are not wallet movements. Opening balance is inferred from the first retained wallet transaction; accounts without ledger entries cannot be independently reconciled.";
+            financeSummary.append(summary, metrics, note);
+        }
+
         function renderActivity(result) {
-            const { account, riskSignals: signals, activity } = result;
+            const { account, riskSignals: signals, activity, financialReconciliation } = result;
             accountName.textContent = account.name || "Unnamed account";
             accountIdentity.replaceChildren();
             const accountDetails = document.createElement("strong");
@@ -116,6 +236,58 @@
             const details = document.createElement("span");
             details.textContent = ` · ${account.role} · ${account.emailVerified ? "Email verified" : "Email not verified"} · ${account.isSuspended ? "Suspended" : "Active"} · Joined ${new Date(account.createdAt).toLocaleDateString()}`;
             accountIdentity.append(accountDetails, details);
+            renderFinancialReconciliation(financialReconciliation);
+
+            const validSignIns = activity.loginActivities.filter((entry) => entry.createdAt && !Number.isNaN(new Date(entry.createdAt).getTime()));
+            const signInCountries = new Set(validSignIns.map((entry) => entry.countryCode?.trim().toUpperCase()).filter(Boolean));
+            const signInNetworks = new Set(validSignIns.map((entry) => entry.clientIp).filter(Boolean));
+            const observedOrders = activity.buyerOrders.length + activity.sellerOrders.length;
+            const accountAgeDays = Math.max(0, Math.floor((Date.now() - new Date(account.createdAt).getTime()) / 86400000));
+            accountSnapshot.replaceChildren();
+            addSnapshotCard("Account age", `${accountAgeDays} days`, `Created ${new Date(account.createdAt).toLocaleDateString()}.`);
+            addSnapshotCard("Sign-ins sampled", String(activity.loginActivities.length), `${signInCountries.size} country code(s) and ${signInNetworks.size} distinct IP address(es) across up to 25 retained records.`);
+            addSnapshotCard("Orders sampled", String(observedOrders), `${activity.buyerOrders.length} buyer and ${activity.sellerOrders.length} seller orders in the returned recent sample.`);
+            addSnapshotCard("Reports submitted", String(signals.submittedReportCount), `${signals.dismissedSubmittedReportCount} dismissed; ${signals.submittedCredibilityPoints} total queue-priority points.`);
+            addSnapshotCard("Reports on listings", String(signals.receivedReportCount), `${signals.pendingReportsOnListings} pending; ${signals.reportHiddenListings} listing(s) hidden by report threshold.`);
+            addSnapshotCard("Marketplace activity", String(activity.shops.length + activity.reviewsWritten + activity.referrals), `${activity.shops.length} shop(s), ${activity.reviewsWritten} review(s) written, ${activity.referrals} referral(s).`);
+
+            reviewNotes.replaceChildren();
+            let noteCount = 0;
+            if (account.isSuspended) {
+                addReviewNote("Account status", "This account is currently suspended. Review the recorded account actions and suspension reason before making any further decision.", false);
+                noteCount += 1;
+            }
+            if (!account.emailVerified) {
+                addReviewNote("Email verification", "This account's email is not verified; confirm whether the account completed the expected onboarding.", false);
+                noteCount += 1;
+            }
+            if (signInCountries.size > 1) {
+                addReviewNote("Sign-in locations", `Recent retained sign-ins include ${signInCountries.size} country codes (${[...signInCountries].join(", ")}). This can be legitimate; verify with the account holder only if the pattern is unexpected.`, false);
+                noteCount += 1;
+            }
+            if (signInNetworks.size >= 5) {
+                addReviewNote("Network variation", `${signInNetworks.size} distinct IP addresses appear in the recent sign-in sample. Shared/mobile networks and VPNs can explain this; check timestamps and context before escalating.`, false);
+                noteCount += 1;
+            }
+            if (signals.dismissedSubmittedReportCount > 0) {
+                addReviewNote("Dismissed reports", `${signals.dismissedSubmittedReportCount} submitted report(s) were dismissed. Review the report details and decisions; a dismissal alone does not establish abuse.`, false);
+                noteCount += 1;
+            }
+            if (signals.pendingReportsOnListings > 0) {
+                addReviewNote("Open listing reports", `${signals.pendingReportsOnListings} report(s) against this account's listings remain pending (${signals.pendingReportPointsOnListings} queue-priority points). These need review, not an automatic conclusion.`, false);
+                noteCount += 1;
+            }
+            if (signals.reportHiddenListings > 0) {
+                addReviewNote("Listing visibility", `${signals.reportHiddenListings} listing(s) were hidden by the report threshold. Check moderation outcomes and current listing status.`, false);
+                noteCount += 1;
+            }
+            if (signals.sellerRestrictionActive) {
+                addReviewNote("Seller restriction", `A seller restriction is currently active${signals.sellerRestrictedUntil ? ` until ${new Date(signals.sellerRestrictedUntil).toLocaleString()}` : ""}. Review the restriction reason and related actions.`, false);
+                noteCount += 1;
+            }
+            if (!noteCount) {
+                addReviewNote("No configured review prompts", "The available retained records did not trigger these specific prompts. This is not a guarantee that all activity is risk-free.", true);
+            }
 
             const signalCards = [
                 ["Dismissed reports", signals.dismissedReportCount, `3 dismissals pause reporting; ${signals.reportingPaused ? "this account is currently paused" : "reporting is not paused"}`, signals.reportingPaused],

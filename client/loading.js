@@ -4,53 +4,54 @@
     let domReady = document.readyState !== "loading";
     let overlay;
     let shownAt = 0;
+    let showTimer;
     let idleTimer;
     let maximumWaitTimer;
-    let failedRequests = 0;
-    const pageLabel = (() => {
-        const path = window.location.pathname.replace(/\/+$/, "") || "/";
-        if (path === "/" || path === "/marketplace") return "marketplace listings";
-        if (path === "/shops") return "shop listings";
-        if (path.startsWith("/shop/")) return "shop details";
-        if (path.startsWith("/product/")) return "product details";
-        if (path === "/dashboard") return "your account and orders";
-        if (path === "/cart") return "your cart";
-        if (path === "/checkout") return "checkout details";
-        if (path === "/sell/profile") return "your seller profile";
-        if (path === "/sell/verification") return "business verification status";
-        if (path === "/sell/assistant") return "your shop assistant settings";
-        if (path === "/sell/orders") return "your shop orders";
-        if (path === "/sell/listings") return "your product listings";
-        if (path === "/sell/transactions") return "your payout transactions";
-        if (path === "/sell/dashboard" || path === "/sell") return "your seller dashboard";
-        if (path === "/admin/kyc") return "verification submissions";
-        if (path === "/admin/support") return "support requests";
-        if (path === "/admin/payouts") return "payout information";
-        if (path === "/admin/moderation") return "listing reports";
-        return "page content";
-    })();
+    let removalTimer;
+    let adminHeaderObserver;
+    const isAdminPage = window.location.pathname.startsWith("/admin/");
 
-    function updateMessage() {
-        if (!overlay) return;
-        const message = overlay.querySelector(".page-loader-message");
-        if (activeRequests) {
-            message.textContent = `Loading ${pageLabel}...`;
-        } else if (failedRequests) {
-            message.textContent = `Some ${pageLabel} could not be loaded.`;
+    function positionAdminOverlay() {
+        if (!isAdminPage || !overlay) return;
+        const header = document.querySelector(".site-header");
+        if (!header) return;
+
+        const isCompactLayout = window.matchMedia("(max-width: 900px)").matches;
+        if (isCompactLayout) {
+            overlay.style.left = "0px";
+            overlay.style.top = `${header.getBoundingClientRect().bottom}px`;
         } else {
-            message.textContent = `${pageLabel[0].toUpperCase()}${pageLabel.slice(1)} loaded.`;
+            overlay.style.removeProperty("left");
+            overlay.style.removeProperty("top");
         }
+        if (!adminHeaderObserver && window.ResizeObserver) {
+            adminHeaderObserver = new ResizeObserver(positionAdminOverlay);
+            adminHeaderObserver.observe(header);
+        }
+    }
+
+    function getDestinationLabel() {
+        const title = document.title.split("|", 1)[0].trim();
+        if (title) return title;
+
+        const route = window.location.pathname.replace(/\/+$/, "").split("/").pop();
+        return route ? route.replace(/[-_]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()) : "Home";
     }
 
     function hideOverlay() {
         if (!overlay || overlay.classList.contains("is-hidden")) return;
         window.clearTimeout(maximumWaitTimer);
-        const remainingMinimumTime = Math.max(0, 450 - (performance.now() - shownAt));
+        const minimumDisplayTime = isAdminPage ? 800 : 450;
+        const remainingMinimumTime = Math.max(0, minimumDisplayTime - (performance.now() - shownAt));
         maximumWaitTimer = window.setTimeout(() => {
             if (activeRequests) return;
             overlay.classList.add("is-hidden");
             overlay.setAttribute("aria-hidden", "true");
-            window.setTimeout(() => overlay.remove(), 400);
+            removalTimer = window.setTimeout(() => {
+                if (!overlay?.classList.contains("is-hidden")) return;
+                overlay.remove();
+                overlay = null;
+            }, 400);
         }, remainingMinimumTime);
     }
 
@@ -61,52 +62,74 @@
         }
     }
 
+    function scheduleShow() {
+        if (!isAdminPage) {
+            showOverlay();
+            return;
+        }
+        if (overlay && !overlay.classList.contains("is-hidden")) return;
+        if (showTimer) return;
+        showTimer = window.setTimeout(() => {
+            showTimer = null;
+            if (activeRequests > 0) showOverlay();
+        }, 400);
+    }
+
     function showOverlay() {
-        if (overlay || !document.body) return;
-        overlay = document.createElement("div");
-        overlay.className = "page-loader";
-        overlay.setAttribute("role", "status");
-        overlay.setAttribute("aria-live", "polite");
-        overlay.innerHTML = '<div class="page-loader-content"><span class="page-loader-mark" aria-hidden="true">Z</span><p class="page-loader-message"></p><span class="page-loader-dots" aria-hidden="true"><span></span><span></span><span></span></span></div>';
-        document.body.append(overlay);
+        if (!document.body) return;
+        if (overlay) {
+            if (!overlay.classList.contains("is-hidden")) return;
+            window.clearTimeout(removalTimer);
+            overlay.classList.remove("is-hidden");
+            overlay.setAttribute("aria-hidden", "false");
+        } else {
+            overlay = document.createElement("div");
+            overlay.className = "page-loader";
+            if (isAdminPage) overlay.classList.add("page-loader-admin");
+            overlay.setAttribute("role", "status");
+            overlay.setAttribute("aria-label", "Loading");
+            overlay.setAttribute("aria-live", "polite");
+            overlay.innerHTML = '<div class="page-loader-content"><span class="page-loader-mark" aria-hidden="true">Z</span><span class="page-loader-dots" aria-hidden="true"><span></span><span></span><span></span></span><p class="page-loader-message"></p></div>';
+            overlay.querySelector(".page-loader-message").textContent = `Loading ${getDestinationLabel()}...`;
+            document.body.append(overlay);
+        }
+        positionAdminOverlay();
         shownAt = performance.now();
-        updateMessage();
         maximumWaitTimer = window.setTimeout(() => {
-            failedRequests += 1;
             activeRequests = 0;
-            updateMessage();
             hideOverlay();
         }, 8000);
     }
 
-    function finishRequest(succeeded) {
-        if (!succeeded) failedRequests += 1;
+    function finishRequest() {
         activeRequests = Math.max(0, activeRequests - 1);
-        updateMessage();
+        if (activeRequests === 0) {
+            window.clearTimeout(showTimer);
+            showTimer = null;
+        }
         scheduleHide();
     }
 
     window.fetch = function (...args) {
-        const shouldTrack = !domReady || (overlay && !overlay.classList.contains("is-hidden"));
+        const shouldTrack = isAdminPage || !domReady || (overlay && !overlay.classList.contains("is-hidden"));
         if (shouldTrack) {
             window.clearTimeout(idleTimer);
             activeRequests += 1;
-            showOverlay();
-            updateMessage();
+            scheduleShow();
         }
 
         let request;
         try {
             request = originalFetch.apply(this, args);
         } catch (error) {
-            if (shouldTrack) finishRequest(false);
+            if (shouldTrack) finishRequest();
             throw error;
         }
 
         if (shouldTrack) {
             request.then(
-                (response) => finishRequest(response.ok),
-                () => finishRequest(false)
+                finishRequest,
+                finishRequest
             );
         }
         return request;
@@ -114,12 +137,16 @@
 
     function markDomReady() {
         domReady = true;
+        if (isAdminPage && activeRequests) scheduleShow();
+        positionAdminOverlay();
         scheduleHide();
     }
 
     if (domReady) {
+        positionAdminOverlay();
         scheduleHide();
     } else {
         document.addEventListener("DOMContentLoaded", markDomReady, { once: true });
     }
+    window.addEventListener("resize", positionAdminOverlay);
 })();

@@ -23,6 +23,7 @@
         #verification-status { min-height: 24px; }
         @media (max-width: 480px) { main { padding: 26px; } }
     </style>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 </head>
 <body>
     <main>
@@ -60,16 +61,19 @@
             "/sell/assistant",
             "/sell/verification"
         ]);
+        const developerReturnPaths = new Set(["/developers"]);
         let continueUrl = "/dashboard";
         try {
             const target = new URL(requestedReturnTo, window.location.origin);
-            if (target.origin === window.location.origin && sellerReturnPaths.has(target.pathname)) {
+            if (target.origin === window.location.origin && (sellerReturnPaths.has(target.pathname) || developerReturnPaths.has(target.pathname))) {
                 continueUrl = `${target.pathname}${target.search}`;
             }
         } catch {
             continueUrl = "/dashboard";
         }
-        const continueLabel = continueUrl.startsWith("/sell") ? "Continue to selling" : "Continue to your account";
+        const continueLabel = continueUrl.startsWith("/sell")
+            ? "Continue to selling"
+            : continueUrl.startsWith("/developers") ? "Continue to Developer API" : "Continue to your account";
 
         async function verifyEmail() {
             verifyButton.disabled = true;
@@ -128,7 +132,7 @@
                 status.textContent = result.message;
                 if (result.verificationUrl) {
                     const verificationTarget = new URL(result.verificationUrl, window.location.origin);
-                    if (continueUrl.startsWith("/sell")) {
+                    if (continueUrl.startsWith("/sell") || continueUrl.startsWith("/developers")) {
                         verificationTarget.searchParams.set("returnTo", continueUrl);
                     }
                     verificationLink.href = verificationTarget.href;

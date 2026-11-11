@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#f4f1e8">
-    <title>Payout Activity | Z Operations</title>
+    <title>Z Balance Credits | Z Operations</title>
     <style>
         :root { color-scheme: light; --ink: #17231e; --muted: #68736d; --paper: #f4f1e8; --white: #fffefa; --lime: #d8f36a; --forest: #18382e; --line: #d9d9cf; }
         * { box-sizing: border-box; }
@@ -43,10 +43,6 @@
         .payout-status.eligible { color: var(--forest); background: #edf0df; }
         .payout-status.paid, .payout-status.simulated { color: #285b3a; background: #e8f2e9; }
         .payout-waiting { display: block; max-width: 135px; color: var(--muted); font-size: 10px; line-height: 1.5; }
-        .payout-form { display: flex; min-width: 215px; gap: 6px; }
-        .payout-form input { width: 120px; min-width: 0; height: 34px; padding: 0 7px; border: 1px solid var(--line); border-radius: 3px; background: var(--white); font-size: 10px; }
-        .payout-form button { height: 34px; padding: 0 8px; border: 1px solid var(--ink); border-radius: 3px; color: var(--white); background: var(--ink); cursor: pointer; font-size: 9px; font-weight: 700; }
-        .payout-form button:disabled { opacity: 0.55; cursor: wait; }
         .empty-state { padding: 35px 8px; color: var(--muted); font-size: 12px; }
         .status { min-height: 20px; margin: 14px 0 0; color: #8b3b2f; font-size: 11px; }
         .status.success { color: #397d54; }
@@ -61,6 +57,7 @@
     </style>
     <link rel="stylesheet" href="/loading.css">
     <script src="/loading.js"></script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 </head>
 <body>
     <header class="site-header">
@@ -71,24 +68,24 @@
         <nav><a href="/dashboard">Account</a><a href="/admin/moderation">Moderation</a><a href="/admin/support">Support</a><a href="/marketplace">Marketplace</a></nav>
     </header>
     <main>
-        <p class="eyebrow">Operations · Payout activity</p>
-        <h1>Payout activity</h1>
-        <p class="intro" id="payout-intro">Buyer-confirmed deliveries move through the configured payout stages.</p>
+        <p class="eyebrow">Operations · Z balance activity</p>
+        <h1>Z balance credits</h1>
+        <p class="intro" id="payout-intro">Confirmed seller deliveries are credited to virtual Z balances after the hold period.</p>
         <div class="report-toolbar">
-            <strong class="report-total" id="report-total">N$ 0.00 <span>eligible total</span></strong>
+            <strong class="report-total" id="report-total">N$ 0.00 <span>credited to Z balances</span></strong>
             <span class="held-total" id="held-total">0 on hold</span>
-            <span class="paid-total" id="paid-total">0 paid</span>
+            <span class="paid-total" id="paid-total">0 wallet credits</span>
             <button class="export-button" id="export-report" type="button">Export CSV</button>
         </div>
         <div class="table-wrap">
             <table>
-                <thead><tr><th>Seller</th><th>Shop / order</th><th>Products</th><th>Shipping</th><th>Z fee</th><th>Status</th><th>Payment</th></tr></thead>
+                <thead><tr><th>Seller</th><th>Shop / order</th><th>Products</th><th>Shipping</th><th>Z fee</th><th>Status</th><th>Z balance</th></tr></thead>
                 <tbody id="payout-rows"></tbody>
             </table>
             <p class="empty-state" id="empty-state" hidden>No buyer-confirmed deliveries are awaiting payout.</p>
         </div>
         <p class="status" id="status" role="status" aria-live="polite"></p>
-        <p class="note" id="payout-note">Payout records are activity tracking. They do not prove that a bank transfer occurred.</p>
+        <p class="note" id="payout-note">This page tracks in-app wallet credits only. No EFT or external transfer is made.</p>
     </main>
     <script>
         const rows = document.querySelector("#payout-rows");
@@ -119,22 +116,16 @@
                 const result = await response.json();
                 if (!response.ok) throw new Error(result.error || "Payout report is unavailable.");
                 entries = result.entries;
-                const isSimulated = result.mode === "simulated";
-                if (isSimulated && !payoutRefreshTimer) payoutRefreshTimer = window.setInterval(loadReport, 2000);
-                payoutIntro.textContent = isSimulated
-                    ? "In mock mode, deliveries become ready for payout after the hold, then automatically advance to a simulated paid state after the second delay. No money moves."
-                    : "Buyer-confirmed deliveries become ready for manual payout after the configured hold. Transfer funds through your bank, then record the EFT reference here.";
-                payoutNote.textContent = isSimulated
-                    ? "Simulation only. A simulated paid status and SIM reference do not represent a bank transfer."
-                    : "Manual ledger only. This screen records a bank reference after a human completes the transfer; it does not initiate or verify the payment.";
+                if (!payoutRefreshTimer) payoutRefreshTimer = window.setInterval(loadReport, 15000);
+                payoutIntro.textContent = "Confirmed seller deliveries are credited to virtual Z balances after the hold period. Sellers can use those credits for purchases on Z.";
+                payoutNote.textContent = "This page tracks in-app wallet credits only. No EFT or external transfer is made.";
                 rows.replaceChildren();
                 emptyState.hidden = entries.length > 0;
-                const eligibleEntries = entries.filter((entry) => entry.payoutStatus === "eligible" && !entry.sellerRestricted);
+                const eligibleEntries = entries.filter((entry) => entry.payoutStatus === "eligible");
                 const heldEntries = entries.filter((entry) => entry.payoutStatus === "held");
-                const paidEntries = entries.filter((entry) => entry.payoutStatus === "paid");
                 document.querySelector("#report-total").firstChild.textContent = money.format(eligibleEntries.reduce((total, entry) => total + entry.payoutNAD, 0)) + " ";
                 heldTotal.textContent = `${heldEntries.length} on hold`;
-                paidTotal.textContent = `${paidEntries.length} ${isSimulated ? "simulated paid" : "paid"}`;
+                paidTotal.textContent = `${eligibleEntries.length} wallet credits`;
 
                 entries.forEach((entry) => {
                     const row = document.createElement("tr");
@@ -159,72 +150,35 @@
                     appendCell(row, money.format(entry.commissionNAD), "amount");
                     const payoutStatusCell = document.createElement("td");
                     const payoutStatus = document.createElement("span");
-                    payoutStatus.className = `payout-status${entry.payoutStatus === "eligible" ? " eligible" : entry.payoutStatus === "paid" ? entry.simulated ? " simulated" : " paid" : ""}`;
-                    payoutStatus.textContent = entry.payoutStatus === "eligible" ? "Ready for payout" : entry.payoutStatus === "paid" ? entry.simulated ? "Simulated paid" : "Paid" : "On hold";
+                    payoutStatus.className = `payout-status${entry.payoutStatus === "eligible" ? " eligible" : entry.payoutStatus === "paid" ? " paid" : ""}`;
+                    payoutStatus.textContent = entry.payoutStatus === "eligible" ? "Credited to Z balance" : entry.payoutStatus === "paid" ? "Previous payout record" : "Held by Z";
                     payoutStatusCell.append(payoutStatus);
                     row.append(payoutStatusCell);
                     const actionCell = document.createElement("td");
-                    if (entry.payoutStatus === "paid") {
-                        const paid = document.createElement("span");
-                        paid.className = "payout-waiting";
-                        paid.textContent = `${entry.simulated ? "No real transfer" : "Transfer recorded"}${entry.payoutMarkedAt ? ` · ${new Date(entry.payoutMarkedAt).toLocaleString()}` : ""}${entry.payoutReference ? ` · ${entry.payoutReference}` : ""}`;
-                        actionCell.append(paid);
+                    if (entry.walletCreditedAt) {
+                        const credited = document.createElement("span");
+                        credited.className = "payout-waiting";
+                        credited.textContent = `Virtual credit · ${new Date(entry.walletCreditedAt).toLocaleString()} · no EFT`;
+                        actionCell.append(credited);
                     } else if (entry.sellerRestricted) {
                         const waiting = document.createElement("span");
                         waiting.className = "payout-waiting";
                         waiting.textContent = entry.sellerRestrictedUntil
-                            ? `Seller access restricted until ${new Date(entry.sellerRestrictedUntil).toLocaleString()}; payout paused`
-                            : "Seller access restricted; payout paused";
-                        actionCell.append(waiting);
-                    } else if (isSimulated) {
-                        const waiting = document.createElement("span");
-                        waiting.className = "payout-waiting";
-                        waiting.textContent = entry.payoutStatus === "eligible"
-                            ? `Simulated payout at ${entry.payoutProcessingAt ? new Date(entry.payoutProcessingAt).toLocaleString() : "next processing window"}`
-                            : `Ready at ${entry.payoutEligibleAt ? new Date(entry.payoutEligibleAt).toLocaleString() : "pending"}`;
+                            ? `Seller access restricted until ${new Date(entry.sellerRestrictedUntil).toLocaleString()}; credit paused`
+                            : "Seller access restricted; credit paused";
                         actionCell.append(waiting);
                     } else if (entry.payoutStatus !== "eligible") {
                         const waiting = document.createElement("span");
                         waiting.className = "payout-waiting";
                         waiting.textContent = entry.payoutEligibleAt
-                            ? `Ready ${new Date(entry.payoutEligibleAt).toLocaleString()}`
+                            ? `Held until ${new Date(entry.payoutEligibleAt).toLocaleString()}`
                             : "Waiting for eligibility date";
                         actionCell.append(waiting);
                     } else {
-                        const form = document.createElement("form");
-                        form.className = "payout-form";
-                        const reference = document.createElement("input");
-                        reference.required = true;
-                        reference.minLength = 2;
-                        reference.maxLength = 100;
-                        reference.placeholder = "Bank EFT reference";
-                        reference.setAttribute("aria-label", `EFT reference for ${entry.orderNumber}`);
-                        form.append(reference);
-                        const button = document.createElement("button");
-                        button.type = "submit";
-                        button.textContent = `Record ${money.format(entry.payoutNAD)}`;
-                        form.append(button);
-                        form.addEventListener("submit", async (event) => {
-                            event.preventDefault();
-                            button.disabled = true;
-                            try {
-                                const response = await fetch(`/api/admin/payout-report/${encodeURIComponent(entry.orderNumber)}/${encodeURIComponent(entry.sellerOrderId)}/mark-paid`, {
-                                    method: "POST",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({ reference: reference.value })
-                                });
-                                const result = await response.json();
-                                if (!response.ok) throw new Error(result.error || "Could not record payout.");
-                                status.classList.add("success");
-                                status.textContent = `Manual EFT reference recorded for ${entry.orderNumber}. No transfer was initiated.`;
-                                await loadReport();
-                            } catch (error) {
-                                status.classList.remove("success");
-                                status.textContent = error.message;
-                                button.disabled = false;
-                            }
-                        });
-                        actionCell.append(form);
+                        const pending = document.createElement("span");
+                        pending.className = "payout-waiting";
+                        pending.textContent = "Credit processing";
+                        actionCell.append(pending);
                     }
                     row.append(actionCell);
                     rows.append(row);

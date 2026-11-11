@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f4f1e8">
+    <title>Verify statements | Z Operations</title>
+    <style>
+        :root { color-scheme: light; --ink: #17231e; --muted: #68736d; --paper: #f4f1e8; --white: #fffefa; --forest: #18382e; --line: #d9d9cf; --red: #8b3b2f; }
+        * { box-sizing: border-box; }
+        body { margin: 0; color: var(--ink); background: var(--paper); font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
+        .site-header { display: flex; min-height: 68px; align-items: center; justify-content: space-between; gap: 20px; padding: 12px max(24px, calc((100% - 1120px) / 2)); border-bottom: 1px solid var(--line); background: var(--white); }
+        .brand { display: flex; align-items: center; gap: 10px; font-family: Georgia, serif; text-decoration: none; }
+        .brand-mark { display: grid; width: 34px; aspect-ratio: 1; place-items: center; border: 1px solid var(--ink); border-radius: 50%; font-size: 20px; }
+        nav { display: flex; flex-wrap: wrap; gap: 16px; }
+        nav a { color: var(--forest); font-size: 11px; font-weight: 700; text-decoration: none; }
+        main { width: min(840px, calc(100% - 40px)); margin: 42px auto; }
+        .eyebrow { margin: 0 0 8px; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+        h1 { margin: 0; font: 400 clamp(34px, 5vw, 46px) Georgia, serif; }
+        .intro { max-width: 700px; margin: 12px 0 24px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+        .usage-panel { margin: 0 0 24px; padding: 20px; border: 1px solid var(--line); background: var(--white); }
+        .usage-heading { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; }
+        .usage-heading h2, .usage-subheading { margin: 0; font: 400 22px Georgia, serif; }
+        .usage-heading p, .usage-note { margin: 6px 0 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
+        .usage-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; }
+        .usage-controls { display: flex; align-items: center; gap: 8px; }
+        .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; clip-path: inset(50%); }
+        .usage-controls select, .usage-controls button { min-height: 36px; border: 1px solid var(--line); border-radius: 3px; padding: 0 10px; color: var(--ink); background: #fff; font: inherit; font-size: 10px; }
+        .usage-controls button { border-color: var(--forest); color: var(--white); background: var(--forest); cursor: pointer; font-weight: 700; }
+        .usage-handoff { margin-top: 14px; padding: 14px 0 0; border-top: 1px solid var(--line); }
+        .usage-handoff h3 { margin: 0; font: 400 17px Georgia, serif; }
+        .usage-handoff > p { margin: 5px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+        .handoff-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) auto; align-items: end; gap: 10px; margin-top: 12px; }
+        .handoff-form label { display: grid; gap: 5px; font-size: 10px; font-weight: 700; }
+        .handoff-form input, .handoff-form button { min-height: 36px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 3px; font: inherit; font-size: 10px; }
+        .handoff-form button { border-color: var(--forest); color: var(--white); background: var(--forest); cursor: pointer; font-weight: 700; }
+        .handoff-note { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 9px; line-height: 1.5; }
+        .usage-status { min-height: 18px; margin: 12px 0 0; color: var(--red); font-size: 10px; }
+        .usage-metrics { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+        .usage-metric { padding: 12px; border: 1px solid var(--line); }
+        .usage-metric span { display: block; color: var(--muted); font-size: 9px; }
+        .usage-metric strong { display: block; margin-top: 5px; font: 400 23px Georgia, serif; }
+        .usage-chart { margin-top: 16px; padding: 12px; border: 1px solid var(--line); }
+        .usage-chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+        .usage-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 6px; color: var(--muted); font-size: 9px; }
+        .legend-item::before { display: inline-block; width: 8px; height: 8px; margin-right: 5px; border-radius: 50%; background: #8caa78; content: ""; }
+        .legend-item.requests::before { background: var(--forest); }
+        .legend-item.mismatches::before { background: #b66b42; }
+        .usage-breakdowns { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 16px; }
+        .usage-subheading { margin-bottom: 8px; font-size: 17px; }
+        .usage-table-wrap { overflow-x: auto; }
+        .usage-table { width: 100%; border-collapse: collapse; font-size: 9px; text-align: left; }
+        .usage-table th, .usage-table td { padding: 8px 6px; border-bottom: 1px solid #e8ebdf; }
+        .usage-table th { color: var(--muted); font-weight: 700; }
+        .usage-table td:not(:first-child), .usage-table th:not(:first-child) { text-align: right; white-space: nowrap; }
+        .usage-empty { color: var(--muted); text-align: center !important; }
+        form, .result { padding: 20px; border: 1px solid var(--line); background: var(--white); }
+        form { display: grid; gap: 14px; }
+        label { display: grid; gap: 6px; font-size: 11px; font-weight: 700; }
+        input, button { min-height: 40px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 3px; font: inherit; }
+        input { color: var(--ink); background: #fff; }
+        input:focus-visible, button:focus-visible { outline: 2px solid #397d54; outline-offset: 2px; }
+        button { justify-self: start; padding: 0 16px; border-color: var(--forest); color: var(--white); background: var(--forest); cursor: pointer; font-size: 11px; font-weight: 700; }
+        button:disabled { opacity: .6; cursor: wait; }
+        .privacy-note { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
+        .status { min-height: 20px; margin: 15px 0 0; color: var(--red); font-size: 11px; }
+        .nav-button { display: inline-flex; min-height: 36px; align-items: center; padding: 0 12px; border: 1px solid var(--forest); border-radius: 3px; color: var(--white); background: var(--forest); font-size: 10px; font-weight: 700; text-decoration: none; }
+        .result { margin-top: 20px; }
+        .result[hidden], .result[hidden] * { display: none; }
+        .result-title { margin: 0; font-size: 14px; }
+        .result-title.pass { color: var(--forest); }
+        .result-title.fail { color: var(--red); }
+        .result-meta { color: var(--muted); font-size: 10px; overflow-wrap: anywhere; }
+        .checks { display: grid; gap: 8px; margin: 15px 0 0; padding: 0; list-style: none; }
+        .checks li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid #e8ebdf; font-size: 10px; }
+        .check-pass { color: var(--forest); font-weight: 700; }
+        .check-fail { color: var(--red); font-weight: 700; }
+        .limitation { margin: 16px 0 0; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 10px; line-height: 1.6; }
+        @media (max-width: 900px) { .usage-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+        @media (max-width: 620px) { .site-header { align-items: flex-start; flex-direction: column; } main { margin-top: 30px; } form, .result, .usage-panel { padding: 15px; } .usage-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .usage-breakdowns { grid-template-columns: 1fr; } .handoff-form { grid-template-columns: 1fr; } .handoff-note { grid-column: 1; } }
+    </style>
+    <link rel="stylesheet" href="/loading.css">
+    <script src="/loading.js"></script>
+</head>
+<body>
+    <header class="site-header">
+        <a class="brand" href="/admin/moderation"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Operations</span></a>
+        <nav aria-label="Administration navigation"><a href="/admin/moderation">Moderation</a><a href="/admin/payouts">Payouts</a></nav>
+    </header>
+    <main>
+        <p class="eyebrow">Admin tools</p>
+        <h1>Verify a statement</h1>
+        <p class="intro">Upload the statement PDF. Z reads its printed reference, checks the official signature, and compares the PDF’s extracted text with the signed record. If the reference cannot be read, you can enter it manually.</p>
+        <section class="usage-panel" aria-labelledby="usage-title">
+            <div class="usage-heading">
+                <div>
+                    <h2 id="usage-title">Statement verification &amp; API</h2>
+                    <p>Track verified statements, PDF mismatches, and usage across the reference and PDF verification API.</p>
+                </div>
+                <div class="usage-actions">
+                    <div class="usage-controls">
+                        <label class="sr-only" for="usage-days">Reporting period</label>
+                        <select id="usage-days">
+                            <option value="7">Last 7 days</option>
+                            <option value="30" selected>Last 30 days</option>
+                            <option value="90">Last 90 days</option>
+                        </select>
+                        <button id="usage-refresh" type="button">Refresh</button>
+                    </div>
+                </div>
+            </div>
+            <section class="usage-handoff" aria-labelledby="api-test-handoff-title">
+                <h3 id="api-test-handoff-title">Test the API with developer credentials</h3>
+                <p>Enter the App ID and API token the developer gave you, then continue to the test page.</p>
+                <form class="handoff-form" id="api-test-handoff">
+                    <label for="handoff-app-id">App ID
+                        <input id="handoff-app-id" name="appId" pattern="[0-9a-fA-F-]{36}" autocomplete="off" required placeholder="Developer App ID">
+                    </label>
+                    <label for="handoff-api-token">API token
+                        <input id="handoff-api-token" name="apiToken" type="password" pattern="zstmt_live_[A-Za-z0-9_-]{43}" autocomplete="off" required placeholder="zstmt_live_…">
+                    </label>
+                    <button type="submit">Continue to API test</button>
+                    <p class="handoff-note">Enter credentials provided by the developer. They are passed in the browser fragment, not sent to the server with the page request, and are removed from the address bar after handoff. The API test remains Super Admin-only.</p>
+                </form>
+            </section>
+            <p class="usage-status" id="usage-status" role="status" aria-live="polite"></p>
+            <div class="usage-metrics" id="usage-metrics" aria-live="polite"></div>
+            <div class="usage-chart">
+                <svg id="usage-chart" viewBox="0 0 720 230" role="img" aria-label="Daily API requests, verified statements, and PDF mismatches"></svg>
+                <div class="usage-legend"><span class="legend-item requests">API requests</span><span class="legend-item">Verified statements</span><span class="legend-item mismatches">Mismatches</span></div>
+            </div>
+            <div class="usage-breakdowns">
+                <section>
+                    <h3 class="usage-subheading">By endpoint</h3>
+                    <div class="usage-table-wrap"><table class="usage-table">
+                        <thead><tr><th>Endpoint</th><th>Requests</th><th>Verified</th><th>Mismatch</th><th>Avg ms</th></tr></thead>
+                        <tbody id="usage-endpoints"></tbody>
+                    </table></div>
+                </section>
+                <section>
+                    <h3 class="usage-subheading">Top applications</h3>
+                    <div class="usage-table-wrap"><table class="usage-table">
+                        <thead><tr><th>Application</th><th>Requests</th><th>Verified</th><th>Mismatch</th><th>Avg ms</th></tr></thead>
+                        <tbody id="usage-applications"></tbody>
+                    </table></div>
+                </section>
+            </div>
+            <p class="usage-note">A verified statement passed the signed-record check; a mismatch means the PDF values, supplied reference, or signed record did not match. Calls to these public API endpoints are counted and retained for up to 400 days; invalid credentials are not attributed to an application. Request details, statement references, API tokens, and client IP addresses are not stored.</p>
+        </section>
+        <form id="verify-form">
+            <label for="statement-id">Statement reference (optional)
+                <input id="statement-id" name="statementId" pattern="[0-9a-fA-F-]{36}" autocomplete="off" placeholder="Detected from PDF if left blank">
+            </label>
+            <label for="statement-file">Statement PDF
+                <input id="statement-file" name="statement" type="file" accept="application/pdf,.pdf" required>
+            </label>
+            <p class="privacy-note">The PDF is processed in memory for verification and is not saved. Maximum file size: 10 MB.</p>
+            <button id="verify-button" type="submit">Verify uploaded statement</button>
+        </form>
+        <p class="status" id="status" role="status" aria-live="polite"></p>
+        <section class="result" id="result" hidden aria-live="polite">
+            <h2 class="result-title" id="result-title"></h2>
+            <p class="result-meta" id="result-meta"></p>
+            <ul class="checks" id="checks"></ul>
+            <p class="limitation">This confirms the signed record and checks that expected statement values appear in the PDF text. It cannot detect visual edits or overlays that leave the original text intact; inspect the document if its layout or appearance seems suspicious.</p>
+        </section>
+    </main>
+    <script>
+        const apiTestHandoff = document.querySelector("#api-test-handoff");
+        apiTestHandoff.addEventListener("submit", (event) => {
+            event.preventDefault();
+            if (!apiTestHandoff.reportValidity()) return;
+            const credentials = new URLSearchParams({
+                appId: document.querySelector("#handoff-app-id").value.trim(),
+                apiToken: document.querySelector("#handoff-api-token").value.trim()
+            });
+            window.location.assign(`/developer-api-test#${credentials.toString()}`);
+        });
+
+        const usageDays = document.querySelector("#usage-days");
+        const usageRefresh = document.querySelector("#usage-refresh");
+        const usageStatus = document.querySelector("#usage-status");
+        const usageMetrics = document.querySelector("#usage-metrics");
+        const usageChart = document.querySelector("#usage-chart");
+        const usageEndpoints = document.querySelector("#usage-endpoints");
+        const usageApplications = document.querySelector("#usage-applications");
+        const svgNamespace = "http://www.w3.org/2000/svg";
+
+        function createSvgElement(name, attributes = {}) {
+            const element = document.createElementNS(svgNamespace, name);
+            for (const [key, value] of Object.entries(attributes)) element.setAttribute(key, value);
+            return element;
+        }
+
+        function formatNumber(value) {
+            return Number(value || 0).toLocaleString();
+        }
+
+        function appendMetric(label, value) {
+            const metric = document.createElement("div");
+            metric.className = "usage-metric";
+            const title = document.createElement("span");
+            title.textContent = label;
+            const number = document.createElement("strong");
+            number.textContent = value;
+            metric.append(title, number);
+            usageMetrics.append(metric);
+        }
+
+        function renderUsageChart(days) {
+            usageChart.replaceChildren();
+            const width = 720;
+            const plot = { left: 48, top: 16, width: 650, height: 165 };
+            const maximum = Math.max(1, ...days.map((day) => day.requests));
+            const scale = Math.ceil(maximum / 4) || 1;
+            const yMaximum = scale * 4;
+            for (let step = 0; step <= 4; step += 1) {
+                const y = plot.top + plot.height - (step / 4) * plot.height;
+                usageChart.append(
+                    createSvgElement("line", { x1: plot.left, y1: y, x2: plot.left + plot.width, y2: y, stroke: "#e5e7df", "stroke-width": 1 }),
+                    Object.assign(createSvgElement("text", { x: plot.left - 8, y: y + 3, fill: "#68736d", "font-size": 9, "text-anchor": "end" }), { textContent: String(Math.round(yMaximum * step / 4)) })
+                );
+            }
+            const point = (index, value) => {
+                const x = plot.left + (days.length > 1 ? index / (days.length - 1) : 0.5) * plot.width;
+                const y = plot.top + plot.height - (value / yMaximum) * plot.height;
+                return `${x},${y}`;
+            };
+            const requestLine = createSvgElement("polyline", {
+                points: days.map((day, index) => point(index, day.requests)).join(" "),
+                fill: "none", stroke: "#18382e", "stroke-width": 2.5, "stroke-linejoin": "round", "stroke-linecap": "round"
+            });
+            const verifiedLine = createSvgElement("polyline", {
+                points: days.map((day, index) => point(index, day.verified)).join(" "),
+                fill: "none", stroke: "#8caa78", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round"
+            });
+            const mismatchLine = createSvgElement("polyline", {
+                points: days.map((day, index) => point(index, day.mismatched)).join(" "),
+                fill: "none", stroke: "#b66b42", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round"
+            });
+            usageChart.append(requestLine, verifiedLine, mismatchLine);
+            const labelIndices = [...new Set([0, Math.floor((days.length - 1) / 2), days.length - 1])];
+            for (const index of labelIndices) {
+                const x = plot.left + (days.length > 1 ? index / (days.length - 1) : 0.5) * plot.width;
+                const label = createSvgElement("text", { x, y: 207, fill: "#68736d", "font-size": 9, "text-anchor": index === 0 ? "start" : index === days.length - 1 ? "end" : "middle" });
+                label.textContent = new Date(`${days[index].day}T00:00:00Z`).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
+                usageChart.append(label);
+            }
+            usageChart.setAttribute("viewBox", `0 0 ${width} 230`);
+        }
+
+        function renderUsageTable(target, rows, labelForEmpty) {
+            target.replaceChildren();
+            if (!rows.length) {
+                const row = document.createElement("tr");
+                const cell = document.createElement("td");
+                cell.className = "usage-empty";
+                cell.colSpan = 5;
+                cell.textContent = labelForEmpty;
+                row.append(cell);
+                target.append(row);
+                return;
+            }
+            for (const item of rows) {
+                const row = document.createElement("tr");
+                const label = document.createElement("td");
+                label.textContent = item.name || (item.endpoint === "pdf" ? "PDF verification" : "Reference verification");
+                const requests = document.createElement("td");
+                requests.textContent = formatNumber(item.requests);
+                const verified = document.createElement("td");
+                verified.textContent = formatNumber(item.verified);
+                const mismatched = document.createElement("td");
+                mismatched.textContent = formatNumber(item.mismatched);
+                const duration = document.createElement("td");
+                duration.textContent = formatNumber(item.averageDurationMs);
+                row.append(label, requests, verified, mismatched, duration);
+                target.append(row);
+            }
+        }
+
+        async function loadUsage() {
+            usageRefresh.disabled = true;
+            usageStatus.textContent = "Loading API usage…";
+            try {
+                const response = await fetch(`/api/admin/developer-api/usage?days=${encodeURIComponent(usageDays.value)}`);
+                let result;
+                try {
+                    result = await response.json();
+                } catch {
+                    throw new Error("The usage service returned an invalid response.");
+                }
+                if (!response.ok) {
+                    if (response.status === 401 || response.status === 403) throw new Error("Super Admin access is required to view API usage.");
+                    throw new Error(result.error || "Could not load API usage.");
+                }
+                const totals = result.totals;
+                usageMetrics.replaceChildren();
+                appendMetric("Requests", formatNumber(totals.requests));
+                appendMetric("Statements verified", formatNumber(totals.verified));
+                appendMetric("Mismatches", formatNumber(totals.mismatched));
+                appendMetric("API errors", formatNumber(totals.clientErrors + totals.serverErrors));
+                appendMetric("Active applications", formatNumber(totals.activeApplications));
+                renderUsageChart(result.daily);
+                renderUsageTable(usageEndpoints, result.endpoints, "No endpoint requests in this period.");
+                renderUsageTable(usageApplications, result.applications, "No authenticated application requests in this period.");
+                usageStatus.textContent = `Average API response time: ${formatNumber(totals.averageDurationMs)} ms · Reporting in UTC`;
+            } catch (error) {
+                usageStatus.textContent = error.message || "Could not load API usage.";
+            } finally {
+                usageRefresh.disabled = false;
+            }
+        }
+
+        usageRefresh.addEventListener("click", loadUsage);
+        usageDays.addEventListener("change", loadUsage);
+        loadUsage();
+
+        const form = document.querySelector("#verify-form");
+        const button = document.querySelector("#verify-button");
+        const status = document.querySelector("#status");
+        const resultPanel = document.querySelector("#result");
+        const resultTitle = document.querySelector("#result-title");
+        const resultMeta = document.querySelector("#result-meta");
+        const checksList = document.querySelector("#checks");
+        const statementFile = document.querySelector("#statement-file");
+        const statementIdInput = document.querySelector("#statement-id");
+
+        statementFile.addEventListener("change", async () => {
+            const file = statementFile.files[0];
+            statementIdInput.value = "";
+            if (!file) return;
+            status.textContent = "Reading statement reference from the PDF…";
+            try {
+                const formData = new FormData();
+                formData.append("statement", file);
+                const response = await fetch("/api/admin/statements/read-reference", {
+                    method: "POST",
+                    body: formData
+                });
+                let result;
+                try {
+                    result = await response.json();
+                } catch {
+                    throw new Error("The verification service returned an invalid response.");
+                }
+                if (!response.ok) throw new Error(result.error || "Could not read the statement reference.");
+                statementIdInput.value = result.statementId;
+                status.textContent = "Statement reference detected.";
+            } catch (error) {
+                status.textContent = error.message || "Could not detect the reference. You can enter it manually.";
+            }
+        });
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            if (!form.reportValidity()) return;
+            button.disabled = true;
+            status.textContent = "Checking the official record and reading the PDF…";
+            resultPanel.hidden = true;
+            checksList.replaceChildren();
+            try {
+                const response = await fetch("/api/admin/statements/verify-upload", {
+                    method: "POST",
+                    body: new FormData(form)
+                });
+                let result;
+                try {
+                    result = await response.json();
+                } catch {
+                    throw new Error("The verification service returned an invalid response.");
+                }
+                if (response.status === 401 || response.status === 403) {
+                    throw new Error(response.status === 401 ? "Sign in with the Super Admin account." : "Super Admin access is required.");
+                }
+                if (!response.ok) throw new Error(result.error || "Could not verify this statement.");
+
+                resultTitle.textContent = result.message;
+                resultTitle.className = `result-title ${result.verified ? "pass" : "fail"}`;
+                resultMeta.textContent = `Statement ${result.statement.statementId} · ${result.statement.shopName} · ${new Date(result.statement.issuedAt).toLocaleString()}`;
+                for (const check of result.checks) {
+                    const item = document.createElement("li");
+                    const label = document.createElement("span");
+                    const outcome = document.createElement("span");
+                    label.textContent = check.label;
+                    outcome.className = check.matched ? "check-pass" : "check-fail";
+                    outcome.textContent = check.matched ? "Match" : "Mismatch";
+                    item.append(label, outcome);
+                    checksList.append(item);
+                }
+                resultPanel.hidden = false;
+                status.textContent = "";
+            } catch (error) {
+                status.textContent = error.message || "Could not verify this statement.";
+            } finally {
+                button.disabled = false;
+            }
+        });
+    </script>
+    <script src="/navigation.js" defer></script>
+</body>
+</html>

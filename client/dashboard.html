@@ -219,6 +219,8 @@
         .moderation-link[hidden] { display: none; }
         .moderation-link:hover { color: var(--white); background: var(--forest); }
         .moderation-link:focus-visible { outline: 2px solid #397d54; outline-offset: 3px; }
+        .moderation-link.subtle-link { border-color: var(--line); color: var(--muted); font-size: 10px; font-weight: 600; }
+        .moderation-link.subtle-link:hover { border-color: var(--forest); color: var(--forest); background: var(--white); }
         .status { min-height: 18px; margin: 12px 0 0; color: #8b3b2f; font-size: 12px; }
         .order-entry {
             position: relative;
@@ -473,6 +475,7 @@
     </style>
     <link rel="stylesheet" href="/loading.css">
     <script src="/loading.js"></script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 </head>
 <body>
     <header class="site-header">
@@ -522,10 +525,8 @@
                     <button type="button" data-account-target="referrals"><span aria-hidden="true">↗</span>Referrals</button>
                 </nav>
                 <section class="sidebar-admin-tools" id="admin-tools-section" aria-labelledby="admin-tools-title" hidden>
-                    <h2 id="admin-tools-title">Admin</h2>
-                    <nav aria-label="Admin portal">
-                        <a href="/admin/moderation">Admin portal</a>
-                        <a href="/admin/support">Support inbox</a>
+                    <nav aria-label="Admin" id="admin-tools-title">
+                        <a href="/admin/moderation">Admin</a>
                     </nav>
                 </section>
             </aside>
@@ -569,6 +570,13 @@
                         <p class="login-activity-status" id="login-activity-status" role="status" aria-live="polite">Loading recent sign-ins...</p>
                         <ol class="login-activity-list" id="login-activity-list"></ol>
                     </section>
+                    <section class="login-activity" aria-labelledby="account-notifications-title">
+                        <div class="login-activity-header">
+                            <h3 id="account-notifications-title">Z updates</h3>
+                        </div>
+                        <p class="login-activity-status" id="account-notifications-status" role="status" aria-live="polite">Loading account updates...</p>
+                        <ol class="login-activity-list" id="account-notifications-list"></ol>
+                    </section>
                     <section class="login-activity" id="support-notifications-section" aria-labelledby="support-notifications-title" hidden>
                         <div class="login-activity-header">
                             <h3 id="support-notifications-title">Support tasks for moderators</h3>
@@ -610,6 +618,7 @@
                     </form>
                     <p class="account-role">Account type: <strong id="account-role">Loading...</strong></p>
                     <a class="moderation-link" id="seller-profile-link" href="/sell/profile" hidden>Open seller profile</a>
+                    <a class="moderation-link subtle-link" id="developer-profile-link" href="/developers" hidden>Developer API</a>
                     <p class="status" id="page-status" role="status" aria-live="polite"></p>
                 </section>
 
@@ -657,6 +666,8 @@
         const mobileNavToggle = document.querySelector("#mobile-nav-toggle");
         const loginActivityStatus = document.querySelector("#login-activity-status");
         const loginActivityList = document.querySelector("#login-activity-list");
+        const accountNotificationsStatus = document.querySelector("#account-notifications-status");
+        const accountNotificationsList = document.querySelector("#account-notifications-list");
         const notificationCountBadge = document.querySelector("#notification-count");
         const supportNotificationsSection = document.querySelector("#support-notifications-section");
         const supportNotificationsStatus = document.querySelector("#support-notifications-status");
@@ -665,8 +676,10 @@
         const wishlistProductsContainer = document.querySelector("#wishlist-products");
         let loginActivityRefreshTimer = null;
         let loginActivityRequestInFlight = false;
+        let accountNotificationsRequestInFlight = false;
         let supportNotificationsRequestInFlight = false;
         let loginActivityUnreadCount = 0;
+        let accountNotificationUnreadCount = 0;
         let supportNotificationUnreadCount = 0;
         let currentUserIsModerator = false;
         let hasPromotedDashboardProducts = false;
@@ -691,6 +704,29 @@
         const artCaptionDetail = document.querySelector("#art-caption-detail");
         const myShopLink = document.querySelector("#my-shop-link");
         const sellerProfileLink = document.querySelector("#seller-profile-link");
+        const developerProfileLink = document.querySelector("#developer-profile-link");
+
+        async function updateDeveloperProfileLink() {
+            try {
+                const response = await fetch("/api/developer/apps");
+                if (response.status === 401 || response.status === 403) {
+                    developerProfileLink.hidden = true;
+                    return;
+                }
+                let result;
+                try {
+                    result = await response.json();
+                } catch {
+                    throw new Error("Developer applications returned an invalid response.");
+                }
+                if (!response.ok) throw new Error(result.error || "Could not check developer access.");
+                developerProfileLink.hidden = !result.applications?.length;
+            } catch (error) {
+                developerProfileLink.hidden = true;
+                console.error("Developer API profile link could not be loaded:", error);
+            }
+        }
+
         function updateHeroButtons({ hasShop, emailVerified = true }) {
             const marketplaceButton = document.querySelector('.hero-link.secondary');
             const shopButton = document.querySelector('.hero-link:not(.secondary)');
@@ -994,6 +1030,7 @@
                 else button.removeAttribute("aria-current");
             });
             if (section === "notifications") void loadLoginActivity();
+            if (section === "notifications") void loadAccountNotifications();
             if (section === "notifications") void loadSupportNotifications();
             if (section === "wishlist") void loadWishlist();
             return true;
@@ -1087,7 +1124,7 @@
         }
 
         function updateNotificationBadge() {
-            const unreadCount = loginActivityUnreadCount + supportNotificationUnreadCount;
+            const unreadCount = loginActivityUnreadCount + accountNotificationUnreadCount + supportNotificationUnreadCount;
             notificationCountBadge.hidden = unreadCount === 0;
             notificationCountBadge.textContent = unreadCount > 99 ? "99+" : String(unreadCount);
             notificationCountBadge.setAttribute("aria-label", `${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}`);
@@ -1153,6 +1190,53 @@
             }
         }
 
+        async function loadAccountNotifications() {
+            if (accountNotificationsRequestInFlight) return;
+            accountNotificationsRequestInFlight = true;
+            try {
+                const response = await fetch("/api/account/notifications?workspace=account");
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || "Could not load account updates.");
+                accountNotificationsList.replaceChildren();
+                const notifications = Array.isArray(result.notifications) ? result.notifications : [];
+                notifications.forEach((notification) => {
+                    const item = document.createElement("li");
+                    if (!notification.readAt) item.classList.add("is-new");
+                    const title = document.createElement("strong");
+                    title.textContent = notification.title;
+                    const date = document.createElement("time");
+                    date.dateTime = notification.createdAt;
+                    date.textContent = new Date(notification.createdAt).toLocaleString();
+                    const message = document.createElement("span");
+                    message.className = "login-activity-network";
+                    message.textContent = notification.message;
+                    item.append(title, date, message);
+                    accountNotificationsList.append(item);
+                });
+                let unreadCount = Number(result.unreadCount) || 0;
+                if (unreadCount && !document.querySelector('[data-account-view="notifications"]').hidden) {
+                    const readResponse = await fetch("/api/account/notifications/read?workspace=account", { method: "POST" });
+                    const readResult = await readResponse.json();
+                    if (!readResponse.ok) throw new Error(readResult.error || "Could not mark account updates as viewed.");
+                    unreadCount = 0;
+                    accountNotificationsList.querySelectorAll(".is-new").forEach((item) => item.classList.remove("is-new"));
+                }
+                accountNotificationUnreadCount = unreadCount;
+                accountNotificationsStatus.classList.toggle("has-unread", unreadCount > 0);
+                accountNotificationsStatus.textContent = unreadCount
+                    ? `${unreadCount} new account update${unreadCount === 1 ? "" : "s"}.`
+                    : notifications.length
+                        ? "No new account updates. Recent updates are listed below."
+                        : "No account updates yet.";
+                updateNotificationBadge();
+            } catch (error) {
+                accountNotificationsStatus.classList.remove("has-unread");
+                accountNotificationsStatus.textContent = error.message || "Could not load account updates.";
+            } finally {
+                accountNotificationsRequestInFlight = false;
+            }
+        }
+
         async function loadSupportNotifications() {
             if (!currentUserIsModerator || supportNotificationsRequestInFlight) return;
             supportNotificationsRequestInFlight = true;
@@ -1202,6 +1286,7 @@
         }
 
         async function updateSellerCallout({ isModerator = false, isSuperAdmin = false, emailVerified = true } = {}) {
+            void updateDeveloperProfileLink();
             const roleLabel = isSuperAdmin ? "Super Admin" : "Moderator";
             const roleSuffix = isModerator ? ` + ${roleLabel}` : "";
             if (adminToolsSection) {
@@ -1688,10 +1773,12 @@
                 await loadPromotedDashboardProducts();
                 await window.ZWishlistSync.initialize();
                 await loadLoginActivity();
+                await loadAccountNotifications();
                 if (currentUserIsModerator) await loadSupportNotifications();
                 loginActivityRefreshTimer = window.setInterval(() => {
                     if (!document.hidden) {
                         void loadLoginActivity();
+                        void loadAccountNotifications();
                         if (currentUserIsModerator) void loadSupportNotifications();
                     }
                 }, 60000);

@@ -55,6 +55,12 @@
         .summary-row { display: flex; justify-content: space-between; gap: 10px; margin: 10px 0; color: var(--muted); font-size: 11px; }
         .summary-total { display: flex; justify-content: space-between; gap: 12px; margin: 18px 0 0; padding-top: 13px; border-top: 1px solid var(--line); font-size: 12px; font-weight: 700; }
         .summary-total strong { font-family: Georgia, serif; font-size: 21px; font-weight: 400; }
+        .payment-method { display: grid; gap: 10px; margin: 19px 0 0; padding: 14px; border: 1px solid var(--line); background: var(--white); }
+        .payment-method legend { padding: 0 5px; font-size: 11px; font-weight: 700; }
+        .payment-choice { display: flex; align-items: flex-start; gap: 9px; margin: 0; font-size: 11px; line-height: 1.5; }
+        .payment-choice input { flex: 0 0 auto; margin: 2px 0 0; accent-color: var(--forest); }
+        .payment-choice small { display: block; color: var(--muted); font-size: 10px; }
+        .wallet-payment-breakdown { margin: 10px 0 0; color: var(--forest); font-size: 10px; line-height: 1.6; }
         .demo-note { margin: 17px 0 0; padding: 12px; border-left: 3px solid var(--lime); color: var(--muted); background: #e9edda; font-size: 10px; line-height: 1.7; }
         .primary-button { display: flex; width: 100%; min-height: 46px; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding: 0 13px; border: 1px solid var(--ink); border-radius: 3px; color: var(--white); background: var(--ink); cursor: pointer; font-size: 11px; font-weight: 700; }
         .primary-button:hover:not(:disabled) { color: var(--ink); background: var(--lime); }
@@ -75,6 +81,7 @@
     </style>
     <link rel="stylesheet" href="/loading.css">
     <script src="/loading.js"></script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 </head>
 <body>
     <header class="site-header">
@@ -115,9 +122,15 @@
                 <div class="summary-row"><span>Products</span><span id="products-subtotal">N$ 0.00</span></div>
                 <div class="summary-row"><span>Delivery</span><span id="shipping-total">N$ 0.00</span></div>
                 <div class="summary-total"><span>Total</span><strong id="order-total">N$ 0.00</strong></div>
-                <p class="demo-note">Prototype only: this creates a test order and simulates payment. It does not charge a card or move money. Seller balances remain ledger records for manual review.</p>
+                <fieldset class="payment-method">
+                    <legend>Choose payment</legend>
+                    <label class="payment-choice"><input type="radio" name="payment-method" value="card" checked><span>Credit/debit card<small>Test mode only; no card is charged.</small></span></label>
+                    <label class="payment-choice"><input type="radio" name="payment-method" value="wallet" id="wallet-payment-choice" disabled><span>Use Z balance<small id="wallet-available">Choose a delivery town to load your balance.</small></span></label>
+                </fieldset>
+                <p class="wallet-payment-breakdown" id="wallet-payment-breakdown" hidden></p>
+                <p class="demo-note">Z balance is virtual credit held by Z Namibia. It can be used for purchases here. Card checkout is simulated in this test version; no real payment is processed.</p>
                 <button class="primary-button" id="create-order" type="button" disabled><span>Create test order</span><span aria-hidden="true">&#8594;</span></button>
-                <button class="secondary-button" id="confirm-payment" type="button" hidden>Simulate test payment (no charge)</button>
+                <button class="secondary-button" id="confirm-payment" type="button" hidden>Confirm payment</button>
                 <p class="message" id="payment-message" role="status" aria-live="polite"></p>
             </aside>
         </div>
@@ -135,10 +148,14 @@
         const paymentMessage = document.querySelector("#payment-message");
         const createOrderButton = document.querySelector("#create-order");
         const confirmPaymentButton = document.querySelector("#confirm-payment");
+        const walletPaymentChoice = document.querySelector("#wallet-payment-choice");
+        const walletAvailable = document.querySelector("#wallet-available");
+        const walletPaymentBreakdown = document.querySelector("#wallet-payment-breakdown");
         let cart = [];
         let quote = null;
         let activeOrder = null;
         let quoteRequest = 0;
+        let walletBalanceNAD = 0;
 
         function readCart() {
             return window.ZCartSync.readCart();
@@ -231,6 +248,12 @@
                 });
                 if (requestId !== quoteRequest) return;
                 quote = result;
+                walletBalanceNAD = Number(result.walletBalanceNAD || 0);
+                walletAvailable.textContent = `Z balance: ${money(walletBalanceNAD)}. Any remainder is paid by card.`;
+                walletPaymentChoice.disabled = walletBalanceNAD <= 0;
+                if (walletPaymentChoice.disabled && walletPaymentChoice.checked) {
+                    document.querySelector('input[name="payment-method"][value="card"]').checked = true;
+                }
                 const breakdown = document.querySelector("#seller-breakdown");
                 result.sellerOrders.forEach((sellerOrder) => {
                     const section = document.createElement("article");
@@ -256,6 +279,7 @@
                 document.querySelector("#products-subtotal").textContent = money(result.productsSubtotalNAD);
                 document.querySelector("#shipping-total").textContent = money(result.shippingNAD);
                 document.querySelector("#order-total").textContent = money(result.totalNAD);
+                updatePaymentBreakdown(result.totalNAD);
                 createOrderButton.disabled = false;
                 checkoutMessage.textContent = "";
             } catch (error) {
@@ -266,6 +290,21 @@
             }
         }
 
+        function updatePaymentBreakdown(totalNAD = quote?.totalNAD || 0) {
+            const useWallet = walletPaymentChoice.checked && !walletPaymentChoice.disabled;
+            walletPaymentBreakdown.hidden = !useWallet;
+            if (useWallet) {
+                const walletUsedNAD = Math.min(walletBalanceNAD, totalNAD);
+                const cardDueNAD = Math.max(0, totalNAD - walletUsedNAD);
+                walletPaymentBreakdown.textContent = cardDueNAD > 0
+                    ? `${money(walletUsedNAD)} from Z balance · ${money(cardDueNAD)} by test card`
+                    : `${money(walletUsedNAD)} from Z balance · no card payment needed`;
+            }
+        }
+
+        document.querySelectorAll('input[name="payment-method"]').forEach((choice) => {
+            choice.addEventListener("change", () => updatePaymentBreakdown());
+        });
         document.querySelector("#delivery-town").addEventListener("change", refreshQuote);
         createOrderButton.addEventListener("click", async () => {
             if (!quote || activeOrder) return;
@@ -274,12 +313,22 @@
                 const order = await requestJson("/api/orders", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ items: cart, deliveryTown: document.querySelector("#delivery-town").value })
+                    body: JSON.stringify({
+                        items: cart,
+                        deliveryTown: document.querySelector("#delivery-town").value,
+                        paymentMethod: walletPaymentChoice.checked ? "wallet" : "card"
+                    })
                 });
                 activeOrder = order;
-                paymentMessage.textContent = `Test order ${order.orderNumber} created. Stock is reserved until ${new Date(order.reservationExpiresAt).toLocaleTimeString()}. No money has been charged.`;
+                const paymentSummary = order.walletUsedNAD > 0
+                    ? `${money(order.walletUsedNAD)} from Z balance${order.cardDueNAD > 0 ? ` and ${money(order.cardDueNAD)} by test card` : ''}`
+                    : `${money(order.cardDueNAD)} by test card`;
+                paymentMessage.textContent = `Order ${order.orderNumber} created. ${paymentSummary}. Stock is reserved until ${new Date(order.reservationExpiresAt).toLocaleTimeString()}.`;
                 paymentMessage.classList.add("success");
                 confirmPaymentButton.hidden = false;
+                confirmPaymentButton.textContent = order.cardDueNAD > 0
+                    ? `Simulate card payment · ${money(order.cardDueNAD)}`
+                    : `Pay with Z balance · ${money(order.walletUsedNAD)}`;
                 createOrderButton.querySelector("span").textContent = "Test order created";
             } catch (error) {
                 paymentMessage.textContent = error.message;

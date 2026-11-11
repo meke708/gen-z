@@ -61,15 +61,17 @@
             .filters input { grid-column: 1 / -1; }
             .account { grid-template-columns: 1fr; gap: 10px; }
             .account-actions { justify-content: flex-start; }
+            .account-detail-grid { grid-template-columns: 1fr; }
         }
     </style>
     <link rel="stylesheet" href="/loading.css">
     <script src="/loading.js"></script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 </head>
 <body>
     <header class="site-header">
         <div class="header-left"><a class="back-button" href="/marketplace" aria-label="Go to marketplace">←</a><a class="brand" href="/marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Operations</span></a></div>
-        <nav aria-label="Super-admin navigation"><a href="/admin/moderation">Moderation</a><a href="/admin/platform">Platform controls</a><a href="/admin/payouts">Payouts</a><a href="/admin/kyc">Business verification</a><a href="/admin/support">Support</a></nav>
+        <nav aria-label="Super-admin navigation"><a href="/admin/moderation">Moderation</a><a href="/admin/platform">Platform controls</a><a href="/admin/payouts">Payouts</a><a href="/admin/kyc">Business verification</a><a href="/admin/commands">Commands</a><a href="/admin/support">Support</a></nav>
     </header>
     <main>
         <p class="eyebrow">Trust and safety</p>
@@ -190,6 +192,11 @@
             activityLink.href = `/admin/accounts/${encodeURIComponent(account.id)}/activity`;
             activityLink.textContent = "Activity";
             actions.append(activityLink);
+            const detailsLink = document.createElement("a");
+            detailsLink.className = "account-action is-activity";
+            detailsLink.href = `/admin/accounts/${encodeURIComponent(account.id)}/details`;
+            detailsLink.textContent = "User details";
+            actions.append(detailsLink);
             if (account.accountType === "seller") {
                 const sellerButton = document.createElement("button");
                 sellerButton.type = "button";

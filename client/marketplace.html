@@ -22,7 +22,9 @@
         button, input, select { font: inherit; }
         a { color: inherit; }
 
-        .site-header { display: flex; min-height: 74px; align-items: center; justify-content: space-between; gap: 24px; padding: 12px max(24px, calc((100vw - 1180px) / 2)); border-bottom: 1px solid var(--line); background: var(--paper); }
+        .site-header { position: fixed; z-index: 20; top: 0; right: 0; left: 0; display: flex; min-height: 74px; align-items: center; justify-content: space-between; gap: 24px; padding: 12px max(24px, calc((100vw - 1180px) / 2)); border-bottom: 1px solid var(--line); background: var(--paper); transition: transform 700ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 700ms ease, background-color 250ms ease, backdrop-filter 250ms ease; }
+        .site-header.is-scrolling:not(:focus-within) { transform: translateY(-100%); }
+        body::before { display: block; height: var(--site-header-height, 74px); background: var(--forest); content: ""; }
         .brand { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 10px; text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
         .brand-mark { display: grid; width: 36px; aspect-ratio: 1; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; font-family: Georgia, serif; font-size: 22px; letter-spacing: 0; }
         .header-search { display: flex; width: min(440px, 42vw); }
@@ -59,17 +61,6 @@
         .hero-art::before { position: absolute; inset: 0; background: linear-gradient(120deg, rgba(216, 243, 106, 0.98), rgba(216, 243, 106, 0.7)); content: ""; }
         .art-letter { position: relative; z-index: 1; display: grid; width: 188px; aspect-ratio: 1; place-items: center; border: 1px solid rgba(23, 35, 30, 0.36); border-radius: 50%; font-family: Georgia, serif; font-size: 140px; line-height: 1; }
         .art-note { position: absolute; z-index: 1; right: 20px; bottom: 18px; left: 20px; display: flex; justify-content: space-between; gap: 10px; font-size: 9px; font-weight: 700; letter-spacing: 0.13em; text-transform: uppercase; }
-        .page-loader { position: fixed; z-index: 1000; inset: 0; display: grid; place-items: center; color: var(--white); background: var(--forest); opacity: 1; visibility: visible; transition: opacity 350ms ease, visibility 350ms ease; }
-        .page-loader.is-hidden { opacity: 0; visibility: hidden; }
-        .page-loader-content { display: grid; justify-items: center; gap: 18px; }
-        .page-loader-mark { display: grid; width: 76px; aspect-ratio: 1; place-items: center; border: 2px solid var(--lime); border-radius: 50%; color: var(--lime); font-family: Georgia, serif; font-size: 48px; animation: loader-pulse 1.2s ease-in-out infinite; }
-        .page-loader-message { margin: 0; color: #dbe5dd; font-size: 12px; letter-spacing: 0.04em; }
-        .page-loader-dots { display: flex; gap: 6px; }
-        .page-loader-dots span { width: 5px; height: 5px; border-radius: 50%; background: var(--lime); animation: loader-dot 1s ease-in-out infinite; }
-        .page-loader-dots span:nth-child(2) { animation-delay: 0.15s; }
-        .page-loader-dots span:nth-child(3) { animation-delay: 0.3s; }
-        @keyframes loader-pulse { 50% { transform: scale(1.07); } }
-        @keyframes loader-dot { 0%, 60%, 100% { opacity: 0.35; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-4px); } }
         .shop-heading { display: flex; align-items: end; justify-content: space-between; gap: 18px; margin-bottom: 19px; }
         .shop-heading h2 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 34px; font-weight: 400; letter-spacing: 0; }
         .shop-heading p { margin: 7px 0 0; color: var(--muted); font-size: 12px; }
@@ -139,7 +130,7 @@
         .empty-state h3 { margin: 0; font-family: Georgia, serif; font-size: 24px; font-weight: 400; }
         .empty-state p { max-width: 420px; margin: 10px auto 0; color: var(--muted); font-size: 12px; line-height: 1.7; }
         .error-message { grid-column: 1 / -1; color: #8b3b2f; font-size: 13px; }
-        footer { display: flex; justify-content: space-between; gap: 20px; padding: 22px max(24px, calc((100vw - 1180px) / 2)); border-top: 1px solid var(--line); color: var(--muted); font-size: 10px; }
+        footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; padding: 22px max(24px, calc((100vw - 1180px) / 2)); border-top: 1px solid var(--line); color: var(--muted); font-size: 10px; }
         footer a { color: inherit; }
 
         @media (max-width: 880px) {
@@ -195,20 +186,18 @@
         }
 
         @media (prefers-reduced-motion: reduce) {
-            .page-loader, .page-loader-mark, .page-loader-dots span { animation: none; transition: none; }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
         }
     </style>
+    <link rel="stylesheet" href="/loading.css">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 </head>
 <body>
-    <div class="page-loader" id="page-loader" role="status" aria-live="polite">
+    <div class="page-loader" id="page-loader" role="status" aria-label="Loading" aria-live="polite">
         <div class="page-loader-content">
             <span class="page-loader-mark" aria-hidden="true">Z</span>
-            <p class="page-loader-message">Loading marketplace listings...</p>
             <span class="page-loader-dots" aria-hidden="true"><span></span><span></span><span></span></span>
+            <p class="page-loader-message">Loading Shop Local...</p>
         </div>
     </div>
     <header class="site-header">
@@ -249,7 +238,7 @@
             <div class="shop-heading">
                 <span class="location-label">Prices in Namibian dollars</span>
             </div>
-            <details class="filter-dropdown">
+            <details class="filter-dropdown" open>
                 <summary>Search and filters</summary>
                 <form class="filters" id="filter-form">
                     <input id="filter-query" type="search" placeholder="What are you looking for?" aria-label="Search listings">
@@ -261,6 +250,15 @@
                         <option>Fashion</option>
                         <option>Food</option>
                         <option>Home</option>
+                        <option>Clothing</option>
+                        <option>Shoes</option>
+                        <option>Books</option>
+                        <option>Furniture</option>
+                        <option>Homeware</option>
+                        <option>Health &amp; Medicines (NMRC)</option>
+                        <option>Telecom / Wi-Fi / Bluetooth (CRAN)</option>
+                        <option>Food &amp; Agriculture</option>
+                        <option>Second-hand clothes</option>
                     </select>
                     <select id="filter-town" aria-label="Filter by town">
                         <option value="">All towns</option>
@@ -290,7 +288,7 @@
         </section>
     </main>
 
-    <footer><span>Z Namibia</span><span>Independent shops. Right here at home.</span><a href="/support">Help & support</a></footer>
+    <footer><span>Z Namibia</span><span>Independent shops. Right here at home.</span><a href="/developers">Developer API</a><a href="/support">Help & support</a></footer>
 
     <script src="/cart-sync.js"></script>
     <script src="/wishlist-sync.js"></script>
@@ -317,9 +315,25 @@
         const cartLink = document.querySelector(".header-cart");
         const menuToggle = document.querySelector("#menu-toggle");
         const mainNavigation = document.querySelector("#main-navigation");
+        const siteHeader = document.querySelector(".site-header");
+        const updateHeaderSpace = () => {
+            document.body.style.setProperty("--site-header-height", `${siteHeader.offsetHeight}px`);
+        };
+        new ResizeObserver(updateHeaderSpace).observe(siteHeader);
+        updateHeaderSpace();
         const mobileNavigationQuery = window.matchMedia("(max-width: 620px)");
+        const filterDropdown = document.querySelector(".filter-dropdown");
+        let activePromotedProducts = null;
+        let activePromotionsRequest = null;
+        let productLoadSequence = 0;
+        const syncFilterDropdown = () => {
+            filterDropdown.open = !mobileNavigationQuery.matches;
+        };
         const priceFormat = new Intl.NumberFormat("en-NA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         const cartKey = "z_cart";
+        let scrollIdleTimer;
+        let lastScrollY = window.scrollY;
+        siteHeader.classList.toggle("is-scrolled", lastScrollY > 0);
         const curatedHeroMessages = [
             {
                 eyebrow: "Namibia, made and sold",
@@ -347,7 +361,33 @@
             menuToggle.setAttribute("aria-expanded", String(!isOpen));
             menuToggle.setAttribute("aria-label", isOpen ? "Open navigation menu" : "Close navigation menu");
             mainNavigation.classList.toggle("is-open", !isOpen);
+            if (!isOpen) {
+                window.clearTimeout(scrollIdleTimer);
+                siteHeader.classList.remove("is-scrolling");
+            }
         });
+        window.addEventListener("scroll", () => {
+            if (menuToggle.getAttribute("aria-expanded") === "true" || siteHeader.contains(document.activeElement)) {
+                window.clearTimeout(scrollIdleTimer);
+                siteHeader.classList.remove("is-scrolling");
+                lastScrollY = window.scrollY;
+                return;
+            }
+            const currentScrollY = window.scrollY;
+            siteHeader.classList.toggle("is-scrolled", currentScrollY > 0);
+            if (currentScrollY <= 0 || currentScrollY < lastScrollY) {
+                siteHeader.classList.remove("is-scrolling");
+            } else if (currentScrollY > lastScrollY) {
+                siteHeader.classList.add("is-scrolling");
+            }
+            lastScrollY = currentScrollY;
+            window.clearTimeout(scrollIdleTimer);
+            scrollIdleTimer = window.setTimeout(() => {
+                siteHeader.classList.remove("is-scrolling");
+            }, 450);
+        }, { passive: true });
+        syncFilterDropdown();
+        mobileNavigationQuery.addEventListener("change", syncFilterDropdown);
         mainNavigation.addEventListener("click", (event) => {
             if (event.target instanceof Element && event.target.closest("a")) {
                 menuToggle.setAttribute("aria-expanded", "false");
@@ -463,6 +503,27 @@
 
         function updateWishlistButtons() {
             document.querySelectorAll("[data-wishlist-product-id]").forEach(updateWishlistButton);
+        }
+
+        function hasMarketplaceFilters() {
+            return Boolean(queryInput.value.trim() || categorySelect.value || townSelect.value);
+        }
+
+        function getActivePromotedProducts() {
+            if (activePromotedProducts) return Promise.resolve(activePromotedProducts);
+            if (!activePromotionsRequest) {
+                activePromotionsRequest = (async () => {
+                    const response = await fetch("/api/promotions/active");
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.error || "Could not load promoted listings.");
+                    activePromotedProducts = Array.isArray(result.products) ? result.products : [];
+                    return activePromotedProducts;
+                })().catch((error) => {
+                    activePromotionsRequest = null;
+                    throw error;
+                });
+            }
+            return activePromotionsRequest;
         }
 
         function updateHeroCopy(product, slideNumber) {
@@ -610,19 +671,40 @@
         }
 
         async function loadProducts() {
+            const requestSequence = ++productLoadSequence;
+            const queryText = queryInput.value.trim();
+            const selectedCategory = categorySelect.value;
+            const selectedTown = townSelect.value;
             const params = new URLSearchParams();
-            if (queryInput.value.trim()) params.set("q", queryInput.value.trim());
-            if (categorySelect.value) params.set("category", categorySelect.value);
-            if (townSelect.value) params.set("town", townSelect.value);
+            if (queryText) params.set("q", queryText);
+            if (selectedCategory) params.set("category", selectedCategory);
+            if (selectedTown) params.set("town", selectedTown);
+            const filtersActive = Boolean(queryText || selectedCategory || selectedTown);
+            if (filtersActive) promotedSection.hidden = true;
+            else if (activePromotedProducts) promotedSection.hidden = !activePromotedProducts.length;
             resultCount.textContent = "Loading listings...";
             productGrid.replaceChildren();
 
             try {
-                const response = await fetch(`/api/products?${params.toString()}`);
+                const [response, promotedProducts] = await Promise.all([
+                    fetch(`/api/products?${params.toString()}`),
+                    filtersActive ? getActivePromotedProducts() : Promise.resolve([])
+                ]);
                 const result = await response.json();
+                if (requestSequence !== productLoadSequence) return;
                 if (!response.ok) throw new Error(result.error || "Could not load listings.");
-                resultCount.textContent = `${result.products.length} ${result.products.length === 1 ? "listing" : "listings"}`;
-                if (!result.products.length) {
+                const query = queryText.toLocaleLowerCase();
+                const matchingPromotedProducts = promotedProducts.filter((product) => {
+                    if (selectedCategory && product.category !== selectedCategory) return false;
+                    if (selectedTown && product.town !== selectedTown) return false;
+                    if (!query) return true;
+                    return `${product.title || ""} ${product.description || ""}`.toLocaleLowerCase().includes(query);
+                }).map((product) => ({ ...product, promoted: true }));
+                const products = filtersActive
+                    ? [...new Map([...matchingPromotedProducts, ...result.products].map((product) => [product.id, product])).values()]
+                    : result.products;
+                resultCount.textContent = `${products.length} ${products.length === 1 ? "listing" : "listings"}`;
+                if (!products.length) {
                     const empty = document.createElement("div");
                     empty.className = "empty-state";
                     if (currentUserHasSellerShop) {
@@ -635,8 +717,9 @@
                     productGrid.append(empty);
                     return;
                 }
-                result.products.forEach((product) => productGrid.append(renderProduct(product)));
+                products.forEach((product) => productGrid.append(renderProduct(product)));
             } catch (error) {
+                if (requestSequence !== productLoadSequence) return;
                 resultCount.textContent = "Listings unavailable";
                 addText(productGrid, "p", "error-message", error.message || "Could not reach the marketplace.");
             }
@@ -644,17 +727,14 @@
 
         async function loadPromotedProducts() {
             try {
-                const response = await fetch("/api/promotions/active");
-                const result = await response.json();
-                if (!response.ok) throw new Error(result.error || "Could not load promoted listings.");
                 promotedGrid.replaceChildren();
-                const products = Array.isArray(result.products) ? [...result.products] : [];
+                const products = [...await getActivePromotedProducts()];
                 for (let index = products.length - 1; index > 0; index--) {
                     const randomIndex = Math.floor(Math.random() * (index + 1));
                     [products[index], products[randomIndex]] = [products[randomIndex], products[index]];
                 }
                 products.forEach((product) => promotedGrid.append(renderProduct({ ...product, promoted: true })));
-                promotedSection.hidden = !products.length;
+                promotedSection.hidden = hasMarketplaceFilters() || !products.length;
             } catch (error) {
                 promotedSection.hidden = true;
                 console.error("Promoted listings could not be loaded:", error);
@@ -715,7 +795,6 @@
 
             await Promise.race([initialContent, maximumWaitReached]);
             window.clearTimeout(maximumWait);
-            pageLoader.querySelector(".page-loader-message").textContent = "Marketplace listings loaded.";
             const remainingMinimumTime = Math.max(0, 450 - (performance.now() - startedAt));
             if (remainingMinimumTime) {
                 await new Promise((resolve) => window.setTimeout(resolve, remainingMinimumTime));

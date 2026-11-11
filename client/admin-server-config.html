@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f4f1e8">
+    <title>Server configurations | Z Operations</title>
+    <style>
+        :root { color-scheme: light; --ink: #17231e; --muted: #68736d; --paper: #f4f1e8; --white: #fffefa; --forest: #18382e; --line: #d9d9cf; --warning: #8b3b2f; }
+        * { box-sizing: border-box; }
+        body { min-width: 320px; margin: 0; color: var(--ink); background: var(--paper); font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
+        button { font: inherit; }
+        a { color: inherit; }
+        .site-header { display: flex; min-height: 72px; align-items: center; justify-content: space-between; gap: 16px; padding: 12px max(24px, calc((100vw - 1120px) / 2)); border-bottom: 1px solid var(--line); }
+        .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+        .brand-mark { display: grid; width: 36px; aspect-ratio: 1; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; font-family: Georgia, serif; font-size: 22px; }
+        nav { display: flex; flex-wrap: wrap; gap: 14px; font-size: 10px; font-weight: 700; }
+        nav a { text-decoration: none; }
+        main { width: min(1000px, calc(100% - 48px)); margin: 0 auto; padding: 42px 0 72px; }
+        .eyebrow { margin: 0 0 10px; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+        h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 40px; font-weight: 400; }
+        .intro { max-width: 720px; margin: 10px 0 26px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+        .panel { padding: 20px; border: 1px solid var(--line); background: var(--white); }
+        .panel-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+        h2 { margin: 0; font-size: 15px; }
+        .refresh-button { min-height: 40px; padding: 0 14px; border: 1px solid var(--ink); border-radius: 3px; color: var(--white); background: var(--forest); cursor: pointer; font-size: 11px; font-weight: 700; }
+        .refresh-button:disabled { opacity: .55; cursor: wait; }
+        .status { min-height: 18px; margin: 12px 0 0; color: var(--forest); font-size: 11px; }
+        .status.is-error { color: var(--warning); }
+        .diagnostics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 18px 0 0; }
+        .diagnostics div { min-width: 0; padding: 14px; border: 1px solid var(--line); background: #f7f5ee; }
+        dt { color: var(--muted); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+        dd { margin: 7px 0 0; font-size: 13px; font-weight: 700; overflow-wrap: anywhere; }
+        .notice { margin: 18px 0 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+        @media (max-width: 650px) {
+            .site-header { align-items: flex-start; padding: 12px 18px; }
+            nav { gap: 9px; }
+            main { width: calc(100% - 36px); padding-top: 30px; }
+            h1 { font-size: 34px; }
+            .diagnostics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @media (max-width: 420px) { .diagnostics { grid-template-columns: 1fr; } }
+    </style>
+    <link rel="stylesheet" href="/loading.css">
+    <script src="/loading.js"></script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+</head>
+<body>
+    <header class="site-header">
+        <a class="brand" href="/marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Operations</span></a>
+        <nav aria-label="Super-admin navigation">
+            <a href="/admin/platform">Platform controls</a>
+            <a href="/admin/commands">Commands</a>
+            <a href="/marketplace">Marketplace</a>
+        </nav>
+    </header>
+    <main>
+        <p class="eyebrow">Super-admin only · Read-only</p>
+        <h1>Server configurations</h1>
+        <p class="intro">View the detected hosting operating system and application runtime health. This page does not run commands, change server settings, or display configuration secrets.</p>
+        <section class="panel" aria-labelledby="diagnostics-title">
+            <div class="panel-heading">
+                <h2 id="diagnostics-title">Runtime diagnostics</h2>
+                <button class="refresh-button" id="refresh-diagnostics" type="button">Refresh</button>
+            </div>
+            <p class="status" id="diagnostics-status" role="status" aria-live="polite">Loading server diagnostics...</p>
+            <dl class="diagnostics" id="diagnostics" hidden>
+                <div><dt>Operating system</dt><dd id="operating-system"></dd></div>
+                <div><dt>OS release</dt><dd id="os-release"></dd></div>
+                <div><dt>Architecture</dt><dd id="architecture"></dd></div>
+                <div><dt>Node.js runtime</dt><dd id="node-version"></dd></div>
+                <div><dt>Application version</dt><dd id="app-version"></dd></div>
+                <div><dt>Environment</dt><dd id="environment"></dd></div>
+                <div><dt>Application health</dt><dd id="health"></dd></div>
+                <div><dt>Database connection</dt><dd id="database-status"></dd></div>
+                <div><dt>Application uptime</dt><dd id="process-uptime"></dd></div>
+                <div><dt>Host uptime</dt><dd id="host-uptime"></dd></div>
+                <div><dt>Application memory</dt><dd id="process-memory"></dd></div>
+                <div><dt>System memory</dt><dd id="system-memory"></dd></div>
+            </dl>
+            <p class="notice">Diagnostics are read-only and available to authorized super admins. Host and runtime details are not public; no environment variable values or secrets are returned.</p>
+        </section>
+    </main>
+    <script>
+        const status = document.querySelector("#diagnostics-status");
+        const diagnostics = document.querySelector("#diagnostics");
+        const refreshButton = document.querySelector("#refresh-diagnostics");
+
+        async function loadDiagnostics() {
+            refreshButton.disabled = true;
+            status.classList.remove("is-error");
+            status.textContent = "Loading server diagnostics...";
+            try {
+                const response = await fetch("/api/admin/server-config", { cache: "no-store" });
+                let result;
+                try { result = await response.json(); } catch { throw new Error("The server returned an invalid response."); }
+                if (!response.ok) throw new Error(result.error || "Server diagnostics could not be loaded.");
+                const setValue = (id, value) => { document.querySelector(`#${id}`).textContent = String(value); };
+                const formatUptime = (seconds) => {
+                    const days = Math.floor(seconds / 86400);
+                    const hours = Math.floor((seconds % 86400) / 3600);
+                    const minutes = Math.floor((seconds % 3600) / 60);
+                    return `${days}d ${hours}h ${minutes}m`;
+                };
+                setValue("operating-system", result.operatingSystem);
+                setValue("os-release", result.osRelease);
+                setValue("architecture", result.architecture);
+                setValue("node-version", result.nodeVersion);
+                setValue("app-version", result.appVersion);
+                setValue("environment", result.environment);
+                setValue("health", result.health);
+                setValue("database-status", result.databaseStatus);
+                setValue("process-uptime", formatUptime(result.processUptimeSeconds));
+                setValue("host-uptime", formatUptime(result.hostUptimeSeconds));
+                setValue("process-memory", `${result.memory.processRssMB} MB RSS · ${result.memory.heapUsedMB}/${result.memory.heapTotalMB} MB heap`);
+                setValue("system-memory", `${result.memory.systemFreeMB} MB free · ${result.memory.systemTotalMB} MB total`);
+                diagnostics.hidden = false;
+                status.textContent = `Last checked ${new Date().toLocaleTimeString()}.`;
+            } catch (error) {
+                status.classList.add("is-error");
+                status.textContent = error.message;
+            } finally {
+                refreshButton.disabled = false;
+            }
+        }
+
+        refreshButton.addEventListener("click", loadDiagnostics);
+        loadDiagnostics();
+    </script>
+    <script src="/navigation.js" defer></script>
+</body>
+</html>

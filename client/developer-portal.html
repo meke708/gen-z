@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f4f1e8">
+    <title>Developer API | Z Namibia</title>
+    <style>
+        :root { color-scheme: light; --ink: #17231e; --muted: #68736d; --paper: #f4f1e8; --white: #fffefa; --forest: #18382e; --lime: #d8f36a; --line: #d9d9cf; --red: #8b3b2f; }
+        * { box-sizing: border-box; }
+        body { margin: 0; color: var(--ink); background: var(--paper); font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
+        a { color: var(--forest); }
+        header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px max(24px, calc((100vw - 1060px) / 2)); border-bottom: 1px solid var(--line); background: var(--white); font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+        header a { color: var(--forest); text-decoration: none; text-transform: none; }
+        header a:hover { text-decoration: underline; text-underline-offset: 4px; }
+        .portal-nav { display: flex; align-items: center; gap: 16px; }
+        .portal-user-name { max-width: min(32vw, 260px); overflow: hidden; padding: 8px 11px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: #edf2e2; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+        .portal-user-name[hidden] { display: none; }
+        .portal-sign-out { padding: 0; border: 0; color: var(--forest); background: transparent; cursor: pointer; font: inherit; font-size: 11px; font-weight: 700; }
+        .portal-sign-out:hover { text-decoration: underline; text-underline-offset: 4px; }
+        .portal-sign-out:focus-visible { outline: 2px solid #397d54; outline-offset: 3px; }
+        .portal-sign-out[hidden] { display: none; }
+        main { width: min(1060px, calc(100% - 36px)); margin: 38px auto 70px; }
+        .hero { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 18px; margin-bottom: 28px; }
+        .eyebrow { margin: 0 0 8px; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+        h1 { margin: 0; font: 400 clamp(36px, 5vw, 50px) Georgia, serif; }
+        .intro { max-width: 700px; margin: 12px 0 0; color: var(--muted); font-size: 13px; line-height: 1.7; }
+        .panel { margin-top: 20px; padding: 20px; border: 1px solid var(--line); background: var(--white); }
+        .panel h2 { margin: 0 0 10px; font: 400 24px Georgia, serif; }
+        .panel p { color: var(--muted); font-size: 11px; line-height: 1.65; }
+        .portal-access[hidden], .token-reveal[hidden], .app-list[hidden], .access-links[hidden], .access-auth-links[hidden], #verify-email-link[hidden] { display: none !important; }
+        .access-links { display: flex; flex-wrap: wrap; gap: 10px; }
+        .button, button { display: inline-flex; min-height: 38px; align-items: center; justify-content: center; padding: 0 13px; border: 1px solid var(--forest); border-radius: 3px; color: var(--white); background: var(--forest); cursor: pointer; font: inherit; font-size: 11px; font-weight: 700; text-decoration: none; }
+        .button.secondary, button.secondary { color: var(--forest); background: transparent; }
+        button:disabled { opacity: .6; cursor: wait; }
+        input, select { width: min(100%, 440px); min-height: 40px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: #fff; font: inherit; font-size: 12px; }
+        label { display: grid; gap: 6px; margin: 14px 0; font-size: 11px; font-weight: 700; }
+        form { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; }
+        form label { flex: 1 1 250px; margin-bottom: 0; }
+        .notice { margin: 15px 0 0; padding: 11px 13px; border-left: 3px solid #d99a1b; color: #684d1e; background: #fbf1d9; font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
+        .notice.error { border-color: #b75a48; color: var(--red); background: #f8e9e5; }
+        .notice.success { border-color: #5a865f; color: var(--forest); background: #edf4e9; }
+        .token-value { display: block; margin: 10px 0; padding: 12px; border: 1px solid var(--line); background: #f6f7f1; font: 12px Consolas, monospace; overflow-wrap: anywhere; user-select: all; }
+        .app-list { display: grid; gap: 10px; margin-top: 16px; }
+        .app-item { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; border: 1px solid var(--line); }
+        .app-item strong, .app-item small { display: block; }
+        .app-item small { margin-top: 5px; color: var(--muted); font-size: 10px; overflow-wrap: anywhere; }
+        .app-item button { min-height: 32px; border-color: var(--red); color: var(--red); background: transparent; }
+        .docs-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+        .docs-grid .panel { margin-top: 0; }
+        pre { margin: 10px 0 0; padding: 13px; overflow-x: auto; color: #edf4e9; background: #17231e; font: 11px/1.6 Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+        code { font-family: Consolas, monospace; }
+        .endpoint { display: inline-block; padding: 4px 7px; color: var(--forest); background: #edf0df; font: 11px Consolas, monospace; overflow-wrap: anywhere; }
+        .status { min-height: 18px; margin: 12px 0 0; color: var(--red); font-size: 11px; }
+        .upload-result[hidden] { display: none; }
+        .upload-result { margin-top: 15px; padding: 13px; border: 1px solid var(--line); background: #f6f7f1; }
+        .upload-result h3 { margin: 0; font-size: 13px; }
+        .upload-result h3.pass { color: var(--forest); }
+        .upload-result h3.fail { color: var(--red); }
+        .upload-result p { overflow-wrap: anywhere; }
+        .upload-checks { display: grid; gap: 7px; padding: 0; list-style: none; }
+        .upload-checks li { display: flex; justify-content: space-between; gap: 10px; font-size: 10px; }
+        @media (max-width: 680px) { .docs-grid { grid-template-columns: 1fr; } .panel { padding: 15px; } }
+    </style>
+    <link rel="stylesheet" href="/loading.css">
+    <script src="/loading.js"></script>
+</head>
+<body>
+    <header>
+        <span>Z Namibia · Developer API</span>
+        <nav class="portal-nav" aria-label="Developer portal navigation">
+            <span class="portal-user-name" id="portal-user-name" hidden></span>
+            <a href="/dashboard">Dashboard</a>
+            <button class="portal-sign-out" id="portal-sign-out" type="button" hidden>Sign out</button>
+        </nav>
+    </header>
+    <main>
+        <section class="hero">
+            <div>
+                <p class="eyebrow">Integrate statement verification</p>
+                <h1>Developer portal</h1>
+                <p class="intro">Register an application to get its app ID and private API token. Verify a Z Namibia statement record or upload a PDF to check its printed values against the signed record.</p>
+            </div>
+        </section>
+
+        <section class="panel portal-access" id="portal-access">
+            <h2>Get started</h2>
+            <p>Sign in or create a Z account to register developer applications. A verified email is required to issue API credentials.</p>
+            <div class="access-links" id="access-links" hidden>
+                <div class="access-auth-links" id="access-auth-links">
+                    <a class="button" href="/login?returnTo=%2Fdevelopers&signup=1&flow=developer">Create developer account</a>
+                    <a class="button secondary" href="/login?returnTo=%2Fdevelopers&flow=developer">Sign in</a>
+                </div>
+                <a class="button secondary" href="/verify-email?pending=1" id="verify-email-link" hidden>Verify email</a>
+            </div>
+        </section>
+
+        <section class="panel" id="application-panel" hidden>
+            <h2>Your applications</h2>
+            <p id="account-status">Loading developer account…</p>
+            <form id="create-app-form">
+                <label for="app-name">Application name
+                    <input id="app-name" name="name" maxlength="80" required placeholder="e.g. Partner statement checker">
+                </label>
+                <button id="create-app-button" type="submit">Create API application</button>
+            </form>
+            <p class="status" id="portal-status" role="status" aria-live="polite"></p>
+            <div class="notice success token-reveal" id="token-reveal" hidden>
+                <strong>Save your API token now. It is shown only once.</strong>
+                <code class="token-value" id="new-api-token"></code>
+                <button class="secondary" id="copy-token" type="button">Copy token</button>
+            </div>
+            <div class="app-list" id="app-list"></div>
+            <section id="direct-upload-panel" hidden>
+                <h2>Verify a statement PDF</h2>
+                <p>Upload a statement directly here. The PDF is checked against its signed Z Namibia record and is not saved.</p>
+                <form id="direct-upload-form">
+                    <label for="direct-upload-app">Application
+                        <select id="direct-upload-app" name="appId" required></select>
+                    </label>
+                    <label for="direct-upload-file">Statement PDF
+                        <input id="direct-upload-file" name="statement" type="file" accept="application/pdf,.pdf" required>
+                    </label>
+                    <button id="direct-upload-button" type="submit">Verify uploaded PDF</button>
+                </form>
+                <p class="privacy-note">The reference is detected from the PDF. If text extraction cannot read it, use the API endpoint with a statementId.</p>
+                <section class="upload-result" id="direct-upload-result" hidden aria-live="polite">
+                    <h3 id="direct-upload-result-title"></h3>
+                    <p id="direct-upload-result-meta"></p>
+                    <ul class="upload-checks" id="direct-upload-checks"></ul>
+                </section>
+            </section>
+        </section>
+
+        <section class="panel">
+            <h2>API documentation</h2>
+            <p>Base URL: <code id="base-url"></code>. Both endpoints require an active application ID and its API token. Statement data is read-only.</p>
+            <p><strong>Keep the API token on your server.</strong> Never put it in browser JavaScript, a mobile app, public repository, or other distributed client.</p>
+            <p>The API test client is available to signed-in Super Admins from Admin statement verification.</p>
+        </section>
+        <div class="docs-grid">
+            <section class="panel">
+                <h2>Verify a statement reference</h2>
+                <p><span class="endpoint">GET /api/v1/statements/{statementId}/verify</span></p>
+                <p>Checks whether the reference exists and the official snapshot still matches Z Namibia’s signature.</p>
+                <pre id="reference-example"></pre>
+                <pre>{
+  "verified": true,
+  "statement": { "statementId": "…", "shopName": "…" },
+  "signature": "…"
+}</pre>
+            </section>
+            <section class="panel">
+                <h2>Verify an uploaded PDF</h2>
+                <p><span class="endpoint">POST /api/v1/statements/verify-pdf</span></p>
+                <p>Send multipart form data with a <code>statement</code> PDF file and optionally <code>statementId</code>. If omitted, the API reads the printed reference from the PDF and compares its text values with the signed record.</p>
+                <pre id="pdf-example"></pre>
+            </section>
+        </div>
+        <section class="panel">
+            <h2>Authentication, limits, and responses</h2>
+            <p>Send <code>X-Z-App-Id: your-app-id</code> and <code>Authorization: Bearer your-api-token</code> with every request. Calls are limited to 60 per minute per IP. Developer accounts can create up to five applications; revoke a compromised app from this portal. Tokens are stored as hashes and cannot be viewed again.</p>
+            <pre>{
+  "verified": true,
+  "recordVerified": true,
+  "statementId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "checks": [
+    { "label": "Z balance", "matched": true }
+  ]
+}</pre>
+            <p>A 401 means credentials are missing, invalid, or revoked; 404 means the statement reference is unknown. For PDF verification, <code>verified: false</code> means the signed record exists but one or more PDF text checks did not match. PDF text checks cannot detect visual overlays that leave original text underneath.</p>
+        </section>
+    </main>
+    <script>
+        const baseUrl = window.location.origin;
+        const accessPanel = document.querySelector("#portal-access");
+        const accessLinks = document.querySelector("#access-links");
+        const accessAuthLinks = document.querySelector("#access-auth-links");
+        const verifyEmailLink = document.querySelector("#verify-email-link");
+        const signOutButton = document.querySelector("#portal-sign-out");
+        const portalUserName = document.querySelector("#portal-user-name");
+        const applicationPanel = document.querySelector("#application-panel");
+        const accountStatus = document.querySelector("#account-status");
+        const status = document.querySelector("#portal-status");
+        const appList = document.querySelector("#app-list");
+        const createForm = document.querySelector("#create-app-form");
+        const createButton = document.querySelector("#create-app-button");
+        const tokenReveal = document.querySelector("#token-reveal");
+        const tokenValue = document.querySelector("#new-api-token");
+        const directUploadPanel = document.querySelector("#direct-upload-panel");
+        const directUploadForm = document.querySelector("#direct-upload-form");
+        const directUploadButton = document.querySelector("#direct-upload-button");
+        const directUploadResult = document.querySelector("#direct-upload-result");
+        const directUploadResultTitle = document.querySelector("#direct-upload-result-title");
+        const directUploadResultMeta = document.querySelector("#direct-upload-result-meta");
+        const directUploadChecks = document.querySelector("#direct-upload-checks");
+        let maxApplications = 5;
+
+        document.querySelector("#base-url").textContent = baseUrl;
+        document.querySelector("#reference-example").textContent =
+            `curl.exe -H "X-Z-App-Id: YOUR_APP_ID" -H "Authorization: Bearer YOUR_API_TOKEN" "${baseUrl}/api/v1/statements/STATEMENT_ID/verify"`;
+        document.querySelector("#pdf-example").textContent =
+            `curl.exe -X POST -H "X-Z-App-Id: YOUR_APP_ID" -H "Authorization: Bearer YOUR_API_TOKEN" -F "statement=@statement.pdf" "${baseUrl}/api/v1/statements/verify-pdf"`;
+
+        async function readJson(response) {
+            try {
+                return await response.json();
+            } catch {
+                throw new Error("The developer API returned an invalid response.");
+            }
+        }
+
+        function renderApplications(applications) {
+            appList.replaceChildren();
+            const activeApplications = applications.filter((application) => !application.revokedAt);
+            const appSelect = document.querySelector("#direct-upload-app");
+            appSelect.replaceChildren();
+            for (const application of activeApplications) {
+                const option = document.createElement("option");
+                option.value = application.appId;
+                option.textContent = `${application.name} · ${application.appId}`;
+                appSelect.append(option);
+            }
+            directUploadPanel.hidden = activeApplications.length === 0;
+            if (!applications.length) {
+                const empty = document.createElement("p");
+                empty.textContent = "No applications yet.";
+                appList.append(empty);
+                return;
+            }
+            for (const application of applications) {
+                const item = document.createElement("article");
+                item.className = "app-item";
+                const details = document.createElement("div");
+                const name = document.createElement("strong");
+                name.textContent = application.name;
+                const id = document.createElement("small");
+                id.textContent = `App ID: ${application.appId}`;
+                const token = document.createElement("small");
+                token.textContent = `Token ending ····${application.tokenLast4} · ${application.revokedAt ? "Revoked" : "Active"}`;
+                const created = document.createElement("small");
+                created.textContent = `Created ${new Date(application.createdAt).toLocaleString()}`;
+                details.append(name, id, token, created);
+                item.append(details);
+                if (!application.revokedAt) {
+                    const revoke = document.createElement("button");
+                    revoke.type = "button";
+                    revoke.textContent = "Revoke";
+                    revoke.addEventListener("click", () => revokeApplication(application.appId));
+                    item.append(revoke);
+                }
+                appList.append(item);
+            }
+        }
+
+        async function loadApplications() {
+            const authResponse = await fetch("/api/auth/status");
+            const authResult = await readJson(authResponse);
+            if (!authResponse.ok) throw new Error(authResult.error || "Could not load account status.");
+            portalUserName.hidden = !authResult.user?.name;
+            portalUserName.textContent = authResult.user?.name || "";
+
+            const response = await fetch("/api/developer/apps");
+            const result = await readJson(response);
+            if (response.status === 401) {
+                accessPanel.hidden = false;
+                accessLinks.hidden = false;
+                accessAuthLinks.hidden = false;
+                verifyEmailLink.hidden = true;
+                signOutButton.hidden = true;
+                return;
+            }
+            signOutButton.hidden = false;
+            accessPanel.hidden = false;
+            applicationPanel.hidden = false;
+            if (response.status === 403) {
+                accountStatus.textContent = result.error;
+                accessLinks.hidden = false;
+                accessAuthLinks.hidden = true;
+                verifyEmailLink.hidden = false;
+                createForm.hidden = true;
+                return;
+            }
+            if (!response.ok) throw new Error(result.error || "Could not load developer applications.");
+            accessPanel.hidden = true;
+            accountStatus.textContent = "Email verified. You can create up to five applications.";
+            maxApplications = result.maxApplications;
+            renderApplications(result.applications);
+            const activeCount = result.applications.filter((application) => !application.revokedAt).length;
+            createForm.hidden = activeCount >= maxApplications;
+            if (createForm.hidden) accountStatus.textContent = "You have reached the five active application limit. Revoke an application to create another.";
+        }
+
+        signOutButton.addEventListener("click", async () => {
+            signOutButton.disabled = true;
+            try {
+                const response = await fetch("/api/auth/logout", { method: "POST" });
+                if (!response.ok) throw new Error("Sign-out failed. Please try again.");
+                window.location.assign("/login");
+            } catch (error) {
+                status.textContent = error.message || "Could not sign out. Please try again.";
+                signOutButton.disabled = false;
+            }
+        });
+
+        createForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            if (!createForm.reportValidity()) return;
+            createButton.disabled = true;
+            status.textContent = "Creating application…";
+            try {
+                const response = await fetch("/api/developer/apps", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name: new FormData(createForm).get("name") })
+                });
+                const result = await readJson(response);
+                if (!response.ok) throw new Error(result.error || "Could not create application.");
+                tokenValue.textContent = result.apiToken;
+                tokenReveal.hidden = false;
+                status.textContent = result.warning;
+                createForm.reset();
+                await loadApplications();
+            } catch (error) {
+                status.textContent = error.message || "Could not create application.";
+            } finally {
+                createButton.disabled = false;
+            }
+        });
+
+        async function revokeApplication(appId) {
+            if (!window.confirm("Revoke this application now? Its API token will stop working immediately.")) return;
+            status.textContent = "Revoking application…";
+            try {
+                const response = await fetch(`/api/developer/apps/${encodeURIComponent(appId)}`, { method: "DELETE" });
+                const result = await readJson(response);
+                if (!response.ok) throw new Error(result.error || "Could not revoke application.");
+                tokenReveal.hidden = true;
+                status.textContent = "Application revoked.";
+                await loadApplications();
+            } catch (error) {
+                status.textContent = error.message || "Could not revoke application.";
+            }
+        }
+
+        document.querySelector("#copy-token").addEventListener("click", async () => {
+            try {
+                await navigator.clipboard.writeText(tokenValue.textContent);
+                status.textContent = "API token copied.";
+            } catch {
+                status.textContent = "Copy was blocked. Select and copy the token manually.";
+            }
+        });
+
+        directUploadForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            if (!directUploadForm.reportValidity()) return;
+            directUploadButton.disabled = true;
+            status.textContent = "Reading and verifying the uploaded statement…";
+            directUploadResult.hidden = true;
+            directUploadChecks.replaceChildren();
+            try {
+                const response = await fetch("/api/developer/statements/verify-upload", {
+                    method: "POST",
+                    body: new FormData(directUploadForm)
+                });
+                const result = await readJson(response);
+                if (!response.ok) throw new Error(result.error || "Could not verify this statement.");
+                directUploadResultTitle.textContent = result.message;
+                directUploadResultTitle.className = result.verified ? "pass" : "fail";
+                directUploadResultMeta.textContent = `Reference ${result.statementId}`;
+                for (const check of result.checks) {
+                    const item = document.createElement("li");
+                    const label = document.createElement("span");
+                    const outcome = document.createElement("strong");
+                    label.textContent = check.label;
+                    outcome.textContent = check.matched ? "Match" : "Mismatch";
+                    outcome.className = check.matched ? "pass" : "fail";
+                    item.append(label, outcome);
+                    directUploadChecks.append(item);
+                }
+                directUploadResult.hidden = false;
+                status.textContent = "";
+            } catch (error) {
+                status.textContent = error.message || "Could not verify this statement.";
+            } finally {
+                directUploadButton.disabled = false;
+            }
+        });
+
+        loadApplications().catch((error) => {
+            accessPanel.hidden = false;
+            status.textContent = error.message || "Could not load developer portal.";
+        });
+    </script>
+</body>
+</html>

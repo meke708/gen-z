@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f4f1e8">
+    <title>Billing | Z Namibia</title>
+    <style>
+        :root { color-scheme: light; --ink: #17231e; --muted: #68736d; --paper: #f4f1e8; --white: #fffefa; --lime: #d8f36a; --forest: #18382e; --line: #d9d9cf; --warning: #8b3b2f; }
+        * { box-sizing: border-box; }
+        body { min-width: 320px; margin: 0; color: var(--ink); background: var(--paper); font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
+        a { color: inherit; }
+        .site-header { display: flex; min-height: 72px; align-items: center; justify-content: space-between; gap: 20px; padding: 12px max(24px, calc((100vw - 1040px) / 2)); border-bottom: 1px solid var(--line); }
+        .header-left { display: flex; align-items: center; gap: 14px; }
+        .back-link { display: inline-grid; width: 28px; height: 28px; place-items: center; border: 1px solid var(--ink); border-radius: 50%; text-decoration: none; font-size: 18px; }
+        .site-header nav { display: flex; align-items: center; gap: 18px; font-size: 11px; font-weight: 700; }
+        .site-header nav a { text-decoration: none; }
+        .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+        .brand-mark { display: grid; width: 36px; aspect-ratio: 1; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; font-family: Georgia, serif; font-size: 22px; }
+        main { width: min(1920px, calc(100% - clamp(48px, 5vw, 120px))); margin: 0 auto; padding: 46px 0 80px; }
+        main > .eyebrow, main > h1, main > .intro, .billing-content { width: min(1120px, 100%); margin-right: auto; margin-left: auto; }
+        .eyebrow { margin-top: 0; margin-bottom: 10px; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
+        h1 { margin-top: 0; margin-bottom: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(38px, 4vw, 52px); font-weight: 400; letter-spacing: -0.035em; }
+        .intro { max-width: 720px; margin-top: 12px; margin-bottom: 30px; color: var(--muted); font-size: 14px; line-height: 1.65; }
+        .billing-content { display: grid; gap: 16px; }
+        .summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+        .metric { min-width: 0; min-height: 90px; padding: 17px 19px; border: 1px solid var(--line); background: var(--white); }
+        .metric strong { display: block; font-family: Georgia, serif; font-size: 23px; font-weight: 400; }
+        .metric span { display: block; margin-top: 6px; color: var(--muted); font-size: 10px; }
+        .table-card { min-width: 0; overflow: hidden; border: 1px solid var(--line); background: var(--white); }
+        .table-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; padding: 18px 20px 14px; border-bottom: 1px solid var(--line); font-family: Georgia, serif; font-size: 21px; font-weight: 400; }
+        .export-button { min-height: 36px; flex: 0 0 auto; padding: 0 12px; border: 1px solid var(--forest); border-radius: 3px; color: var(--white); background: var(--forest); cursor: pointer; font-family: inherit; font-size: 10px; font-weight: 700; }
+        .export-button:hover:not(:disabled) { color: var(--ink); background: var(--lime); }
+        .export-button:focus-visible { outline: 2px solid #397d54; outline-offset: 3px; }
+        .export-button:disabled { opacity: 0.55; cursor: wait; }
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; min-width: 720px; border-collapse: collapse; text-align: left; }
+        th { padding: 13px 15px; color: var(--muted); background: #f7f8f2; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; }
+        td { padding: 15px; border-top: 1px solid #e8ebdf; vertical-align: middle; font-size: 11px; }
+        .product-name { font-weight: 700; }
+        .date-note { display: block; margin-top: 4px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+        .amount { white-space: nowrap; font-family: Georgia, serif; font-size: 15px; }
+        .status-badge { display: inline-block; padding: 6px 9px; border: 1px solid #e2c987; border-radius: 999px; color: #76552f; background: #f6eddb; font-size: 9px; font-weight: 700; white-space: nowrap; }
+        .status-badge.active, .status-badge.expired { border-color: #b6d0b9; color: #285b3a; background: #e8f2e9; }
+        .status-badge.cancelled { border-color: #dfb2a7; color: #8b3b2f; background: #f8e9e5; }
+        .status-badge.paid { border-color: #b6d0b9; color: #285b3a; background: #e8f2e9; }
+        .empty-state, .status { margin: 0; padding: 28px 20px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+        .status { min-height: 20px; padding: 0; color: var(--warning); }
+        .note { margin: 0; padding: 16px 18px; border: 1px solid #dce2d2; color: var(--muted); background: #e9edda; font-size: 10px; line-height: 1.7; }
+        [hidden] { display: none !important; }
+        @media (max-width: 680px) {
+            .site-header { padding: 12px 18px; }
+            .site-header nav { gap: 10px; font-size: 10px; }
+            main { width: calc(100% - 36px); padding-top: 33px; }
+            h1 { font-size: 35px; }
+            .summary { grid-template-columns: 1fr; gap: 9px; }
+            .metric { min-height: 0; padding: 14px 16px; }
+            .table-heading { padding: 15px; }
+        }
+    </style>
+    <link rel="stylesheet" href="/loading.css">
+    <script src="/loading.js"></script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-left"><a class="back-link" href="/sell/dashboard" aria-label="Back to seller dashboard">←</a><a class="brand" href="/marketplace" aria-label="Z Namibia marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Namibia</span></a></div>
+        <nav aria-label="Seller navigation"><a href="/sell/dashboard">Seller dashboard</a></nav>
+    </header>
+    <main>
+        <p class="eyebrow">Seller account</p>
+        <h1>Billing</h1>
+        <p class="intro">Review promotion charges, payment methods, and your billing history.</p>
+        <div class="billing-content">
+            <section class="summary" aria-label="Promotion payment totals">
+                <div class="metric"><strong id="paid-total">N$ 0.00</strong><span id="paid-count">Total promotion payments</span></div>
+                <div class="metric"><strong id="wallet-total">N$ 0.00</strong><span>Paid from Z balance</span></div>
+                <div class="metric"><strong id="card-total">N$ 0.00</strong><span>Paid by card</span></div>
+            </section>
+            <section class="table-card" aria-labelledby="billing-heading">
+                <h2 class="table-heading" id="billing-heading"><span>Promotion billing history</span><button class="export-button" id="export-billing" type="button" disabled>Export CSV</button></h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>Date</th><th>Product</th><th>Amount</th><th>Payment</th><th>Status</th></tr></thead>
+                        <tbody id="billing-rows"></tbody>
+                    </table>
+                    <p class="empty-state" id="empty-state" hidden>No promotion billing activity yet. Promotion payments will appear here.</p>
+                </div>
+            </section>
+            <p class="status" id="status" role="status" aria-live="polite"></p>
+            <p class="note" id="billing-note">Billing records show promotion payments only. Seller earnings and purchases made with your Z balance are listed in <a href="/sell/transactions">Transactions</a>. Card payments shown here are recorded by Z; test card payments are simulated and do not charge money.</p>
+        </div>
+    </main>
+    <script>
+        const rows = document.querySelector("#billing-rows");
+        const statusMessage = document.querySelector("#status");
+        const emptyState = document.querySelector("#empty-state");
+        const exportButton = document.querySelector("#export-billing");
+        const money = new Intl.NumberFormat("en-NA", { style: "currency", currency: "NAD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        let currentBilling = null;
+
+        async function loadBilling() {
+            const response = await fetch("/api/seller/billing");
+            let result;
+            try {
+                result = await response.json();
+            } catch {
+                throw new Error("The server returned an invalid billing response.");
+            }
+            if (response.status === 401) {
+                window.location.replace("/login");
+                throw new Error("Sign in to view billing history.");
+            }
+            if (!response.ok) throw new Error(result.error || "Could not load billing history.");
+            return result;
+        }
+
+        function paymentDescription(entry) {
+            if (!entry.paidAt) return "Not paid";
+            if (entry.walletUsedNAD > 0 && entry.cardDueNAD > 0) {
+                return `Z balance ${money.format(entry.walletUsedNAD)} · Card ${money.format(entry.cardDueNAD)}`;
+            }
+            if (entry.walletUsedNAD > 0) return `Z balance · ${money.format(entry.walletUsedNAD)}`;
+            if (entry.cardDueNAD > 0) return `Card · ${money.format(entry.cardDueNAD)}`;
+            return entry.paymentMethod === "wallet" ? "Z balance" : entry.paymentMethod === "card" ? "Card" : "Payment not recorded";
+        }
+
+        function statusLabel(entry) {
+            if (entry.paidAt) return entry.status === "active" ? "Paid · active" : entry.status === "expired" ? "Paid · expired" : entry.status === "cancelled" ? "Paid · cancelled" : "Paid";
+            return entry.status === "pending" ? "Payment pending" : entry.status === "cancelled" ? "Cancelled · unpaid" : entry.status === "expired" ? "Expired · unpaid" : "Payment not recorded";
+        }
+
+        function renderBilling(result) {
+            if (!Array.isArray(result.entries) || !result.totals) throw new Error("The billing response is incomplete.");
+            currentBilling = result;
+            exportButton.disabled = false;
+            document.querySelector("#paid-total").textContent = money.format(Number(result.totals.paidNAD || 0));
+            document.querySelector("#paid-count").textContent = `${Number(result.totals.paidCount || 0)} successful promotion payments`;
+            document.querySelector("#wallet-total").textContent = money.format(Number(result.totals.walletNAD || 0));
+            document.querySelector("#card-total").textContent = money.format(Number(result.totals.cardNAD || 0));
+            if (result.hasMore) {
+                document.querySelector("#billing-note").prepend(document.createTextNode("Showing the latest 200 promotion records. "));
+            }
+            rows.replaceChildren();
+            emptyState.hidden = result.entries.length > 0;
+            for (const entry of result.entries) {
+                const row = document.createElement("tr");
+                const dateCell = document.createElement("td");
+                const date = entry.paidAt || entry.createdAt;
+                dateCell.textContent = date ? new Date(date).toLocaleDateString() : "Date unavailable";
+                const dateDetail = document.createElement("span");
+                dateDetail.className = "date-note";
+                dateDetail.textContent = entry.paidAt ? "Payment date" : "Promotion created";
+                dateCell.append(dateDetail);
+
+                const productCell = document.createElement("td");
+                const productName = document.createElement("span");
+                productName.className = "product-name";
+                productName.textContent = entry.productName || "Deleted listing";
+                productCell.append(productName);
+                if (entry.startsAt && entry.expiresAt) {
+                    const schedule = document.createElement("span");
+                    schedule.className = "date-note";
+                    schedule.textContent = `${new Date(entry.startsAt).toLocaleDateString()} – ${new Date(entry.expiresAt).toLocaleDateString()}`;
+                    productCell.append(schedule);
+                }
+
+                const amountCell = document.createElement("td");
+                amountCell.className = "amount";
+                amountCell.textContent = money.format(Number(entry.amountNAD || 0));
+                const paymentCell = document.createElement("td");
+                paymentCell.textContent = paymentDescription(entry);
+                const statusCell = document.createElement("td");
+                const badge = document.createElement("span");
+                badge.className = `status-badge ${entry.status || ""}${entry.paidAt ? " paid" : ""}`;
+                badge.textContent = statusLabel(entry);
+                statusCell.append(badge);
+                row.append(dateCell, productCell, amountCell, paymentCell, statusCell);
+                rows.append(row);
+            }
+        }
+
+        function escapeCsv(value) {
+            const text = String(value ?? "");
+            const safe = /^[\s]*[=+\-@]/.test(text) ? `'${text}` : text;
+            return `"${safe.replaceAll('"', '""')}"`;
+        }
+
+        function exportBilling() {
+            if (!currentBilling) return;
+            const columns = [
+                ["Date", (entry) => entry.paidAt || entry.createdAt],
+                ["Product", (entry) => entry.productName],
+                ["Amount (NAD)", (entry) => Number(entry.amountNAD || 0).toFixed(2)],
+                ["Payment", paymentDescription],
+                ["Status", statusLabel],
+                ["Z balance used (NAD)", (entry) => Number(entry.walletUsedNAD || 0).toFixed(2)],
+                ["Card paid (NAD)", (entry) => Number(entry.cardDueNAD || 0).toFixed(2)]
+            ];
+            const csv = [
+                columns.map(([label]) => escapeCsv(label)).join(","),
+                ...currentBilling.entries.map((entry) => columns.map(([, value]) => escapeCsv(value(entry))).join(","))
+            ].join("\r\n");
+            const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `seller-billing-${new Date().toISOString().slice(0, 10)}.csv`;
+            document.body.append(link);
+            link.click();
+            link.remove();
+            window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        exportButton.addEventListener("click", exportBilling);
+        loadBilling()
+            .then(renderBilling)
+            .catch((error) => {
+                statusMessage.textContent = error.message || "Could not load billing history.";
+                if (error.message.includes("Sign in")) window.location.replace("/login");
+            });
+    </script>
+    <script src="/navigation.js" defer></script>
+</body>
+</html>

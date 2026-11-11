@@ -36,6 +36,12 @@
         .data-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
         .data-list li { min-height: 58px; padding: 14px 16px; border: 1px solid var(--line); color: var(--muted); background: #fffefa; font-size: 11px; line-height: 1.5; }
         .assistant-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; }
+        .assistant-payment-methods { display: grid; flex: 1 1 100%; gap: 9px; margin: 0; padding: 14px 16px; border: 1px solid var(--line); }
+        .assistant-payment-methods legend { padding: 0 5px; font-size: 11px; font-weight: 700; }
+        .assistant-payment-choice { display: flex; align-items: flex-start; gap: 9px; color: var(--ink); cursor: pointer; font-size: 11px; line-height: 1.5; }
+        .assistant-payment-choice input { flex: 0 0 auto; margin: 2px 0 0; accent-color: var(--forest); }
+        .assistant-payment-choice small { display: block; color: var(--muted); font-size: 10px; }
+        .assistant-payment-note { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
         .activation { display: flex; align-items: flex-start; gap: 9px; margin: 0; font-size: 11px; line-height: 1.5; }
         .activation input { width: 16px; height: 16px; flex: 0 0 auto; margin: 0; accent-color: var(--forest); }
         .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
@@ -63,6 +69,7 @@
     </style>
     <link rel="stylesheet" href="/loading.css">
     <script src="/loading.js"></script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 </head>
 <body>
     <header class="site-header">
@@ -95,12 +102,24 @@
                 </ul>
             </section>
             <section class="assistant-controls" aria-label="Assistant settings">
+                <fieldset class="assistant-payment-methods" id="assistant-payment-methods" hidden>
+                    <legend id="assistant-payment-legend">One-time add-on</legend>
+                    <label class="assistant-payment-choice">
+                        <input type="radio" name="assistant-payment-method" value="card">
+                        <span>Credit or debit card<small>Test payment · no real charge</small></span>
+                    </label>
+                    <label class="assistant-payment-choice">
+                        <input type="radio" name="assistant-payment-method" value="wallet" id="assistant-wallet-choice" disabled>
+                        <span>Pay with Z balance<small id="assistant-wallet-available">Loading your balance…</small></span>
+                    </label>
+                    <p class="assistant-payment-note" id="assistant-payment-note">Z balance is virtual credit held by Z Namibia. Wallet funds are applied first; any shortfall uses a test card.</p>
+                </fieldset>
                 <label class="activation" for="assistant-enabled">
                     <input id="assistant-enabled" type="checkbox" disabled>
                     <span>Show the assistant on my public shop</span>
                 </label>
                 <div class="actions">
-                    <button class="purchase-button" id="assistant-purchase" type="button" disabled>Purchase assistant</button>
+                    <button class="purchase-button" id="assistant-purchase" type="button" disabled>Choose a payment method</button>
                     <button class="save-button" id="assistant-save" type="submit" hidden>Save settings</button>
                     <a href="/sell/dashboard">Return to my shop</a>
                 </div>
@@ -115,10 +134,20 @@
         const assistantShopName = document.querySelector("#assistant-shop-name");
         const assistantStatus = document.querySelector("#assistant-status");
         const assistantEnabled = document.querySelector("#assistant-enabled");
+        const assistantPaymentMethods = document.querySelector("#assistant-payment-methods");
+        const assistantWalletChoice = document.querySelector("#assistant-wallet-choice");
+        const assistantWalletAvailable = document.querySelector("#assistant-wallet-available");
+        const assistantPaymentLegend = document.querySelector("#assistant-payment-legend");
+        const assistantPaymentNote = document.querySelector("#assistant-payment-note");
         const assistantPurchase = document.querySelector("#assistant-purchase");
         const assistantSave = document.querySelector("#assistant-save");
         const assistantMessage = document.querySelector("#assistant-message");
         const assistantError = document.querySelector("#assistant-error");
+        const priceFormat = new Intl.NumberFormat("en-NA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        let assistantPriceNAD = 50;
+        let assistantWalletBalanceNAD = 0;
+        let assistantPurchaseSimulationAvailable = false;
+        let assistantPurchaseProcessing = false;
 
         async function requestJson(url, options = {}) {
             const response = await fetch(url, options);
@@ -132,38 +161,77 @@
             return result;
         }
 
-        function updateAssistantStatus(shop, serviceConfigured, simulationAvailable) {
-            if (!shop.assistantPlanActive) {
+        function updateAssistantPaymentChoice() {
+            const paymentMethod = assistantForm.elements.namedItem("assistant-payment-method").value;
+            const walletUsedNAD = paymentMethod === "wallet" ? Math.min(assistantWalletBalanceNAD, assistantPriceNAD) : 0;
+            const cardDueNAD = assistantPriceNAD - walletUsedNAD;
+            assistantPurchase.disabled = !assistantPurchaseSimulationAvailable || !paymentMethod || assistantPurchaseProcessing;
+            assistantPurchase.textContent = !paymentMethod
+                ? "Choose a payment method"
+                : cardDueNAD > 0
+                    ? `Pay N$ ${priceFormat.format(cardDueNAD)} & activate`
+                    : "Pay using Z balance";
+            assistantPaymentNote.textContent = !paymentMethod
+                ? "Z balance is virtual credit held by Z Namibia. Wallet funds are applied first; any shortfall uses a test card."
+                : walletUsedNAD > 0 && cardDueNAD > 0
+                    ? `N$ ${priceFormat.format(walletUsedNAD)} will come from Z balance; N$ ${priceFormat.format(cardDueNAD)} will be simulated on a test card.`
+                    : walletUsedNAD > 0
+                        ? `N$ ${priceFormat.format(walletUsedNAD)} will be deducted from Z balance.`
+                        : `N$ ${priceFormat.format(assistantPriceNAD)} will be simulated on a test card; no real charge.`;
+        }
+
+        function updateAssistantStatus(shop, serviceConfigured, simulationAvailable, priceNAD = assistantPriceNAD) {
+            assistantPriceNAD = Number(priceNAD);
+            assistantPurchaseSimulationAvailable = Boolean(simulationAvailable);
+            const planPaid = Boolean(shop.assistantPlanActive && shop.assistantPlanPaidAt);
+            assistantPaymentLegend.textContent = `One-time add-on · N$ ${priceFormat.format(assistantPriceNAD)}`;
+            assistantPaymentMethods.disabled = !simulationAvailable || planPaid;
+            if (!planPaid) {
                 assistantStatus.textContent = simulationAvailable
-                    ? "Development test mode: simulate a purchase to activate this add-on. No payment will be taken."
+                    ? shop.assistantPlanActive
+                        ? `This add-on was activated in the old test flow without payment. Choose a method to complete the one-time N$ ${priceFormat.format(assistantPriceNAD)} test purchase.`
+                        : `One-time add-on: N$ ${priceFormat.format(assistantPriceNAD)}. Choose Z balance or a test card to activate it.`
                     : "Paid add-on not active. Seller billing is not connected yet, so customers cannot use the assistant.";
-                assistantPurchase.hidden = false;
-                assistantPurchase.disabled = !simulationAvailable;
-                assistantPurchase.textContent = simulationAvailable ? "Simulate purchase" : "Purchase assistant";
+                assistantPaymentMethods.hidden = !simulationAvailable;
+                assistantPurchase.hidden = !simulationAvailable;
                 assistantSave.hidden = true;
             } else if (!serviceConfigured) {
                 assistantStatus.textContent = "Add-on active, but the local model is not installed or Ollama is not running on this server.";
+                assistantPaymentMethods.hidden = true;
                 assistantPurchase.hidden = true;
                 assistantSave.hidden = false;
             } else if (shop.assistantEnabled) {
                 assistantStatus.textContent = "Assistant is live on your public shop.";
+                assistantPaymentMethods.hidden = true;
                 assistantPurchase.hidden = true;
                 assistantSave.hidden = false;
             } else {
                 assistantStatus.textContent = "Add-on active. Turn on the assistant when your setup is ready.";
+                assistantPaymentMethods.hidden = true;
                 assistantPurchase.hidden = true;
                 assistantSave.hidden = false;
             }
+            if (!planPaid) updateAssistantPaymentChoice();
             assistantEnabled.checked = Boolean(shop.assistantEnabled);
-            assistantEnabled.disabled = !shop.assistantPlanActive || !serviceConfigured;
+            assistantEnabled.disabled = !planPaid || !serviceConfigured;
         }
 
         async function loadAssistant() {
             try {
                 const result = await requestJson("/api/seller/shop");
                 if (!result.shop) throw new Error("Create your shop before setting up its assistant.");
+                if (!result.shop.assistantPlanActive || !result.shop.assistantPlanPaidAt) {
+                    if (result.assistantPurchaseSimulationAvailable) {
+                        const wallet = await requestJson("/api/wallet");
+                        assistantWalletBalanceNAD = Number(wallet.balanceNAD);
+                    }
+                    assistantWalletChoice.disabled = assistantWalletBalanceNAD <= 0;
+                    assistantWalletAvailable.textContent = assistantWalletBalanceNAD > 0
+                        ? `Available: N$ ${priceFormat.format(assistantWalletBalanceNAD)}. Shortfall uses test card.`
+                        : "No available balance. Choose card instead.";
+                }
                 assistantShopName.textContent = result.shop.name;
-                updateAssistantStatus(result.shop, result.assistantServiceConfigured, result.assistantPurchaseSimulationAvailable);
+                updateAssistantStatus(result.shop, result.assistantServiceConfigured, result.assistantPurchaseSimulationAvailable, result.assistantPriceNAD);
                 assistantForm.hidden = false;
             } catch (error) {
                 if (error.message.includes("Sign in")) {
@@ -188,7 +256,7 @@
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ assistantEnabled: assistantEnabled.checked })
                 });
-                updateAssistantStatus(result, result.assistantServiceConfigured);
+                updateAssistantStatus(result, result.assistantServiceConfigured, assistantPurchaseSimulationAvailable);
                 assistantMessage.textContent = "Assistant setup saved.";
             } catch (error) {
                 assistantMessage.classList.add("error");
@@ -199,22 +267,35 @@
         });
 
         assistantPurchase.addEventListener("click", async () => {
+            const paymentMethod = assistantForm.elements.namedItem("assistant-payment-method").value;
+            if (!["card", "wallet"].includes(paymentMethod)) {
+                assistantMessage.classList.add("error");
+                assistantMessage.textContent = "Choose a payment method before continuing.";
+                return;
+            }
+            assistantPurchaseProcessing = true;
             assistantPurchase.disabled = true;
-            assistantPurchase.textContent = "Simulating purchase...";
+            assistantPurchase.textContent = "Processing payment...";
             assistantMessage.classList.remove("error");
-            assistantMessage.textContent = "Recording test purchase. No payment will be taken.";
+            assistantMessage.textContent = "Processing one-time test payment...";
             try {
-                const result = await requestJson("/api/seller/shop/assistant/simulate-purchase", { method: "POST" });
-                updateAssistantStatus(result.shop, result.assistantServiceConfigured, false);
-                assistantMessage.textContent = "Test purchase complete. No payment was taken.";
+                const result = await requestJson("/api/seller/shop/assistant/simulate-purchase", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ paymentMethod })
+                });
+                updateAssistantStatus(result.shop, result.assistantServiceConfigured, assistantPurchaseSimulationAvailable);
+                assistantMessage.textContent = result.message || "Shop assistant add-on activated.";
             } catch (error) {
-                assistantPurchase.disabled = false;
-                assistantPurchase.textContent = "Simulate purchase";
                 assistantMessage.classList.add("error");
                 assistantMessage.textContent = error.message;
+            } finally {
+                assistantPurchaseProcessing = false;
+                updateAssistantPaymentChoice();
             }
         });
 
+        assistantPaymentMethods.addEventListener("change", updateAssistantPaymentChoice);
         loadAssistant();
     </script>
     <script src="/navigation.js" defer></script>

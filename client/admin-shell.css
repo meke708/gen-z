@@ -1,0 +1,237 @@
+body.layout-admin {
+    min-height: 100vh;
+    background:
+        radial-gradient(ellipse at 100% 0, rgba(216, 243, 106, 0.1), transparent 34rem),
+        var(--paper, #f4f1e8);
+}
+
+body.layout-admin .site-header {
+    position: fixed;
+    z-index: 20;
+    inset: 0 auto 0 0;
+    display: flex;
+    width: 258px;
+    height: 100vh;
+    height: 100dvh;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 34px;
+    overflow-y: auto;
+    padding: 28px 17px 20px;
+    border: 0;
+    border-right: 1px solid rgba(255, 254, 250, 0.12);
+    color: #fffefa;
+    background: linear-gradient(165deg, #1d4436, #10271f 76%);
+}
+
+body.layout-admin .header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 8px;
+}
+
+body.layout-admin .back-button {
+    flex: 0 0 auto;
+    border-color: rgba(255, 254, 250, 0.36);
+    color: #fffefa;
+}
+
+body.layout-admin .back-button:hover {
+    border-color: #d8f36a;
+    color: #17231e;
+    background: #d8f36a;
+}
+
+body.layout-admin .brand {
+    min-width: 0;
+    color: #fffefa;
+    font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+}
+
+body.layout-admin .brand-mark {
+    width: 38px;
+    flex: 0 0 38px;
+    border-color: rgba(255, 254, 250, 0.72);
+    color: #d8f36a;
+}
+
+body.layout-admin .site-header > nav {
+    display: flex;
+    width: 100%;
+    flex: 1 1 auto;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 5px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 254, 250, 0.16);
+    font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+    font-size: 12px;
+    letter-spacing: 0;
+}
+
+body.layout-admin .site-header > nav::before {
+    margin: 0 11px 9px;
+    color: rgba(255, 254, 250, 0.55);
+    content: "ADMINISTRATION";
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+}
+
+body.layout-admin .site-header > nav a {
+    display: flex;
+    min-height: 42px;
+    flex: 0 0 auto;
+    align-items: center;
+    padding: 0 11px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    color: rgba(255, 254, 250, 0.78);
+    line-height: 1.4;
+    text-decoration: none;
+    white-space: normal;
+    transition: color 150ms ease, background 150ms ease, border-color 150ms ease;
+}
+
+body.layout-admin .site-header > nav a:hover {
+    border-color: rgba(255, 254, 250, 0.1);
+    color: #fffefa;
+    background: rgba(255, 254, 250, 0.08);
+    text-decoration: none;
+}
+
+body.layout-admin .site-header > nav a[aria-current="page"] {
+    border-color: rgba(216, 243, 106, 0.2);
+    color: #d8f36a;
+    background: rgba(216, 243, 106, 0.11);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+body.layout-admin .site-header > nav a[href="/marketplace"] {
+    order: 8;
+    margin-top: auto;
+    border-top-color: rgba(255, 254, 250, 0.16);
+    border-radius: 0;
+    color: #fffefa;
+}
+
+body.layout-admin .site-header > nav a[href="/admin/moderation"] { order: 1; }
+body.layout-admin .site-header > nav a[href="/admin/payouts"] { order: 2; }
+body.layout-admin .site-header > nav a[href="/admin/kyc"] { order: 3; }
+body.layout-admin .site-header > nav a[href="/admin/support"] { order: 4; }
+body.layout-admin .site-header > nav a[href="/admin/accounts"] { order: 5; }
+body.layout-admin .site-header > nav a[href="/admin/platform"] { order: 6; }
+body.layout-admin .site-header > nav a[href="/admin/server-config"] { order: 7; }
+body.layout-admin .site-header > nav a[href="/admin/commands"] { order: 8; }
+
+body.layout-admin .site-header > nav a[href="/dashboard"] {
+    order: 9;
+    color: rgba(255, 254, 250, 0.62);
+    font-size: 11px;
+}
+
+body.layout-admin .site-header > nav a:focus-visible {
+    outline: 2px solid #d8f36a;
+    outline-offset: 2px;
+}
+
+body.layout-admin main {
+    width: calc(100% - 258px);
+    max-width: 1560px;
+    min-height: 100vh;
+    margin: 0 0 0 258px;
+    padding: clamp(32px, 4vw, 58px) clamp(26px, 4vw, 64px) 76px;
+}
+
+@media (max-width: 900px) {
+    body.layout-admin .site-header {
+        position: sticky;
+        inset: auto;
+        width: 100%;
+        height: auto;
+        min-height: 0;
+        flex-direction: row;
+        align-items: center;
+        gap: 12px;
+        overflow: visible;
+        padding: 10px 16px 0;
+        border-right: 0;
+        border-bottom: 1px solid rgba(255, 254, 250, 0.14);
+    }
+
+    body.layout-admin .header-left {
+        flex: 0 0 auto;
+        padding: 0 0 10px;
+    }
+
+    body.layout-admin .site-header > .brand {
+        flex: 0 0 auto;
+    }
+
+    body.layout-admin .site-header > nav {
+        width: auto;
+        min-width: 0;
+        flex: 1 1 auto;
+        flex-direction: row;
+        align-items: center;
+        gap: 4px;
+        overflow-x: auto;
+        padding: 0 0 10px;
+        border: 0;
+        scrollbar-width: thin;
+        white-space: nowrap;
+    }
+
+    body.layout-admin .site-header > nav::before {
+        display: none;
+    }
+
+    body.layout-admin .site-header > nav a {
+        min-height: 36px;
+        flex: 0 0 auto;
+        padding: 0 9px;
+        white-space: nowrap;
+    }
+
+    body.layout-admin .site-header > nav a[href="/marketplace"] {
+        margin-top: 0;
+        border-top-color: transparent;
+        border-radius: 4px;
+    }
+
+    body.layout-admin main {
+        width: 100%;
+        min-height: calc(100vh - 65px);
+        margin: 0;
+        padding: 32px 22px 56px;
+    }
+}
+
+@media (max-width: 480px) {
+    body.layout-admin .site-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 8px;
+        padding: 10px 14px 0;
+    }
+
+    body.layout-admin .header-left {
+        padding-bottom: 0;
+    }
+
+    body.layout-admin .site-header > nav {
+        width: 100%;
+        flex: 0 0 auto;
+        margin-left: -2px;
+    }
+
+    body.layout-admin main {
+        padding: 27px 18px 48px;
+    }
+}

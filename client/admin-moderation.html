@@ -71,6 +71,7 @@
     </style>
     <link rel="stylesheet" href="/loading.css">
     <script src="/loading.js"></script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 </head>
 <body>
     <header class="site-header">
@@ -78,7 +79,7 @@
             <a class="back-button" href="/dashboard" aria-label="Go to account">←</a>
             <a class="brand" href="/marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Operations</span></a>
         </div>
-        <nav><a href="/marketplace">Marketplace</a></nav>
+        <nav><a id="commands-link" href="/admin/commands" hidden>Commands</a><a href="/marketplace">Marketplace</a></nav>
     </header>
     <main>
         <p class="eyebrow">Marketplace safety</p>
@@ -117,6 +118,7 @@
         const moderationAuditList = document.querySelector("#moderation-audit-list");
         const sellerRestrictionsList = document.querySelector("#seller-restrictions-list");
         const sellerRestrictionsCount = document.querySelector("#seller-restrictions-count");
+        const commandsLink = document.querySelector("#commands-link");
         let isSuperAdmin = false;
 
         async function requestJson(url, options) {
@@ -204,106 +206,110 @@
             return card;
         }
 
+        function createSellerRestrictionCard(restriction) {
+            const card = document.createElement("article");
+            card.className = "restriction-card";
+            const details = document.createElement("div");
+            const heading = document.createElement("h2");
+            heading.textContent = `${restriction.shopName} · ${restriction.sellerName}`;
+            const metadata = document.createElement("p");
+            metadata.className = "restriction-meta";
+            metadata.textContent = `${restriction.sellerEmail} · Hold expires ${new Date(restriction.restrictedUntil).toLocaleString()} · Account ID ${restriction.accountId}`;
+            const reason = document.createElement("p");
+            reason.className = "restriction-meta";
+            reason.textContent = restriction.reason;
+            details.append(heading, metadata, reason);
+            restriction.triggeredListings.forEach((listing) => {
+                const item = document.createElement("p");
+                item.className = "restriction-listing";
+                item.textContent = `${listing.productTitle} · crossed threshold ${new Date(listing.triggeredAt).toLocaleString()}`;
+                details.append(item);
+            });
+
+            const actions = document.createElement("div");
+            actions.className = "restriction-actions";
+            if (isSuperAdmin) {
+                const release = document.createElement("button");
+                release.className = "release";
+                release.type = "button";
+                release.textContent = "Release hold";
+                release.addEventListener("click", () => reviewSellerRestriction(restriction, "release", release));
+                const ban = document.createElement("button");
+                ban.type = "button";
+                ban.textContent = "Confirm permanent seller ban";
+                ban.addEventListener("click", () => reviewSellerRestriction(restriction, "ban", ban));
+                actions.append(release, ban);
+            } else {
+                const note = document.createElement("p");
+                note.className = "restriction-meta";
+                note.textContent = "Super Admin review required to release or permanently restrict seller access.";
+                actions.append(note);
+            }
+            card.append(details, actions);
+            return card;
+        }
+
+        async function reviewSellerRestriction(restriction, decision, button) {
+            const prompt = decision === "ban"
+                ? `Permanently restrict seller access for ${restriction.sellerName} (${restriction.sellerEmail})? Buyer access and current order history will remain available.`
+                : `Release the temporary seller hold for ${restriction.sellerName} (${restriction.sellerEmail})?`;
+            if (!window.confirm(prompt)) return;
+            button.disabled = true;
+            try {
+                const result = await requestJson(`/api/admin/seller-restrictions/${encodeURIComponent(restriction.shopId)}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ decision })
+                });
+                queueStatus.textContent = result.message;
+                await Promise.all([loadSellerRestrictions(), loadModerationAudit()]);
+            } catch (error) {
+                queueStatus.textContent = error.message;
+                button.disabled = false;
+            }
+        }
+
+        async function loadSellerRestrictions() {
+            try {
+                const { restrictions } = await requestJson("/api/admin/seller-restrictions");
+                sellerRestrictionsCount.textContent = String(restrictions.length);
+                sellerRestrictionsList.replaceChildren();
+                if (!restrictions.length) {
+                    const empty = document.createElement("p");
+                    empty.className = "empty";
+                    empty.textContent = "No active automated seller holds need review.";
+                    sellerRestrictionsList.append(empty);
+                    return;
+                }
+                restrictions.forEach((restriction) => sellerRestrictionsList.append(createSellerRestrictionCard(restriction)));
+            } catch (error) {
+                sellerRestrictionsCount.textContent = "Unavailable";
+                sellerRestrictionsList.textContent = error.message;
+            }
+        }
+
         function createSubmissionCard(submission, type) {
             const card = document.createElement("article");
             card.className = "report";
+            const imageWrap = document.createElement("div");
+            imageWrap.className = "report-image";
+            imageWrap.textContent = type === "shop"
+                ? (submission.name?.trim().charAt(0).toUpperCase() || "Z")
+                : "Z";
             if (type === "product" && submission.imageUrl) {
-                const imageWrap = document.createElement("div");
-                imageWrap.className = "report-image";
                 const image = document.createElement("img");
                 image.src = submission.imageUrl;
                 image.alt = submission.title;
                 image.addEventListener("error", () => { image.remove(); imageWrap.textContent = "Z"; }, { once: true });
+                imageWrap.textContent = "";
                 imageWrap.append(image);
-                card.append(imageWrap);
             }
-
-            function createSellerRestrictionCard(restriction) {
-                const card = document.createElement("article");
-                card.className = "restriction-card";
-                const details = document.createElement("div");
-                const heading = document.createElement("h2");
-                heading.textContent = `${restriction.shopName} · ${restriction.sellerName}`;
-                const metadata = document.createElement("p");
-                metadata.className = "restriction-meta";
-                metadata.textContent = `${restriction.sellerEmail} · Hold expires ${new Date(restriction.restrictedUntil).toLocaleString()} · Account ID ${restriction.accountId}`;
-                const reason = document.createElement("p");
-                reason.className = "restriction-meta";
-                reason.textContent = restriction.reason;
-                details.append(heading, metadata, reason);
-                restriction.triggeredListings.forEach((listing) => {
-                    const item = document.createElement("p");
-                    item.className = "restriction-listing";
-                    item.textContent = `${listing.productTitle} · crossed threshold ${new Date(listing.triggeredAt).toLocaleString()}`;
-                    details.append(item);
-                });
-
-                const actions = document.createElement("div");
-                actions.className = "restriction-actions";
-                if (isSuperAdmin) {
-                    const release = document.createElement("button");
-                    release.className = "release";
-                    release.type = "button";
-                    release.textContent = "Release hold";
-                    release.addEventListener("click", () => reviewSellerRestriction(restriction, "release", release));
-                    const ban = document.createElement("button");
-                    ban.type = "button";
-                    ban.textContent = "Confirm permanent seller ban";
-                    ban.addEventListener("click", () => reviewSellerRestriction(restriction, "ban", ban));
-                    actions.append(release, ban);
-                } else {
-                    const note = document.createElement("p");
-                    note.className = "restriction-meta";
-                    note.textContent = "Super Admin review required to release or permanently restrict seller access.";
-                    actions.append(note);
-                }
-                card.append(details, actions);
-                return card;
-            }
-
-            async function reviewSellerRestriction(restriction, decision, button) {
-                const prompt = decision === "ban"
-                    ? `Permanently restrict seller access for ${restriction.sellerName} (${restriction.sellerEmail})? Buyer access and current order history will remain available.`
-                    : `Release the temporary seller hold for ${restriction.sellerName} (${restriction.sellerEmail})?`;
-                if (!window.confirm(prompt)) return;
-                button.disabled = true;
-                try {
-                    const result = await requestJson(`/api/admin/seller-restrictions/${encodeURIComponent(restriction.shopId)}`, {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ decision })
-                    });
-                    queueStatus.textContent = result.message;
-                    await Promise.all([loadSellerRestrictions(), loadModerationAudit()]);
-                } catch (error) {
-                    queueStatus.textContent = error.message;
-                    button.disabled = false;
-                }
-            }
-
-            async function loadSellerRestrictions() {
-                try {
-                    const { restrictions } = await requestJson("/api/admin/seller-restrictions");
-                    sellerRestrictionsCount.textContent = String(restrictions.length);
-                    sellerRestrictionsList.replaceChildren();
-                    if (!restrictions.length) {
-                        const empty = document.createElement("p");
-                        empty.className = "empty";
-                        empty.textContent = "No active automated seller holds need review.";
-                        sellerRestrictionsList.append(empty);
-                        return;
-                    }
-                    restrictions.forEach((restriction) => sellerRestrictionsList.append(createSellerRestrictionCard(restriction)));
-                } catch (error) {
-                    sellerRestrictionsCount.textContent = "Unavailable";
-                    sellerRestrictionsList.textContent = error.message;
-                }
-            }
+            card.append(imageWrap);
 
             const content = document.createElement("div");
             content.className = "report-content";
             const title = document.createElement("h2");
-            title.textContent = type === "shop" ? submission.name : submission.title;
+            title.textContent = type === "shop" ? submission.name : (submission.title || "Untitled product");
             content.append(title);
             const metadata = document.createElement("p");
             metadata.className = "report-meta";
@@ -313,8 +319,14 @@
             content.append(metadata);
             const description = document.createElement("p");
             description.className = "report-details";
-            description.textContent = submission.description;
+            description.textContent = submission.description || "No description provided.";
             content.append(description);
+            if (type === "product" && Array.isArray(submission.reviewReasons) && submission.reviewReasons.length) {
+                const reviewReasons = document.createElement("p");
+                reviewReasons.className = "report-details";
+                reviewReasons.textContent = `Manual review reasons: ${submission.reviewReasons.join(" ")}`;
+                content.append(reviewReasons);
+            }
             card.append(content);
 
             const actions = document.createElement("div");
@@ -467,7 +479,10 @@
                 if (!response.ok) return;
                 const { user } = await response.json();
                 isSuperAdmin = Boolean(user?.isSuperAdmin);
-                if (isSuperAdmin) loadSellerRestrictions();
+                if (isSuperAdmin) {
+                    commandsLink.hidden = false;
+                    loadSellerRestrictions();
+                }
             })
             .catch((error) => console.error("Could not check admin role for seller restriction actions:", error));
     </script>

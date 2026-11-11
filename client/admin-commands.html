@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f4f1e8">
+    <title>Commands | Z Operations</title>
+    <style>
+        :root { color-scheme: light; --ink: #17231e; --muted: #68736d; --paper: #f4f1e8; --white: #fffefa; --forest: #18382e; --line: #d9d9cf; --warning: #8b3b2f; }
+        * { box-sizing: border-box; }
+        body { min-width: 320px; margin: 0; color: var(--ink); background: var(--paper); font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
+        button, select { font: inherit; }
+        a { color: inherit; }
+        .site-header { display: flex; min-height: 72px; align-items: center; justify-content: space-between; gap: 16px; padding: 12px max(24px, calc((100vw - 1120px) / 2)); border-bottom: 1px solid var(--line); }
+        .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+        .brand-mark { display: grid; width: 36px; aspect-ratio: 1; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; font-family: Georgia, serif; font-size: 22px; }
+        nav { display: flex; flex-wrap: wrap; gap: 14px; font-size: 10px; font-weight: 700; }
+        nav a { text-decoration: none; }
+        main { width: min(1000px, calc(100% - 48px)); margin: 0 auto; padding: 42px 0 72px; }
+        .eyebrow { margin: 0 0 10px; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+        h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 40px; font-weight: 400; }
+        .intro { max-width: 720px; margin: 10px 0 26px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+        .panel { padding: 20px; border: 1px solid var(--line); background: var(--white); }
+        .run-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
+        label { display: grid; gap: 7px; color: var(--muted); font-size: 10px; font-weight: 700; }
+        select { min-width: min(340px, calc(100vw - 80px)); min-height: 40px; padding: 0 10px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: var(--white); }
+        .run-button { min-height: 40px; padding: 0 16px; border: 1px solid var(--ink); border-radius: 3px; color: var(--white); background: var(--forest); cursor: pointer; font-size: 11px; font-weight: 700; }
+        .run-button:disabled { opacity: .55; cursor: wait; }
+        .run-all-button { min-height: 40px; padding: 0 16px; border: 1px solid var(--ink); border-radius: 3px; color: var(--ink); background: transparent; cursor: pointer; font-size: 11px; font-weight: 700; }
+        .run-all-button:hover:not(:disabled) { background: #edf0df; }
+        .run-all-button:disabled { opacity: .55; cursor: wait; }
+        .status { min-height: 18px; margin: 14px 0 0; color: var(--forest); font-size: 11px; }
+        .status.is-error { color: var(--warning); }
+        .output { margin: 14px 0 0; padding: 14px; overflow: auto; border: 1px solid var(--line); background: #f7f5ee; font: 11px/1.6 Consolas, "Courier New", monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .notice { margin: 18px 0 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+        @media (max-width: 650px) {
+            .site-header { align-items: flex-start; padding: 12px 18px; }
+            nav { gap: 9px; }
+            main { width: calc(100% - 36px); padding-top: 30px; }
+            h1 { font-size: 34px; }
+            .run-controls { align-items: stretch; flex-direction: column; }
+        }
+    </style>
+    <link rel="stylesheet" href="/loading.css">
+    <script src="/loading.js"></script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+</head>
+<body>
+    <header class="site-header">
+        <a class="brand" href="/marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Operations</span></a>
+        <nav aria-label="Super-admin navigation">
+            <a href="/admin/platform">Platform controls</a>
+            <a href="/admin/server-config">Server configurations</a>
+            <a href="/marketplace">Marketplace</a>
+        </nav>
+    </header>
+    <main>
+        <p class="eyebrow">Super-admin only</p>
+        <h1>Commands</h1>
+        <p class="intro">Run an approved project test file and view its output. Arbitrary shell commands are not supported.</p>
+        <section class="panel" aria-labelledby="test-title">
+            <div class="run-controls">
+                <label for="test-file">Test file
+                    <select id="test-file" disabled><option>Loading approved tests...</option></select>
+                </label>
+                <button class="run-button" id="run-test" type="button" disabled>Run test</button>
+                <button class="run-all-button" id="run-all-tests" type="button" disabled>Run all tests</button>
+            </div>
+            <p class="status" id="test-status" role="status" aria-live="polite"></p>
+            <pre class="output" id="test-output" hidden></pre>
+            <p class="notice">Runs one approved server test at a time with a 120-second timeout and a bounded output size.</p>
+        </section>
+    </main>
+    <script>
+        const testSelect = document.querySelector("#test-file");
+        const runButton = document.querySelector("#run-test");
+        const runAllButton = document.querySelector("#run-all-tests");
+        const status = document.querySelector("#test-status");
+        const output = document.querySelector("#test-output");
+
+        async function requestJson(url, options) {
+            const response = await fetch(url, { cache: "no-store", ...options });
+            let result;
+            try { result = await response.json(); } catch { throw new Error("The server returned an invalid response."); }
+            if (!response.ok) throw new Error(result.error || "The request could not be completed.");
+            return result;
+        }
+
+        async function loadTests() {
+            try {
+                const result = await requestJson("/api/admin/commands/tests");
+                testSelect.replaceChildren(...result.tests.map(({ id, file }) => {
+                    const option = document.createElement("option");
+                    option.value = id;
+                    option.textContent = file;
+                    return option;
+                }));
+                testSelect.disabled = result.tests.length === 0;
+                runButton.disabled = result.tests.length === 0;
+                runAllButton.disabled = result.tests.length === 0;
+                status.textContent = result.tests.length ? `${result.tests.length} approved test files available.` : "No approved test files are available.";
+            } catch (error) {
+                status.classList.add("is-error");
+                status.textContent = error.message;
+            }
+        }
+
+        async function runTests(runAll) {
+            runButton.disabled = true;
+            runAllButton.disabled = true;
+            testSelect.disabled = true;
+            status.classList.remove("is-error");
+            status.textContent = runAll ? "Running all approved tests on the server..." : "Running test on the server...";
+            output.hidden = true;
+            output.textContent = "";
+            try {
+                const url = runAll
+                    ? "/api/admin/commands/tests/run-all"
+                    : `/api/admin/commands/tests/${encodeURIComponent(testSelect.value)}/run`;
+                const result = await requestJson(url, { method: "POST" });
+                status.classList.toggle("is-error", !result.success);
+                status.textContent = result.success
+                    ? `${runAll ? `All ${result.testCount} tests passed` : `${result.file} passed`} in ${(result.durationMs / 1000).toFixed(1)} seconds.`
+                    : `${runAll ? 'The test suite failed' : `${result.file} failed`}${result.error ? `: ${result.error}` : "."}`;
+                output.textContent = [result.stdout, result.stderr].filter(Boolean).join("\n");
+                output.hidden = !output.textContent;
+            } catch (error) {
+                status.classList.add("is-error");
+                status.textContent = error.message;
+            } finally {
+                testSelect.disabled = false;
+                runButton.disabled = !testSelect.options.length;
+                runAllButton.disabled = !testSelect.options.length;
+            }
+        }
+
+        runButton.addEventListener("click", () => runTests(false));
+        runAllButton.addEventListener("click", () => runTests(true));
+        loadTests();
+    </script>
+    <script src="/navigation.js" defer></script>
+</body>
+</html>

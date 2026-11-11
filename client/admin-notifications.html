@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f4f1e8">
+    <title>Send notifications | Z Operations</title>
+    <style>
+        :root { color-scheme: light; --ink: #17231e; --muted: #68736d; --paper: #f4f1e8; --white: #fffefa; --lime: #d8f36a; --forest: #18382e; --line: #d9d9cf; --warning: #8b3b2f; }
+        * { box-sizing: border-box; }
+        body { min-width: 320px; margin: 0; color: var(--ink); background: var(--paper); font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
+        button, input, select, textarea { font: inherit; }
+        a { color: inherit; }
+        .site-header { display: flex; min-height: 72px; align-items: center; justify-content: space-between; gap: 16px; padding: 12px max(24px, calc((100vw - 1120px) / 2)); border-bottom: 1px solid var(--line); background: var(--white); }
+        .header-left { display: inline-flex; align-items: center; gap: 12px; }
+        .back-button { display: inline-grid; width: 28px; height: 28px; place-items: center; border: 1px solid var(--ink); border-radius: 50%; text-decoration: none; font-size: 18px; }
+        .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+        .brand-mark { display: grid; width: 36px; aspect-ratio: 1; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; font-family: Georgia, serif; font-size: 22px; }
+        nav { display: flex; flex-wrap: wrap; gap: 14px; font-size: 10px; font-weight: 700; }
+        nav a { text-decoration: none; }
+        main { width: min(900px, calc(100% - 48px)); margin: 0 auto; padding: 40px 0 70px; }
+        .eyebrow { margin: 0 0 10px; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+        h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 38px; font-weight: 400; }
+        .intro { max-width: 700px; margin: 10px 0 24px; color: var(--muted); font-size: 12px; line-height: 1.65; }
+        .notification-form { display: grid; gap: 20px; padding: clamp(18px, 4vw, 30px); border: 1px solid var(--line); background: var(--white); }
+        .field { display: grid; gap: 7px; }
+        .field > label, legend { font-size: 12px; font-weight: 700; }
+        .field input, .field textarea, .recipient-search input { width: 100%; min-height: 42px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: var(--white); font-size: 12px; }
+        .field textarea { min-height: 130px; resize: vertical; line-height: 1.55; }
+        .field small, .section-note { color: var(--muted); font-size: 11px; line-height: 1.55; }
+        fieldset { display: grid; gap: 11px; margin: 0; padding: 0; border: 0; }
+        .audience-choice { display: flex; align-items: flex-start; gap: 9px; font-size: 12px; }
+        .audience-choice input { margin-top: 2px; accent-color: var(--forest); }
+        .recipient-picker { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--line); background: #f7f5ee; }
+        .recipient-picker[hidden] { display: none; }
+        .recipient-picker h2 { margin: 0; font-size: 14px; }
+        .recipient-search { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+        .recipient-search button, .send-button { min-height: 40px; padding: 0 15px; border: 1px solid var(--forest); border-radius: 3px; color: var(--white); background: var(--forest); cursor: pointer; font-size: 11px; font-weight: 700; }
+        .recipient-search button:hover, .send-button:hover { color: var(--ink); background: var(--lime); }
+        .recipient-results, .selected-recipients { display: grid; gap: 6px; }
+        .recipient-option { display: flex; align-items: flex-start; gap: 9px; padding: 10px; border: 1px solid var(--line); background: var(--white); font-size: 11px; }
+        .recipient-option input { margin-top: 2px; accent-color: var(--forest); }
+        .recipient-option span { display: grid; gap: 3px; overflow-wrap: anywhere; }
+        .recipient-option small { color: var(--muted); }
+        .selected-title { margin: 4px 0 0; font-size: 11px; font-weight: 700; }
+        .selected-account { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); background: var(--white); font-size: 11px; }
+        .selected-account button { border: 0; color: var(--warning); background: transparent; cursor: pointer; font-weight: 700; }
+        .form-status { min-height: 20px; margin: 0; color: var(--forest); font-size: 12px; line-height: 1.55; }
+        .form-status.is-error { color: var(--warning); }
+        .send-button { justify-self: start; min-width: 160px; }
+        .send-button:disabled, .recipient-search button:disabled { opacity: .55; cursor: wait; }
+        [hidden] { display: none !important; }
+        @media (max-width: 600px) {
+            .site-header { align-items: flex-start; padding: 12px 18px; }
+            nav { gap: 9px; }
+            main { width: calc(100% - 36px); padding-top: 30px; }
+            h1 { font-size: 34px; }
+            .recipient-search { grid-template-columns: 1fr; }
+        }
+    </style>
+    <link rel="stylesheet" href="/loading.css">
+    <script src="/loading.js"></script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-left"><a class="back-button" href="/admin/accounts" aria-label="Back to user accounts">←</a><a class="brand" href="/marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Operations</span></a></div>
+        <nav aria-label="Super-admin navigation"><a href="/admin/moderation">Moderation</a><a href="/admin/accounts">User accounts</a></nav>
+    </header>
+    <main>
+        <p class="eyebrow">Admin tools</p>
+        <h1>Send a notification</h1>
+        <p class="intro">Choose who receives the notification and where it appears. Sellers can receive it in their account dashboard, seller workspace, or both. Seller-workspace-only delivery requires seller recipients.</p>
+        <form class="notification-form" id="notification-form">
+            <fieldset>
+                <legend>Recipients</legend>
+                <label class="audience-choice"><input type="radio" name="audience" value="all" checked><span>All accounts</span></label>
+                <label class="audience-choice"><input type="radio" name="audience" value="selected"><span>Selected accounts</span></label>
+            </fieldset>
+            <fieldset>
+                <legend>Where should it appear?</legend>
+                <label class="audience-choice"><input type="radio" name="destination" value="account"><span>Account dashboard only</span></label>
+                <label class="audience-choice"><input type="radio" name="destination" value="seller"><span>Seller workspace only</span></label>
+                <label class="audience-choice"><input type="radio" name="destination" value="both" checked><span>Both (seller recipients see it in both)</span></label>
+            </fieldset>
+            <section class="recipient-picker" id="recipient-picker" aria-labelledby="recipient-picker-title" hidden>
+                <h2 id="recipient-picker-title">Choose accounts</h2>
+                <p class="section-note">Search by account name or email. Select up to 100 accounts.</p>
+                <div class="recipient-search" id="recipient-search-form">
+                    <input id="recipient-search" type="search" maxlength="100" placeholder="Search name or email" aria-label="Search accounts by name or email">
+                    <button type="button" id="recipient-search-button">Search</button>
+                </div>
+                <p class="section-note" id="recipient-search-status" role="status" aria-live="polite">Enter at least two characters to find accounts.</p>
+                <div class="recipient-results" id="recipient-results"></div>
+                <p class="selected-title" id="selected-title" hidden>Selected accounts (0/100)</p>
+                <div class="selected-recipients" id="selected-recipients"></div>
+            </section>
+            <div class="field">
+                <label for="notification-title">Title</label>
+                <input id="notification-title" type="text" maxlength="120" required>
+                <small>Up to 120 characters.</small>
+            </div>
+            <div class="field">
+                <label for="notification-message">Message</label>
+                <textarea id="notification-message" maxlength="1000" required></textarea>
+                <small>Up to 1,000 characters.</small>
+            </div>
+            <p class="form-status" id="form-status" role="status" aria-live="polite"></p>
+            <button class="send-button" id="send-button" type="submit">Send notification</button>
+        </form>
+    </main>
+    <script>
+        const notificationForm = document.querySelector("#notification-form");
+        const recipientPicker = document.querySelector("#recipient-picker");
+        const recipientSearchButton = document.querySelector("#recipient-search-button");
+        const recipientSearch = document.querySelector("#recipient-search");
+        const recipientSearchStatus = document.querySelector("#recipient-search-status");
+        const recipientResults = document.querySelector("#recipient-results");
+        const selectedTitle = document.querySelector("#selected-title");
+        const selectedRecipients = document.querySelector("#selected-recipients");
+        const formStatus = document.querySelector("#form-status");
+        const sendButton = document.querySelector("#send-button");
+        const selectedAccounts = new Map();
+        let recipientSearchRequest = 0;
+
+        async function requestJson(url, options) {
+            const response = await fetch(url, options);
+            let result;
+            try { result = await response.json(); } catch { throw new Error("The server returned an invalid response."); }
+            if (!response.ok) throw new Error(result.error || "The notification request failed.");
+            return result;
+        }
+
+        function renderSelectedAccounts() {
+            selectedRecipients.replaceChildren();
+            selectedTitle.hidden = selectedAccounts.size === 0;
+            selectedTitle.textContent = `Selected accounts (${selectedAccounts.size}/100)`;
+            selectedAccounts.forEach((account) => {
+                const row = document.createElement("div");
+                row.className = "selected-account";
+                const label = document.createElement("span");
+                label.textContent = `${account.name} · ${account.email}`;
+                const remove = document.createElement("button");
+                remove.type = "button";
+                remove.textContent = "Remove";
+                remove.setAttribute("aria-label", `Remove ${account.email}`);
+                remove.addEventListener("click", () => {
+                    selectedAccounts.delete(account.id);
+                    renderSelectedAccounts();
+                    renderRecipientResults([]);
+                });
+                row.append(label, remove);
+                selectedRecipients.append(row);
+            });
+        }
+
+        function renderRecipientResults(accounts) {
+            recipientResults.replaceChildren();
+            if (!accounts.length) return;
+            accounts.forEach((account) => {
+                const label = document.createElement("label");
+                label.className = "recipient-option";
+                const checkbox = document.createElement("input");
+                checkbox.type = "checkbox";
+                checkbox.checked = selectedAccounts.has(account.id);
+                checkbox.disabled = !checkbox.checked && selectedAccounts.size >= 100;
+                checkbox.addEventListener("change", () => {
+                    if (checkbox.checked) selectedAccounts.set(account.id, account);
+                    else selectedAccounts.delete(account.id);
+                    renderSelectedAccounts();
+                    renderRecipientResults(accounts);
+                });
+                const copy = document.createElement("span");
+                const name = document.createElement("strong");
+                name.textContent = account.name || "Unnamed account";
+                const email = document.createElement("small");
+                email.textContent = account.email;
+                copy.append(name, email);
+                label.append(checkbox, copy);
+                recipientResults.append(label);
+            });
+        }
+
+        async function searchRecipients() {
+            const query = recipientSearch.value.trim();
+            const requestId = ++recipientSearchRequest;
+            recipientResults.replaceChildren();
+            if (query.length < 2) {
+                recipientSearchStatus.textContent = "Enter at least two characters to find accounts.";
+                return;
+            }
+            recipientSearchStatus.textContent = "Searching accounts...";
+            try {
+                const params = new URLSearchParams({ search: query, page: "1", status: "all", accountType: "all" });
+                const result = await requestJson(`/api/admin/users?${params}`);
+                if (requestId !== recipientSearchRequest) return;
+                renderRecipientResults(result.users);
+                recipientSearchStatus.textContent = result.total
+                    ? `${result.total} matching accounts; showing up to ${result.users.length}.`
+                    : "No matching accounts found.";
+            } catch (error) {
+                if (requestId !== recipientSearchRequest) return;
+                recipientSearchStatus.textContent = error.message || "Could not search accounts.";
+            }
+        }
+
+        document.querySelectorAll('input[name="audience"]').forEach((input) => {
+            input.addEventListener("change", () => {
+                recipientPicker.hidden = input.value !== "selected" || !input.checked;
+                const pickerDescription = recipientPicker.querySelector(".section-note");
+                if (input.value === "selected" && input.checked) {
+                    pickerDescription.textContent = "Search by account name or email. Select up to 100 accounts.";
+                }
+                formStatus.textContent = "";
+                formStatus.classList.remove("is-error");
+            });
+        });
+
+        recipientSearchButton.addEventListener("click", () => void searchRecipients());
+        recipientSearch.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                void searchRecipients();
+            }
+        });
+
+        notificationForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const audience = notificationForm.elements.namedItem("audience").value;
+            const destination = notificationForm.elements.namedItem("destination").value;
+            if (audience === "selected" && selectedAccounts.size === 0) {
+                formStatus.classList.add("is-error");
+                formStatus.textContent = "Select at least one account to notify.";
+                return;
+            }
+            if (destination === "seller" && audience === "selected"
+                && [...selectedAccounts.values()].some((account) => account.accountType !== "seller")) {
+                formStatus.classList.add("is-error");
+                formStatus.textContent = "Seller workspace delivery is only available to seller accounts. Remove buyer accounts from your selection.";
+                return;
+            }
+            const recipientCount = selectedAccounts.size;
+            const confirmMessage = audience === "all"
+                ? "Send this notification to every account?"
+                : `Send this notification to ${recipientCount} selected ${recipientCount === 1 ? "account" : "accounts"}?`;
+            const destinationLabel = destination === "account"
+                ? "the account dashboard"
+                : destination === "seller"
+                    ? "the seller workspace"
+                    : "both workspaces for seller accounts and the account dashboard for buyers";
+            if (!window.confirm(`${confirmMessage} It will appear in ${destinationLabel}.`)) return;
+
+            sendButton.disabled = true;
+            sendButton.textContent = "Sending...";
+            formStatus.classList.remove("is-error");
+            formStatus.textContent = "";
+            try {
+                const result = await requestJson("/api/admin/notifications", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        audience,
+                        destination,
+                        title: document.querySelector("#notification-title").value,
+                        message: document.querySelector("#notification-message").value,
+                        recipientIds: audience === "selected" ? [...selectedAccounts.keys()] : []
+                    })
+                });
+                formStatus.textContent = `Notification delivered to ${result.deliveredCount} ${result.deliveredCount === 1 ? "account" : "accounts"}.`;
+                notificationForm.reset();
+                selectedAccounts.clear();
+                renderSelectedAccounts();
+                recipientPicker.hidden = true;
+                recipientSearchStatus.textContent = "Enter at least two characters to find accounts.";
+                recipientResults.replaceChildren();
+            } catch (error) {
+                formStatus.classList.add("is-error");
+                formStatus.textContent = error.message || "Could not send the notification.";
+            } finally {
+                sendButton.disabled = false;
+                sendButton.textContent = "Send notification";
+            }
+        });
+    </script>
+    <script src="/navigation.js" defer></script>
+</body>
+</html>

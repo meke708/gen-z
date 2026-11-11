@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f4f1e8">
+    <title>Login wallpaper | Z Operations</title>
+    <style>
+        :root { color-scheme: light; --ink: #17231e; --muted: #68736d; --paper: #f4f1e8; --white: #fffefa; --lime: #d8f36a; --forest: #18382e; --line: #d9d9cf; --warning: #8b3b2f; }
+        * { box-sizing: border-box; }
+        body { min-width: 320px; margin: 0; color: var(--ink); background: var(--paper); font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
+        button, input, textarea { font: inherit; }
+        a { color: inherit; }
+        .site-header { display: flex; min-height: 72px; align-items: center; justify-content: space-between; gap: 16px; padding: 12px max(24px, calc((100vw - 1200px) / 2)); border-bottom: 1px solid var(--line); }
+        .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+        .brand-mark { display: grid; width: 36px; aspect-ratio: 1; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; font-family: Georgia, serif; font-size: 22px; }
+        nav { display: flex; flex-wrap: wrap; gap: 14px; font-size: 10px; font-weight: 700; }
+        nav a { text-decoration: none; }
+        main { width: min(1200px, calc(100% - 48px)); margin: 0 auto; padding: 36px 0 64px; }
+        .eyebrow { margin: 0 0 9px; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+        h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 40px; font-weight: 400; }
+        .intro { max-width: 760px; margin: 10px 0 16px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+        .publish-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 0 0 24px; }
+        .publish-bar button { min-height: 40px; padding: 0 16px; border: 1px solid var(--ink); border-radius: 3px; color: var(--white); background: var(--forest); cursor: pointer; font-size: 11px; font-weight: 700; }
+        .publish-bar button:disabled { opacity: .55; cursor: wait; }
+        .publish-hint { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+        .workspace { display: grid; grid-template-columns: minmax(230px, .7fr) minmax(0, 1.8fr); gap: 18px; align-items: start; }
+        .panel { min-width: 0; padding: 18px; border: 1px solid var(--line); background: var(--white); }
+        h2 { margin: 0 0 8px; font-size: 14px; }
+        .help { margin: 0 0 14px; color: var(--muted); font-size: 10px; line-height: 1.6; }
+        .live-setting { margin: 0 0 12px; padding: 10px; border-left: 3px solid var(--lime); color: var(--ink); background: #edf0df; font-size: 10px; line-height: 1.6; }
+        .selection-status { min-height: 32px; margin: 12px 0 0; color: var(--forest); font-size: 10px; line-height: 1.6; }
+        .rotation-option { display: flex; align-items: flex-start; gap: 9px; margin: 0 0 12px; padding: 10px; border: 1px solid var(--line); color: var(--ink); background: #f7f6f0; cursor: pointer; font-size: 10px; font-weight: 700; line-height: 1.5; }
+        .rotation-option input { width: 16px; height: 16px; flex: 0 0 auto; margin: 0; accent-color: var(--forest); }
+        .rotation-option small { display: block; margin-top: 3px; color: var(--muted); font-size: 9px; font-weight: 400; }
+        .product-list { display: grid; gap: 8px; max-height: 620px; overflow: auto; }
+        .product-option { display: grid; grid-template-columns: 18px 58px minmax(0, 1fr); gap: 9px; align-items: center; width: 100%; min-width: 0; padding: 7px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: transparent; text-align: left; cursor: pointer; }
+        .product-option:has(input:checked) { border-color: var(--forest); outline: 2px solid var(--forest); outline-offset: -2px; background: #edf0df; }
+        .product-option input { width: 16px; height: 16px; margin: 0; accent-color: var(--forest); }
+        .product-option img { width: 58px; height: 58px; object-fit: cover; background: #e9edda; }
+        .product-option strong, .product-option small { display: block; overflow: hidden; text-overflow: ellipsis; }
+        .product-option strong { font-size: 11px; }
+        .product-option small { margin-top: 4px; color: var(--muted); font-size: 9px; }
+        .no-product { padding: 12px; border: 1px dashed var(--line); color: var(--muted); font-size: 11px; line-height: 1.6; }
+        .preview-wrap { position: relative; overflow: hidden; border: 1px solid var(--line); background: var(--paper); aspect-ratio: 1.6; }
+        .preview { position: absolute; top: 0; left: 0; display: block; width: 1280px; height: 800px; border: 0; background: var(--forest); transform-origin: top left; }
+        .preview-note { margin: 8px 0 0; color: var(--muted); font-size: 9px; }
+        .design-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 20px; }
+        .design-form h2, .design-form .full { grid-column: 1 / -1; }
+        .field { display: grid; gap: 5px; min-width: 0; }
+        .field label { color: var(--muted); font-size: 10px; font-weight: 700; }
+        .field input, .field textarea { width: 100%; min-height: 38px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: var(--white); font-size: 11px; }
+        .field textarea { min-height: 62px; resize: vertical; }
+        .range-field { display: grid; grid-template-columns: minmax(0, 1fr) 42px; gap: 8px; align-items: center; }
+        .range-field input { min-height: 24px; padding: 0; border: 0; }
+        .range-value { color: var(--ink); font-size: 10px; text-align: right; }
+        .actions { display: flex; grid-column: 1 / -1; flex-wrap: wrap; align-items: center; gap: 10px; padding-top: 4px; }
+        .secondary { min-height: 40px; padding: 0 14px; border: 1px solid var(--ink); border-radius: 3px; color: var(--ink); background: transparent; cursor: pointer; font-size: 11px; font-weight: 700; }
+        button:disabled { opacity: .55; cursor: wait; }
+        .status { flex: 1 1 160px; min-height: 18px; margin: 0; color: var(--forest); font-size: 10px; }
+        .status.is-error { color: var(--warning); }
+        @media (max-width: 800px) {
+            .workspace { grid-template-columns: 1fr; }
+            .product-list { grid-template-columns: repeat(2, minmax(0, 1fr)); max-height: 320px; }
+        }
+        @media (max-width: 560px) {
+            .site-header { align-items: flex-start; padding: 12px 18px; }
+            nav { gap: 9px; }
+            main { width: calc(100% - 36px); padding-top: 28px; }
+            h1 { font-size: 34px; }
+            .product-list { grid-template-columns: 1fr; }
+            .design-form { grid-template-columns: 1fr; }
+            .design-form h2, .design-form .full { grid-column: auto; }
+        }
+    </style>
+    <link rel="stylesheet" href="/loading.css">
+    <script src="/loading.js"></script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+</head>
+<body>
+    <header class="site-header">
+        <a class="brand" href="/admin/moderation"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Operations</span></a>
+        <nav aria-label="Administration navigation"><a href="/admin/moderation">Moderation</a><a href="/marketplace">Marketplace</a></nav>
+    </header>
+    <main>
+        <p class="eyebrow">Marketplace presentation</p>
+        <h1>Login wallpaper</h1>
+        <p class="intro">Choose the promoted products to show and tailor how they appear on the sign-in and sign-up page. Your edits only appear in the preview until you publish them.</p>
+        <div class="publish-bar">
+            <button id="publish-button" type="submit" form="design-form">Save and publish wallpaper</button>
+            <p class="publish-hint">The live login page keeps its current wallpaper until you publish.</p>
+        </div>
+        <div class="workspace">
+            <section class="panel" aria-labelledby="product-title">
+                <h2 id="product-title">Promoted products</h2>
+                <p class="live-setting" id="live-setting" aria-live="polite">Loading the currently published wallpaper...</p>
+                <p class="help">Select one promoted product when rotation is off, or tick multiple products to rotate between them.</p>
+                <label class="rotation-option" for="rotate-promotions">
+                    <input id="rotate-promotions" type="checkbox">
+                    <span>Rotate selected products
+                        <small>When checked, the login wallpaper cycles through the products checked below. When off, choose one product to keep fixed.</small>
+                    </span>
+                </label>
+                <div class="product-list" id="product-list" aria-live="polite">Loading promoted products...</div>
+                <p class="selection-status" id="selection-status" role="status" aria-live="polite"></p>
+            </section>
+            <section class="panel" aria-labelledby="design-title">
+                <h2 id="design-title">Live preview</h2>
+                <div class="preview-wrap"><iframe class="preview" id="preview" title="Live login wallpaper preview" src="/admin/login-wallpaper/preview?wallpaperPreview=1"></iframe></div>
+                <p class="preview-note">This is the full sign-in page, scaled to fit here. The wallpaper and edited text update live.</p>
+                <form class="design-form" id="design-form">
+                    <h2>Wallpaper words and framing</h2>
+                    <div class="field full"><label for="top-line">Small heading</label><input id="top-line" name="topLine" maxlength="120" required></div>
+                    <div class="field"><label for="headline">Main heading</label><input id="headline" name="headline" maxlength="90" required></div>
+                    <div class="field"><label for="headline-accent">Italic heading line</label><input id="headline-accent" name="headlineAccent" maxlength="90" required></div>
+                    <div class="field full"><label for="description">Description</label><textarea id="description" name="description" maxlength="280"></textarea></div>
+                    <div class="field full"><label for="caption">Product caption</label><input id="caption" name="caption" maxlength="160" placeholder="Leave blank to use a rotating caption"></div>
+                    <div class="field"><label for="footer-left">Bottom-left text</label><input id="footer-left" name="footerLeft" maxlength="40"></div>
+                    <div class="field"><label for="footer-right">Bottom-right text</label><input id="footer-right" name="footerRight" maxlength="40"></div>
+                    <div class="field"><label for="image-x">Image horizontal position</label><div class="range-field"><input id="image-x" name="imageX" type="range" min="0" max="100" step="1"><output class="range-value" for="image-x"></output></div></div>
+                    <div class="field"><label for="image-y">Image vertical position</label><div class="range-field"><input id="image-y" name="imageY" type="range" min="0" max="100" step="1"><output class="range-value" for="image-y"></output></div></div>
+                    <div class="field full"><label for="overlay">Subtle image shade</label><div class="range-field"><input id="overlay" name="overlay" type="range" min="0" max="0.6" step="0.01"><output class="range-value" for="overlay"></output></div></div>
+                    <div class="actions">
+                        <p class="status" id="status" role="status" aria-live="polite"></p>
+                    </div>
+                </form>
+            </section>
+        </div>
+    </main>
+    <script>
+        const defaults = {
+            productIds: [],
+            rotatePromotions: true,
+            topLine: "Independent shops · Right here at home",
+            headline: "Good things, made",
+            headlineAccent: "close to home.",
+            description: "Discover independent Namibian shops, thoughtful local finds, and the people who make them.",
+            caption: "",
+            footerLeft: "Shop local",
+            footerRight: "Made for Namibia",
+            imageX: 50,
+            imageY: 50,
+            overlay: 0
+        };
+        const productList = document.querySelector("#product-list");
+        const preview = document.querySelector("#preview");
+        const form = document.querySelector("#design-form");
+        const status = document.querySelector("#status");
+        const publishButton = document.querySelector("#publish-button");
+        const liveSetting = document.querySelector("#live-setting");
+        const selectionStatus = document.querySelector("#selection-status");
+        const rotateCheckbox = document.querySelector("#rotate-promotions");
+        const fields = Object.fromEntries([...form.elements].filter((element) => element.name).map((element) => [element.name, element]));
+        let products = [];
+        let settings = { ...defaults };
+        let publishedSettings = { ...defaults };
+        let previewReady = false;
+
+        async function requestJson(url, options) {
+            const response = await fetch(url, options);
+            let result;
+            try { result = await response.json(); } catch { throw new Error("The server returned an invalid response."); }
+            if (!response.ok) throw new Error(result.error || "Login wallpaper settings could not be loaded.");
+            return result;
+        }
+
+        function updateLiveSetting() {
+            const publishedProducts = products.filter((product) => publishedSettings.productIds.includes(product.id));
+            if (publishedSettings.rotatePromotions) {
+                liveSetting.textContent = `Currently published: rotating ${publishedProducts.length || "all active"} selected products${publishedProducts.length ? ` (${publishedProducts.map((product) => product.title).join(", ")})` : ""}.`;
+            } else {
+                const product = publishedProducts[0];
+                liveSetting.textContent = product
+                    ? `Currently published: fixed on ${product.title} · ${product.shopName}.`
+                    : "Currently published: selected product unavailable.";
+            }
+        }
+
+        function sizePreview() {
+            const scale = preview.parentElement.clientWidth / 1280;
+            preview.style.transform = `scale(${scale})`;
+        }
+
+        function updatePreview() {
+            for (const [name, field] of Object.entries(fields)) {
+                if (field.type === "range") {
+                    settings[name] = Number(field.value);
+                    field.nextElementSibling.value = name === "overlay" ? `${Math.round(settings[name] * 100)}%` : `${settings[name]}%`;
+                } else {
+                    settings[name] = field.value;
+                }
+            }
+            rotateCheckbox.checked = settings.rotatePromotions;
+            if (!settings.rotatePromotions && settings.productIds.length > 1) {
+                settings.productIds = settings.productIds.slice(0, 1);
+            }
+            if (previewReady && preview.contentWindow) {
+                preview.contentWindow.postMessage({
+                    type: "z-login-wallpaper-preview",
+                    productIds: settings.productIds,
+                    rotatePromotions: settings.rotatePromotions,
+                    settings
+                }, window.location.origin);
+            }
+            productList.querySelectorAll(".product-option input").forEach((input) => {
+                input.type = settings.rotatePromotions ? "checkbox" : "radio";
+                input.name = settings.rotatePromotions ? "" : "login-wallpaper-product";
+                input.checked = settings.productIds.includes(input.value);
+            });
+            const selectedProducts = products.filter((product) => settings.productIds.includes(product.id));
+            selectionStatus.textContent = selectedProducts.length
+                ? settings.rotatePromotions
+                    ? `Preview selection: rotating ${selectedProducts.length} checked product${selectedProducts.length === 1 ? "" : "s"}. Publish to make this live.`
+                    : `Preview selection: fixed on ${selectedProducts[0].title}. Publish to make this live.`
+                : "Tick at least one promoted product to include it in the wallpaper.";
+        }
+
+        function renderProducts() {
+            productList.replaceChildren();
+            if (!products.length) {
+                const empty = document.createElement("p");
+                empty.className = "no-product";
+                empty.textContent = "There are no active promoted products to choose from right now. Existing login wallpaper settings remain in place.";
+                productList.append(empty);
+                return;
+            }
+            products.forEach((product) => {
+                const button = document.createElement("label");
+                button.className = "product-option";
+                const checkbox = document.createElement("input");
+                checkbox.type = "checkbox";
+                checkbox.value = product.id;
+                checkbox.checked = settings.productIds.includes(product.id);
+                checkbox.setAttribute("aria-label", `Show ${product.title} from ${product.shopName}`);
+                const image = document.createElement("img");
+                image.src = product.imageUrl;
+                image.alt = "";
+                image.loading = "lazy";
+                const copy = document.createElement("span");
+                const title = document.createElement("strong");
+                title.textContent = product.title || "Local product";
+                const shop = document.createElement("small");
+                shop.textContent = product.shopName || "Z Namibia shop";
+                copy.append(title, shop);
+                button.append(checkbox, image, copy);
+                checkbox.addEventListener("change", () => {
+                    settings.productIds = [...productList.querySelectorAll(".product-option input:checked")].map((input) => input.value);
+                    updatePreview();
+                });
+                productList.append(button);
+            });
+        }
+
+        function applySettings(nextSettings) {
+            settings = { ...defaults, ...nextSettings };
+            settings.productIds = Array.isArray(nextSettings.productIds) ? [...nextSettings.productIds] : [];
+            settings.rotatePromotions = nextSettings.rotatePromotions !== false;
+            rotateCheckbox.checked = settings.rotatePromotions;
+            for (const [name, field] of Object.entries(fields)) {
+                field.value = String(settings[name]);
+            }
+            updatePreview();
+        }
+
+        preview.addEventListener("load", () => {
+            previewReady = true;
+            sizePreview();
+            updatePreview();
+        });
+        new ResizeObserver(sizePreview).observe(preview.parentElement);
+
+        form.addEventListener("input", updatePreview);
+        rotateCheckbox.addEventListener("change", () => {
+            settings.rotatePromotions = rotateCheckbox.checked;
+            updatePreview();
+        });
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            if (!form.reportValidity()) return;
+            if (!settings.productIds.length) {
+                status.classList.add("is-error");
+                status.textContent = "Tick at least one promoted product before publishing.";
+                return;
+            }
+            publishButton.disabled = true;
+            status.classList.remove("is-error");
+            status.textContent = "Saving wallpaper...";
+            try {
+                const result = await requestJson("/api/admin/login-wallpaper", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(settings)
+                });
+                applySettings(result.settings);
+                publishedSettings = { ...result.settings };
+                updateLiveSetting();
+                const publishedProducts = products.filter((product) => publishedSettings.productIds.includes(product.id));
+                status.textContent = publishedSettings.rotatePromotions
+                    ? `Published rotation for ${publishedProducts.length} selected product${publishedProducts.length === 1 ? "" : "s"}.`
+                    : `Published ${publishedProducts[0]?.title || "selected product"} as the fixed login wallpaper.`;
+            } catch (error) {
+                status.classList.add("is-error");
+                status.textContent = error.message;
+            } finally {
+                publishButton.disabled = false;
+            }
+        });
+
+        async function loadEditor() {
+            try {
+                const result = await requestJson("/api/admin/login-wallpaper");
+                products = result.products;
+                publishedSettings = { ...result.settings };
+                applySettings(result.settings);
+                renderProducts();
+                updatePreview();
+                updateLiveSetting();
+            } catch (error) {
+                productList.textContent = error.message;
+                productList.className = "no-product";
+                publishButton.disabled = true;
+                status.classList.add("is-error");
+                status.textContent = error.message;
+            }
+        }
+
+        loadEditor();
+    </script>
+    <script src="/navigation.js" defer></script>
+</body>
+</html>

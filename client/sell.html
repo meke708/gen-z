@@ -23,25 +23,13 @@
         a { color: inherit; }
         .site-header { display: flex; min-height: 72px; align-items: center; justify-content: space-between; gap: 20px; padding: 12px max(24px, calc((100vw - 1180px) / 2)); border-bottom: 1px solid var(--line); }
         .header-left { display: inline-flex; align-items: center; gap: 12px; }
-        .back-button {
-            display: inline-grid;
-            place-items: center;
-            width: 28px;
-            height: 28px;
-            padding: 0;
-            border: 1px solid var(--ink);
-            border-radius: 999px;
-            background: transparent;
-            color: var(--ink);
-            cursor: pointer;
-            font-size: 18px;
-            line-height: 1;
-            text-decoration: none;
-        }
         .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
         .brand-mark { display: grid; width: 36px; aspect-ratio: 1; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; font-family: Georgia, serif; font-size: 22px; letter-spacing: 0; }
         .header-links { display: flex; align-items: center; gap: 18px; font-size: 12px; font-weight: 700; }
         .header-links a { text-decoration: none; }
+        .seller-updates-link { display: inline-flex; align-items: center; gap: 6px; }
+        .seller-updates-count { display: inline-grid; min-width: 18px; height: 18px; padding: 0 5px; place-items: center; border-radius: 999px; color: var(--white); background: #b65b22; font-size: 10px; line-height: 1; }
+        .seller-updates-count[hidden] { display: none; }
         .seller-shop-menu { position: relative; }
         .seller-shop-link { display: inline-flex; max-width: 240px; align-items: center; gap: 7px; padding: 7px 10px; border-radius: 3px; color: var(--lime); background: var(--forest); cursor: pointer; font-weight: 800; list-style: none; white-space: nowrap; }
         .seller-shop-link:hover { background: #244b3e; }
@@ -61,17 +49,32 @@
         .seller-mobile-nav-toggle:focus-visible { outline: 2px solid #397d54; outline-offset: 3px; }
         .seller-header-search { display: none; }
         main { width: min(1180px, calc(100% - 48px)); margin: 0 auto; }
-        .page-intro { padding: 48px 0 26px; }
-        .page-intro-copy { min-width: 0; }
+        .page-intro { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding: 36px 0 24px; }
+        .page-intro-copy { min-width: 0; flex: 1 1 auto; }
+        .page-intro-balance { min-width: 220px; margin-top: 3px; padding: 15px 18px; border: 1px solid var(--line); background: var(--white); text-align: right; }
+        .page-intro-balance[hidden] { display: none; }
+        .page-intro-balance-label { margin: 0; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+        .page-intro-balance-value { display: block; margin-top: 7px; color: var(--forest); font-family: Georgia, "Times New Roman", serif; font-size: clamp(24px, 2.5vw, 32px); line-height: 1.1; }
+        .page-intro-balance-note { margin: 5px 0 0; color: var(--muted); font-size: 10px; }
         .eyebrow { margin: 0 0 12px; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: 0.17em; text-transform: uppercase; }
         h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 46px; font-weight: 400; letter-spacing: 0; line-height: 1.05; }
         .page-intro > p:last-child { max-width: 560px; margin: 13px 0 0; color: var(--muted); font-size: 13px; line-height: 1.7; }
-        .seller-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 340px); align-items: start; gap: 24px; padding: 8px 0 70px; }
+        .seller-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 340px); align-items: start; gap: 24px; padding: 0 0 70px; }
         .seller-layout > .seller-stats, .seller-layout > section[aria-labelledby="shop-heading"] { grid-column: 1 / -1; }
         .seller-layout > section[aria-labelledby="shop-heading"] { padding-bottom: 4px; }
         .seller-tab-panel { grid-column: 1 / -1; min-width: 0; }
         .seller-tab-panel[hidden] { display: none !important; }
         .promotion-stats-panel { padding: clamp(16px, 3vw, 26px); border: 1px solid var(--line); background: var(--white); }
+        .seller-notifications-panel { padding: clamp(16px, 3vw, 26px); border: 1px solid var(--line); background: var(--white); }
+        .seller-notifications-panel h2 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 28px; font-weight: 400; }
+        .seller-notifications-status { margin: 10px 0 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+        .seller-notifications-list { display: grid; gap: 10px; margin: 18px 0 0; padding: 0; list-style: none; }
+        .seller-notifications-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 14px; padding: 14px; border: 1px solid var(--line); background: #f7f5ee; font-size: 12px; }
+        .seller-notifications-list li.is-new { border-left: 3px solid #d99a1b; }
+        .seller-notifications-list time { color: var(--muted); font-size: 11px; }
+        .seller-notifications-message { grid-column: 1 / -1; color: var(--muted); line-height: 1.6; }
+        .seller-notification-repromote { grid-column: 1 / -1; justify-self: start; min-height: 36px; padding: 0 12px; border: 1px solid var(--forest); border-radius: 3px; color: var(--white); background: var(--forest); cursor: pointer; font-size: 11px; font-weight: 700; }
+        .seller-notification-repromote:disabled { opacity: .6; cursor: wait; }
         .promotion-stats-header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
         .promotion-stats-header h2 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 28px; font-weight: 400; }
         .promotion-stats-header p:last-child { max-width: 620px; margin: 7px 0 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
@@ -142,7 +145,9 @@
         .seller-promo-controls { display: flex; gap: 6px; }
         .seller-promo-control { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid var(--line); border-radius: 50%; color: var(--ink); background: var(--white); cursor: pointer; font-size: 15px; }
         .seller-promo-control:hover { border-color: var(--forest); background: #edf2e2; }
-        .section-heading { margin: 0 0 17px; padding-bottom: 12px; border-bottom: 1px solid var(--ink); font-family: Georgia, "Times New Roman", serif; font-size: 25px; font-weight: 400; letter-spacing: 0; }
+        .section-heading { margin: 0 0 10px; padding-bottom: 14px; border-bottom: 1px solid var(--line); font-family: Georgia, "Times New Roman", serif; font-size: clamp(28px, 3vw, 36px); font-weight: 400; letter-spacing: 0; }
+        .seller-layout > section[aria-labelledby="shop-heading"] .message:not([hidden]) { max-width: 760px; margin: 0; padding: 14px 16px; border-left: 3px solid #d5aa62; color: #68491b; background: #f7eedc; font-size: 12px; line-height: 1.6; }
+        .seller-layout > section[aria-labelledby="shop-heading"] .message.success:not([hidden]) { border-left-color: #397d54; color: #285b3a; background: #e8f1e8; }
         .field { margin-bottom: 16px; }
         label { display: block; margin-bottom: 7px; font-size: 11px; font-weight: 700; }
         input, select, textarea { width: 100%; min-height: 45px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 3px; outline: none; color: var(--ink); background: var(--white); font-size: 12px; }
@@ -228,31 +233,30 @@
         .shipping-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
         .seller-layout.has-shop { display: grid; }
         #product-section { min-width: 0; }
-        .seller-stats { position: static; width: auto; max-height: none; margin: 0; padding: 18px 20px; border: 1px solid var(--line); background: var(--white); }
-        .seller-stats-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 11px; border-bottom: 1px solid var(--ink); }
+        .seller-stats { position: static; width: auto; max-height: none; margin: 0; padding: clamp(22px, 3vw, 38px); border: 0; background: radial-gradient(ellipse at 86% 0%, rgba(216, 243, 106, 0.14), transparent 38%), linear-gradient(135deg, #18382e, #10271f); box-shadow: 0 16px 38px rgba(23, 35, 30, 0.12); color: var(--white); }
+        .seller-stats-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 18px; border-bottom: 1px solid rgba(255, 254, 250, 0.2); }
         .seller-stats-identity { min-width: 0; }
-        .seller-stats-buyer-link { display: inline-flex; min-height: 34px; flex: 0 0 auto; align-items: center; padding: 0 12px; border: 1px solid var(--forest); border-radius: 3px; color: var(--white); background: var(--forest); font-size: 10px; font-weight: 700; text-decoration: none; }
-        .seller-stats-buyer-link:hover { border-color: var(--lime); color: var(--ink); background: var(--lime); }
+        .seller-stats-buyer-link { display: inline-flex; min-height: 40px; flex: 0 0 auto; align-items: center; padding: 0 15px; border: 1px solid var(--lime); border-radius: 3px; color: var(--ink); background: var(--lime); font-size: 11px; font-weight: 700; text-decoration: none; transition: background 160ms ease, transform 160ms ease; }
+        .seller-stats-buyer-link:hover { background: #e5f89b; transform: translateY(-1px); }
         .seller-stats-buyer-link:focus-visible { outline: 2px solid #397d54; outline-offset: 3px; }
-        .seller-stats-header .eyebrow { margin-bottom: 5px; }
-        .seller-stats-title { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 21px; font-weight: 400; }
-        .seller-stats-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; margin: 14px 0 0; }
-        .seller-stats-grid div { min-width: 0; padding-top: 9px; border-top: 1px solid var(--line); }
-        .seller-stats-grid dt { color: var(--muted); font-size: 9px; line-height: 1.35; }
-        .seller-stats-grid dd { margin: 5px 0 0; color: var(--ink); font-family: Georgia, serif; font-size: 17px; overflow-wrap: anywhere; }
-        .seller-stats-grid .sales-stat dd { color: #d9772f; }
-        .seller-stats-grid .payout-held dd { color: #805a24; }
-        .seller-stats-grid .payout-ready dd { color: var(--forest); }
-        .seller-stats-grid .payout-paid dd { color: #285b3a; }
-        .seller-stats-grid .sales-stat dd, .seller-stats-grid .period-sales dd { color: #b65b22; }
-        .seller-analytics-grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(280px, 1fr); gap: 16px; margin-top: 20px; }
-        .analytics-card { min-width: 0; padding: 18px; border: 1px solid var(--line); background: #fffefa; }
+        .seller-stats-header .eyebrow { margin-bottom: 7px; color: var(--lime); }
+        .seller-stats-title { margin: 0; color: var(--white); font-family: Georgia, "Times New Roman", serif; font-size: clamp(27px, 3vw, 36px); font-weight: 400; }
+        .seller-stats-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin: 20px 0 0; }
+        .seller-stats-grid div { min-width: 0; min-height: 84px; padding: 14px 15px; border: 1px solid rgba(255, 254, 250, 0.13); background: rgba(255, 254, 250, 0.07); }
+        .seller-stats-grid dt { color: rgba(255, 254, 250, 0.72); font-size: 10px; line-height: 1.4; }
+        .seller-stats-grid dd { margin: 9px 0 0; color: var(--white); font-family: Georgia, serif; font-size: clamp(18px, 1.5vw, 24px); overflow-wrap: anywhere; }
+        .seller-stats-grid .sales-stat dd, .seller-stats-grid .period-sales dd { color: var(--lime); }
+        .seller-stats-grid .payout-held dd { color: #ffd39a; }
+        .seller-stats-grid .payout-paid dd { color: #b9e8c8; }
+        .seller-analytics-grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr); gap: 16px; margin-top: 22px; }
+        .analytics-card { min-width: 0; min-height: 310px; padding: clamp(18px, 2vw, 26px); border: 1px solid rgba(255, 254, 250, 0.18); background: var(--white); color: var(--ink); }
         .analytics-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
         .analytics-card-header .eyebrow { margin-bottom: 5px; }
         .analytics-card-title { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 20px; font-weight: 400; }
         .analytics-card-note { margin: 4px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
         .analytics-period-total { flex: 0 0 auto; color: var(--forest); font-family: Georgia, serif; font-size: 17px; }
         .sales-chart { display: block; width: 100%; height: 210px; overflow: visible; margin: 18px 0 0; }
+        .sales-chart[hidden], .sales-chart-labels[hidden] { display: none; }
         .sales-chart-gridline { stroke: #e8ebdf; stroke-width: 1; }
         .sales-chart-axis-label { fill: var(--muted); font: 10px "Trebuchet MS", "Segoe UI", sans-serif; }
         .sales-chart-area { fill: url("#sales-chart-area-gradient"); }
@@ -276,6 +280,15 @@
         .top-product-name { overflow: hidden; font-size: 11px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
         .top-product-sales { color: var(--muted); font-size: 9px; text-align: right; white-space: nowrap; }
         .analytics-empty { margin: 15px 0 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+        .analytics-empty a { display: inline-flex; min-height: 36px; align-items: center; gap: 8px; margin-top: 14px; padding: 0 12px; border: 1px solid var(--forest); color: var(--white); background: var(--forest); font-size: 10px; font-weight: 700; text-decoration: none; }
+        .analytics-empty a:hover { color: var(--ink); background: var(--lime); }
+        .analytics-zero-state { display: grid; min-height: 230px; align-content: center; justify-items: start; padding: 22px 4px; }
+        .analytics-zero-state[hidden] { display: none; }
+        .analytics-zero-icon { display: grid; width: 42px; height: 42px; place-items: center; margin-bottom: 16px; border: 1px solid #dfe7d3; border-radius: 50%; color: var(--forest); background: #f0f4e8; font-size: 20px; }
+        .analytics-zero-state h4 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 21px; font-weight: 400; }
+        .analytics-zero-state p { max-width: 330px; margin: 7px 0 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+        .analytics-zero-state a { display: inline-flex; min-height: 38px; align-items: center; gap: 10px; margin-top: 16px; padding: 0 13px; color: var(--ink); background: var(--lime); font-size: 10px; font-weight: 700; text-decoration: none; }
+        .analytics-zero-state a:hover { background: #c9e64d; }
         .seller-listings { position: static; width: 100%; min-width: 0; padding: 22px; border: 1px solid var(--line); background: var(--white); }
         .listing-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 11px; border-bottom: 1px solid var(--ink); }
         .listing-panel-heading { min-width: 0; }
@@ -420,6 +433,49 @@
         .seller-listing-detail-status.hidden { color: #7a1d1d; background: #f7d9d9; }
         .seller-promotion-note { display: block; margin-top: 12px; padding: 10px 12px; border-left: 3px solid #d9772f; color: var(--forest); background: #f5f1e4; font-size: 11px; line-height: 1.5; }
         .seller-promotion-note[hidden] { display: none; }
+        .seller-promotion-checkout { width: min(500px, calc(100vw - 28px)); }
+        .seller-promotion-checkout-card { padding: clamp(22px, 5vw, 34px); }
+        .seller-promotion-checkout-card .seller-order-detail-close { top: 18px; right: 18px; width: 36px; min-width: 36px; min-height: 36px; padding: 0; font-size: 0; }
+        .seller-promotion-checkout-card .seller-order-detail-close::before,
+        .seller-promotion-checkout-card .seller-order-detail-close::after { position: absolute; width: 13px; height: 1.5px; border-radius: 2px; background: currentColor; content: ""; }
+        .seller-promotion-checkout-card .seller-order-detail-close::before { transform: rotate(45deg); }
+        .seller-promotion-checkout-card .seller-order-detail-close::after { transform: rotate(-45deg); }
+        .seller-promotion-checkout-header { padding-right: 36px; }
+        .seller-promotion-checkout-kicker { display: inline-flex; align-items: center; gap: 7px; margin-bottom: 12px; color: #64734b; font-size: 9px; font-weight: 800; letter-spacing: 0.12em; }
+        .seller-promotion-checkout-kicker::before { width: 7px; height: 7px; border-radius: 50%; background: #d9772f; content: ""; }
+        .seller-promotion-checkout-header h3 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(25px, 5vw, 32px); font-weight: 400; letter-spacing: -0.035em; line-height: 1.1; }
+        .seller-promotion-checkout-header p { margin: 9px 0 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+        .seller-promotion-order-summary { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 12px; margin: 22px 0 24px; padding: 16px; border: 1px solid #e3e8d8; border-radius: 12px; background: linear-gradient(120deg, #f3f5e9, #fbfaf5); }
+        .seller-promotion-order-summary > div { display: grid; min-width: 0; gap: 5px; }
+        .seller-promotion-order-summary span { color: #73796e; font-size: 9px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; }
+        .seller-promotion-order-summary strong { overflow: hidden; color: var(--ink); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+        .seller-promotion-order-summary small { color: var(--muted); font-size: 10px; }
+        .seller-promotion-order-price { flex: 0 0 auto; color: var(--forest) !important; font-family: Georgia, "Times New Roman", serif; font-size: 23px !important; font-weight: 400 !important; letter-spacing: -0.04em !important; text-transform: none !important; }
+        .seller-promotion-payment-form { display: grid; gap: 11px; }
+        .seller-promotion-payment-method { display: grid; gap: 9px; min-width: 0; margin: 0; padding: 0; border: 0; }
+        .seller-promotion-payment-method legend { margin-bottom: 10px; padding: 0; color: var(--ink); font-size: 11px; font-weight: 800; }
+        .seller-promotion-payment-choice { position: relative; display: grid; grid-template-columns: 39px minmax(0, 1fr) 18px; align-items: center; gap: 12px; min-height: 72px; margin: 0; padding: 12px 14px; border: 1px solid #e2e4dc; border-radius: 11px; background: #fff; cursor: pointer; transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease; }
+        .seller-promotion-payment-choice:hover:not(.disabled) { border-color: #9baa84; }
+        .seller-promotion-payment-choice.selected { border-color: #466648; background: #f5f7ef; box-shadow: 0 0 0 1px #466648 inset; }
+        .seller-promotion-payment-choice.disabled { cursor: not-allowed; opacity: 0.56; }
+        .seller-promotion-payment-choice input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; clip-path: inset(50%); }
+        .seller-promotion-payment-choice:focus-within { outline: 2px solid #397d54; outline-offset: 2px; }
+        .seller-promotion-method-mark { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 9px; color: #314b37; background: #e9edda; font-size: 12px; font-weight: 800; }
+        .seller-promotion-method-mark.wallet { font-family: Georgia, "Times New Roman", serif; font-size: 20px; }
+        .seller-promotion-method-copy { display: grid; min-width: 0; gap: 4px; }
+        .seller-promotion-method-copy strong { color: var(--ink); font-size: 11px; }
+        .seller-promotion-method-copy small { overflow-wrap: anywhere; color: var(--muted); font-size: 9px; font-weight: 400; line-height: 1.45; }
+        .seller-promotion-method-check { display: grid; width: 17px; height: 17px; place-items: center; border: 1px solid #c9cec1; border-radius: 50%; color: transparent; font-size: 10px; font-weight: 800; }
+        .seller-promotion-payment-choice.selected .seller-promotion-method-check { border-color: #466648; color: #fff; background: #466648; }
+        .seller-promotion-payment-breakdown { display: grid; gap: 7px; margin: 3px 0 0; padding: 12px 14px; border-radius: 9px; color: #425240; background: #f3f5ed; font-size: 10px; line-height: 1.5; }
+        .seller-promotion-payment-breakdown[hidden] { display: none; }
+        .seller-promotion-payment-breakdown div { display: flex; justify-content: space-between; gap: 12px; }
+        .seller-promotion-payment-breakdown strong { color: var(--ink); text-align: right; }
+        .seller-promotion-test-note { margin: 1px 0 0; color: var(--muted); font-size: 9px; line-height: 1.55; }
+        .seller-promotion-payment-form .message { min-height: 0; margin: 0; }
+        .seller-promotion-payment-form .primary-button { width: 100%; min-height: 50px; justify-content: center; gap: 9px; margin-top: 3px; border-radius: 8px; font-size: 11px; }
+        .seller-promotion-payment-form .primary-button span:last-child { font-size: 17px; }
+        .seller-promotion-payment-form .primary-button:disabled { cursor: not-allowed; }
         .seller-listing-detail-description { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; white-space: pre-wrap; }
         .seller-listing-detail-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin: 18px 0 0; }
         .seller-listing-detail-facts div { min-width: 0; padding: 11px; border: 1px solid #e8ebdf; border-radius: 8px; background: #fafbf7; }
@@ -625,17 +681,22 @@
             .listing-add-tile-label { font-size: 11px; }
         }
 
+        @media (max-width: 600px) {
+            .page-intro { align-items: stretch; flex-direction: column; gap: 16px; }
+            .page-intro-balance { align-self: flex-end; min-width: min(220px, 100%); }
+        }
+
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
         }
     </style>
     <link rel="stylesheet" href="/loading.css">
     <script src="/loading.js"></script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 </head>
 <body>
     <header class="site-header">
         <div class="header-left">
-            <a class="back-button" href="/dashboard" aria-label="Back to buyer profile">←</a>
             <a class="brand" href="/marketplace" aria-label="Z Namibia marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Namibia</span></a>
         </div>
         <nav class="header-links" id="seller-navigation" aria-label="Seller navigation">
@@ -670,12 +731,17 @@
     </header>
 
     <main>
-        <section class="page-intro" hidden>
+        <section class="page-intro">
             <div class="page-intro-copy">
                 <p class="eyebrow">Seller profile</p>
                 <h1 id="seller-page-title">Seller dashboard</h1>
                 <p id="seller-page-intro">Manage your storefront, products, orders, and delivery for shoppers across Namibia.</p>
             </div>
+            <aside class="page-intro-balance" id="seller-dashboard-balance" aria-label="Virtual balance held by Z Namibia" hidden>
+                <p class="page-intro-balance-label">Virtual balance</p>
+                <strong class="page-intro-balance-value" id="seller-stat-ready">N$ 0.00</strong>
+                <p class="page-intro-balance-note">Spendable on Z · held by Z Namibia</p>
+            </aside>
         </section>
 
         <div class="seller-layout">
@@ -691,9 +757,8 @@
                     <div class="sales-stat"><dt>Product sales</dt><dd id="seller-stat-sales">N$ 0.00</dd></div>
                     <div class="period-sales"><dt>Sales · last 30 days</dt><dd id="seller-stat-period-sales">N$ 0.00</dd></div>
                     <div><dt>Average order value</dt><dd id="seller-stat-average-order">N$ 0.00</dd></div>
-                    <div class="payout-held"><dt>On hold</dt><dd id="seller-stat-held">N$ 0.00</dd></div>
-                    <div class="payout-ready"><dt>Ready to pay</dt><dd id="seller-stat-ready">N$ 0.00</dd></div>
-                    <div class="payout-paid"><dt id="seller-stat-paid-label">Paid out</dt><dd id="seller-stat-paid">N$ 0.00</dd></div>
+                    <div class="payout-held"><dt>Held by Z</dt><dd id="seller-stat-held">N$ 0.00</dd></div>
+                    <div class="payout-paid"><dt id="seller-stat-paid-label">Credited to Z balance</dt><dd id="seller-stat-paid">N$ 0.00</dd></div>
                     <div><dt>Paid orders</dt><dd id="seller-stat-orders">0</dd></div>
                     <div><dt>To ship</dt><dd id="seller-stat-to-ship">0</dd></div>
                     <div><dt>Items sold</dt><dd id="seller-stat-items-sold">0</dd></div>
@@ -726,6 +791,12 @@
                             </g>
                         </svg>
                         <div class="sales-chart-labels" id="sales-chart-labels" aria-hidden="true"></div>
+                        <div class="analytics-zero-state" id="sales-chart-empty" hidden>
+                            <span class="analytics-zero-icon" aria-hidden="true">↗</span>
+                            <h4>Your sales story starts here</h4>
+                            <p>Daily sales will appear here after your first paid order. Keep your listings ready for shoppers.</p>
+                            <a href="/sell/listings">Manage listings <span aria-hidden="true">→</span></a>
+                        </div>
                     </section>
                     <section class="analytics-card" aria-labelledby="top-products-heading">
                         <div class="analytics-card-header">
@@ -812,6 +883,12 @@
                     </table>
                 </div>
                 <p class="message" id="promotion-stats-message" role="status" aria-live="polite" hidden></p>
+            </section>
+            <section class="seller-tab-panel seller-notifications-panel" id="notifications-panel" hidden aria-labelledby="seller-notifications-title">
+                <p class="eyebrow">Seller account</p>
+                <h2 id="seller-notifications-title">Seller updates</h2>
+                <p class="seller-notifications-status" id="seller-notifications-status" role="status" aria-live="polite">Loading seller updates...</p>
+                <ol class="seller-notifications-list" id="seller-notifications-list"></ol>
             </section>
             <section class="seller-tab-panel" id="settings-panel" hidden>
                 <div id="settings-workspace">
@@ -906,6 +983,15 @@
                             <option>Fashion</option>
                             <option>Food</option>
                             <option>Home</option>
+                            <option>Clothing</option>
+                            <option>Shoes</option>
+                            <option>Books</option>
+                            <option>Furniture</option>
+                            <option>Homeware</option>
+                            <option>Health &amp; Medicines (NMRC)</option>
+                            <option>Telecom / Wi-Fi / Bluetooth (CRAN)</option>
+                            <option>Food &amp; Agriculture</option>
+                            <option>Second-hand clothes</option>
                         </select>
                     </div>
                     <div class="field">
@@ -940,12 +1026,54 @@
                 <div class="seller-listing-detail-content" id="seller-listing-detail-content"></div>
             </div>
         </dialog>
+        <dialog class="seller-order-detail-view seller-promotion-checkout" id="seller-promotion-payment-view" aria-labelledby="seller-promotion-payment-title">
+            <div class="seller-order-dialog seller-promotion-checkout-card">
+                <button class="seller-order-detail-close" id="seller-promotion-payment-close" type="button">Close</button>
+                <header class="seller-promotion-checkout-header">
+                    <span class="seller-promotion-checkout-kicker">SELLER PROMOTION</span>
+                    <h3 id="seller-promotion-payment-title">Get more eyes on your listing</h3>
+                    <p>Choose how you’d like to pay. Your promotion runs for 7 days.</p>
+                </header>
+                <section class="seller-promotion-order-summary" aria-label="Promotion summary">
+                    <div>
+                        <span>Promoting</span>
+                        <strong id="promotion-product-name"></strong>
+                        <small>Marketplace visibility · 7 days</small>
+                    </div>
+                    <span class="seller-promotion-order-price">N$50</span>
+                </section>
+                <form class="seller-promotion-payment-form" id="seller-promotion-payment-form">
+                    <fieldset class="seller-promotion-payment-method">
+                        <legend>Payment method</legend>
+                        <label class="seller-promotion-payment-choice" data-promotion-payment-option>
+                            <input type="radio" name="promotion-payment-method" value="card" required>
+                            <span class="seller-promotion-method-mark" aria-hidden="true">CARD</span>
+                            <span class="seller-promotion-method-copy"><strong>Credit or debit card</strong><small>Test payment · no real charge</small></span>
+                            <span class="seller-promotion-method-check" aria-hidden="true">✓</span>
+                        </label>
+                        <label class="seller-promotion-payment-choice" data-promotion-payment-option>
+                            <input type="radio" name="promotion-payment-method" value="wallet" id="promotion-wallet-choice" disabled>
+                            <span class="seller-promotion-method-mark wallet" aria-hidden="true">Z</span>
+                            <span class="seller-promotion-method-copy"><strong>Pay with Z balance</strong><small id="promotion-wallet-available">Loading your balance…</small></span>
+                            <span class="seller-promotion-method-check" aria-hidden="true">✓</span>
+                        </label>
+                    </fieldset>
+                    <div class="seller-promotion-payment-breakdown" id="promotion-payment-breakdown" aria-live="polite" hidden></div>
+                    <p class="seller-promotion-test-note">Z balance is virtual credit held by Z Namibia. Card payments are simulated in this test version.</p>
+                    <button class="primary-button" id="promotion-payment-submit" type="submit" disabled><span>Choose a payment method</span><span aria-hidden="true">&#8594;</span></button>
+                    <p class="message" id="promotion-payment-message" role="status" aria-live="polite"></p>
+                </form>
+            </div>
+        </dialog>
     </main>
 
     <script>
         const sellerShopMenu = document.querySelector("#seller-shop-menu");
         const sellerShopName = document.querySelector("#seller-shop-name");
         const sellerShopPublicLink = document.querySelector("#seller-shop-public-link");
+        const sellerNotificationsStatus = document.querySelector("#seller-notifications-status");
+        const sellerNotificationsList = document.querySelector("#seller-notifications-list");
+        let sellerNotificationsRequestInFlight = false;
         const sellerMessage = document.querySelector("#seller-message");
         const shippingForm = document.querySelector("#shipping-form");
         const shippingMessage = document.querySelector("#shipping-message");
@@ -969,9 +1097,12 @@
                 ? "listings"
                 : sellerPath === "/sell/promotions"
                     ? "promotions"
+                    : sellerPath === "/sell/notifications"
+                        ? "notifications"
                     : "dashboard";
         const sellerPageTitle = document.querySelector("#seller-page-title");
         const sellerPageIntro = document.querySelector("#seller-page-intro");
+        const sellerDashboardBalance = document.querySelector("#seller-dashboard-balance");
         const sellerStatSales = document.querySelector("#seller-stat-sales");
         const sellerStatPeriodSales = document.querySelector("#seller-stat-period-sales");
         const sellerStatAverageOrder = document.querySelector("#seller-stat-average-order");
@@ -984,6 +1115,7 @@
         const sellerStatItemsSold = document.querySelector("#seller-stat-items-sold");
         const sellerStatActiveListings = document.querySelector("#seller-stat-active-listings");
         const salesChart = document.querySelector("#sales-chart");
+        const salesChartEmpty = document.querySelector("#sales-chart-empty");
         const salesChartGrid = document.querySelector("#sales-chart-grid");
         const salesChartArea = document.querySelector("#sales-chart-area");
         const salesChartLine = document.querySelector("#sales-chart-line");
@@ -1040,10 +1172,20 @@
         const sellerListingDetailTitle = document.querySelector("#seller-listing-detail-title");
         const sellerListingDetailContent = document.querySelector("#seller-listing-detail-content");
         const sellerListingDetailClose = document.querySelector("#seller-listing-detail-close");
+        const sellerPromotionPaymentView = document.querySelector("#seller-promotion-payment-view");
+        const sellerPromotionPaymentForm = document.querySelector("#seller-promotion-payment-form");
+        const sellerPromotionPaymentSubmit = document.querySelector("#promotion-payment-submit");
+        const promotionWalletChoice = document.querySelector("#promotion-wallet-choice");
+        const promotionWalletAvailable = document.querySelector("#promotion-wallet-available");
+        const promotionPaymentBreakdown = document.querySelector("#promotion-payment-breakdown");
+        const promotionPaymentMessage = document.querySelector("#promotion-payment-message");
+        const promotionProductName = document.querySelector("#promotion-product-name");
         const priceFormat = new Intl.NumberFormat("en-NA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         let productPreviewUrl = "";
         let sellerOrdersForSearch = [];
         let sellerProducts = null;
+        let promotionProduct = null;
+        let promotionWalletBalanceNAD = 0;
         let listingResizeTimer = null;
         let payoutSummaryRefreshTimer = null;
         let payoutSummaryRequestInFlight = false;
@@ -1219,7 +1361,7 @@
             verificationSlide.hidden = shop.kycStatus === "verified";
             productsSlide.hidden = false;
 
-            const assistantActive = Boolean(shop.assistantPlanActive);
+            const assistantActive = Boolean(shop.assistantPlanActive && shop.assistantPlanPaidAt);
             const assistantTitle = document.querySelector("#seller-promo-assistant-title");
             const assistantCopy = document.querySelector("#seller-promo-assistant-copy");
             const assistantLink = document.querySelector("#seller-promo-assistant-link");
@@ -1297,6 +1439,11 @@
                 title: "Promotion statistics",
                 intro: "Track views and clicks for products you promote on Z.",
                 panel: "promotions-panel"
+            },
+            notifications: {
+                title: "Seller updates",
+                intro: "Important updates about your listings, promotions, and seller account.",
+                panel: "notifications-panel"
             }
         }[sellerPage];
         sellerPageTitle.textContent = sellerPageContent.title;
@@ -1406,6 +1553,12 @@
             const isRejected = product.reviewStatus === "rejected";
             status.className = `seller-listing-detail-status${isHidden || isRejected ? " hidden" : isPendingReview || isArchived || isOutOfStock ? " archived" : ""}`;
             status.textContent = isPendingReview ? "Awaiting moderator review" : isRejected ? "Rejected · edit to resubmit" : isHidden ? "Hidden by moderator" : isArchived ? "Archived" : isOutOfStock ? "Out of stock" : "Active";
+            const reviewReason = document.createElement("p");
+            reviewReason.className = "seller-listing-detail-description";
+            reviewReason.textContent = isRejected && product.reviewReasons?.length
+                ? `Rejection reason: ${product.reviewReasons.join(" ")}`
+                : "";
+            reviewReason.hidden = !reviewReason.textContent;
             const description = document.createElement("p");
             description.className = "seller-listing-detail-description";
             description.textContent = product.description || "No description provided.";
@@ -1453,14 +1606,14 @@
             const canPromote = product.status === "active" && product.isAvailable !== false && product.stock > 0 && product.reviewStatus !== "pending" && product.reviewStatus !== "rejected" && product.moderationStatus !== "hidden";
             promoteButton.hidden = !canPromote || product.promotion?.status === "active";
             promoteButton.textContent = product.promotion?.status === "pending" ? "Complete test payment" : "Promote · N$50 / 7 days";
-            promoteButton.addEventListener("click", () => promoteListing(product, promoteButton));
+            promoteButton.addEventListener("click", () => choosePromotionPayment(product, promoteButton));
             const deleteButton = document.createElement("button");
             deleteButton.type = "button";
             deleteButton.className = "delete-listing";
             deleteButton.textContent = "Delete listing";
             deleteButton.addEventListener("click", () => deleteListing(product));
             actions.append(editButton, archiveButton, promoteButton, deleteButton);
-            copy.append(price, status, description, facts, promotionNote, actions);
+            copy.append(price, status, reviewReason, description, facts, promotionNote, actions);
             sellerListingDetailTitle.textContent = product.title || "Listing details";
             sellerListingDetailContent.replaceChildren(imageWrap, copy);
             activeSellerListingTrigger = trigger;
@@ -1469,29 +1622,100 @@
             sellerListingDetailClose.focus();
         }
 
-        async function promoteListing(product, button) {
-            if (!window.confirm(`Promote “${product.title}” for N$50 for 7 days? This is a simulated test payment only; no money will be charged.`)) return;
-            button.disabled = true;
-            const originalLabel = button.textContent;
-            button.textContent = product.promotion?.status === "pending" ? "Completing test payment..." : "Starting promotion...";
+        async function choosePromotionPayment(product, button) {
             try {
-                let promotion = product.promotion;
+                const wallet = await requestJson("/api/wallet");
+                promotionProduct = product;
+                promotionWalletBalanceNAD = Number(wallet.balanceNAD || 0);
+                promotionWalletChoice.checked = false;
+                promotionWalletChoice.disabled = promotionWalletBalanceNAD <= 0;
+                promotionWalletAvailable.textContent = promotionWalletBalanceNAD > 0
+                    ? `Available: N$ ${priceFormat.format(promotionWalletBalanceNAD)}. Shortfall uses test card.`
+                    : "No available balance. Choose card instead.";
+                promotionProductName.textContent = product.title;
+                promotionPaymentBreakdown.replaceChildren();
+                promotionPaymentBreakdown.hidden = true;
+                promotionPaymentMessage.textContent = "";
+                promotionPaymentMessage.classList.remove("success");
+                sellerPromotionPaymentSubmit.disabled = true;
+                sellerPromotionPaymentSubmit.querySelector("span").textContent = "Choose a payment method";
+                if (sellerListingDetailView.open) sellerListingDetailView.close();
+                sellerPromotionPaymentView.showModal();
+            } catch (error) {
+                showMessage(sellerMessage, error.message || "Could not load your payment options.");
+            }
+        }
+
+        function updatePromotionPaymentBreakdown() {
+            const paymentMethod = sellerPromotionPaymentForm.elements.namedItem("promotion-payment-method").value;
+            document.querySelectorAll("[data-promotion-payment-option]").forEach((option) => {
+                const radio = option.querySelector("input");
+                option.classList.toggle("selected", radio.checked);
+                option.classList.toggle("disabled", radio.disabled);
+            });
+
+            if (!["card", "wallet"].includes(paymentMethod)) {
+                promotionPaymentBreakdown.replaceChildren();
+                promotionPaymentBreakdown.hidden = true;
+                sellerPromotionPaymentSubmit.disabled = true;
+                sellerPromotionPaymentSubmit.querySelector("span").textContent = "Choose a payment method";
+                return;
+            }
+
+            const walletUsedNAD = paymentMethod === "wallet" ? Math.min(promotionWalletBalanceNAD, 50) : 0;
+            const cardDueNAD = 50 - walletUsedNAD;
+            promotionPaymentBreakdown.replaceChildren();
+            const addBreakdownRow = (label, amount) => {
+                const row = document.createElement("div");
+                const name = document.createElement("span");
+                name.textContent = label;
+                const value = document.createElement("strong");
+                value.textContent = `N$ ${priceFormat.format(amount)}`;
+                row.append(name, value);
+                promotionPaymentBreakdown.append(row);
+            };
+            if (walletUsedNAD > 0) addBreakdownRow("From Z balance", walletUsedNAD);
+            if (cardDueNAD > 0) addBreakdownRow(paymentMethod === "wallet" ? "Remaining · test card" : "Test card", cardDueNAD);
+            promotionPaymentBreakdown.hidden = false;
+            sellerPromotionPaymentSubmit.disabled = false;
+            sellerPromotionPaymentSubmit.querySelector("span").textContent = cardDueNAD > 0
+                ? `Pay N$ ${priceFormat.format(cardDueNAD)} & promote`
+                : "Promote using Z balance";
+        }
+
+        async function submitPromotionPayment(event) {
+            event.preventDefault();
+            if (!promotionProduct) return;
+            const paymentMethod = sellerPromotionPaymentForm.elements.namedItem("promotion-payment-method").value;
+            if (!["card", "wallet"].includes(paymentMethod)) {
+                promotionPaymentMessage.textContent = "Choose a payment method to continue.";
+                return;
+            }
+
+            sellerPromotionPaymentSubmit.disabled = true;
+            promotionPaymentMessage.textContent = "";
+            sellerPromotionPaymentSubmit.querySelector("span").textContent = "Processing promotion...";
+            try {
+                let promotion = promotionProduct.promotion;
                 if (promotion?.status !== "pending") {
-                    ({ promotion } = await requestJson(`/api/seller/products/${encodeURIComponent(product.id)}/promotions`, {
+                    ({ promotion } = await requestJson(`/api/seller/products/${encodeURIComponent(promotionProduct.id)}/promotions`, {
                         method: "POST"
                     }));
-                    product.promotion = promotion;
+                    promotionProduct.promotion = promotion;
                 }
                 const result = await requestJson(`/api/seller/promotions/${encodeURIComponent(promotion.id)}/simulate-payment`, {
-                    method: "POST"
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ paymentMethod })
                 });
-                sellerListingDetailView.close();
+                sellerPromotionPaymentView.close();
                 showMessage(sellerMessage, result.message || "Promotion is live for 7 days.", true);
                 await loadListings();
+                if (sellerPage === "notifications") await loadSellerNotifications();
             } catch (error) {
-                showMessage(sellerMessage, error.message || "Could not start the promotion.");
-                button.disabled = false;
-                button.textContent = product.promotion?.status === "pending" ? "Complete test payment" : originalLabel;
+                promotionPaymentMessage.textContent = error.message || "Could not complete the promotion payment.";
+                sellerPromotionPaymentSubmit.disabled = false;
+                sellerPromotionPaymentSubmit.querySelector("span").textContent = "Try payment again";
             }
         }
 
@@ -1555,11 +1779,14 @@
 
         async function loadListings() {
             try {
-                const { products } = await requestJson("/api/seller/products");
+                const { products, cancelledUnpaidPromotions = 0 } = await requestJson("/api/seller/products");
                 if (sellerListingDetailView.open) sellerListingDetailView.close();
                 listingCount.textContent = `${products.length} ${products.length === 1 ? "listing" : "listings"}`;
                 sellerProducts = products;
                 renderListingGrid(sellerProducts);
+                if (cancelledUnpaidPromotions > 0) {
+                    showMessage(sellerMessage, `${cancelledUnpaidPromotions} unpaid Z-balance promotion${cancelledUnpaidPromotions === 1 ? " was" : "s were"} removed. No additional balance was deducted.`, true);
+                }
             } catch (error) {
                 listingCount.textContent = "Unavailable";
                 listingList.textContent = error.message;
@@ -1777,15 +2004,14 @@
             addDetail("Delivery town", sellerOrder.deliveryTown);
             addDetail("Shipping zone", sellerOrder.shippingZone.replaceAll("_", " "));
             addDetail("Payment", sellerOrder.paymentStatus.replaceAll("_", " ").replace(/\b\w/g, (character) => character.toUpperCase()));
-            addDetail("Payout status", sellerOrder.payoutStatus.replaceAll("_", " ").replace(/\b\w/g, (character) => character.toUpperCase()));
+            addDetail("Z balance status", sellerOrder.payoutStatus === "eligible"
+                ? "Credited to Z balance"
+                : sellerOrder.payoutStatus === "disputed" ? "Disputed" : "Held by Z");
             if (sellerOrder.deliveredAt) addDetail("Delivery confirmed", new Date(sellerOrder.deliveredAt).toLocaleString());
-            if (sellerOrder.payoutEligibleAt) {
-                addDetail(sellerOrder.payoutMode === "simulated" ? "Ready for payout" : "Payout review opens", new Date(sellerOrder.payoutEligibleAt).toLocaleString());
+            if (sellerOrder.payoutEligibleAt && sellerOrder.payoutStatus === "held") {
+                addDetail("Z balance available after", new Date(sellerOrder.payoutEligibleAt).toLocaleString());
             }
-            if (sellerOrder.payoutMode === "simulated" && sellerOrder.payoutProcessingAt) {
-                addDetail("Simulated payout", new Date(sellerOrder.payoutProcessingAt).toLocaleString());
-            }
-            if (sellerOrder.payoutReference) addDetail("Payout reference", sellerOrder.payoutReference);
+            if (sellerOrder.walletCreditedAt) addDetail("Credited to Z balance", new Date(sellerOrder.walletCreditedAt).toLocaleString());
             content.append(detailGrid);
 
             const itemsList = document.createElement("div");
@@ -1921,9 +2147,7 @@
             if (sellerOrder.payoutEligibleAt && sellerOrder.payoutStatus === "held") {
                 const hold = document.createElement("p");
                 hold.className = "payout-timing-note";
-                hold.textContent = sellerOrder.payoutMode === "simulated"
-                    ? `Test payout becomes ready ${new Date(sellerOrder.payoutEligibleAt).toLocaleString()} and is simulated as paid ${sellerOrder.payoutProcessingAt ? `at ${new Date(sellerOrder.payoutProcessingAt).toLocaleString()}` : "after the second delay"}. No money moves.`
-                    : `Delivery confirmed. Manual payout review opens ${new Date(sellerOrder.payoutEligibleAt).toLocaleString()}.`;
+                hold.textContent = `Delivery confirmed. Funds are held by Z until ${new Date(sellerOrder.payoutEligibleAt).toLocaleString()}, then added to your virtual Z balance.`;
                 content.append(hold);
             }
             openDetails.addEventListener("click", () => {
@@ -1943,9 +2167,10 @@
                 .filter((entry) => entry.payoutStatus === payoutStatus)
                 .reduce((total, entry) => total + Number(entry.payoutNAD || 0), 0);
             sellerStatHeld.textContent = `N$ ${priceFormat.format(sumPayoutsByStatus("held"))}`;
-            sellerStatReady.textContent = `N$ ${priceFormat.format(sumPayoutsByStatus("eligible"))}`;
-            sellerStatPaid.textContent = `N$ ${priceFormat.format(sumPayoutsByStatus("paid"))}`;
-            sellerStatPaidLabel.textContent = ledgerResult.mode === "simulated" ? "Simulated paid" : "Paid out";
+            sellerStatReady.textContent = `N$ ${priceFormat.format(Number(ledgerResult.walletBalanceNAD || 0))}`;
+            if (sellerPage === "dashboard") sellerDashboardBalance.hidden = false;
+            sellerStatPaid.textContent = `N$ ${priceFormat.format(sumPayoutsByStatus("eligible"))}`;
+            sellerStatPaidLabel.textContent = "Credited to Z balance";
         }
 
         function renderSalesChart(orders) {
@@ -1972,6 +2197,9 @@
             const values = days.map((date) => dailySales.get(dayKey(date)) || 0);
             const peak = Math.max(...values, 1);
             const total = values.reduce((sum, value) => sum + value, 0);
+            salesChart.toggleAttribute("hidden", total === 0);
+            salesChartLabels.hidden = total === 0;
+            salesChartEmpty.hidden = total > 0;
             salesChartCrosshair.hidden = true;
             const chartNamespace = "http://www.w3.org/2000/svg";
             const plot = { left: 78, right: 990, top: 14, bottom: 194 };
@@ -2077,7 +2305,11 @@
             if (!topProducts.length) {
                 const empty = document.createElement("li");
                 empty.className = "analytics-empty";
-                empty.textContent = "Your top products will appear after your first paid sale.";
+                empty.append("Your bestsellers will appear after your first paid sale. ");
+                const listingsLink = document.createElement("a");
+                listingsLink.href = "/sell/listings";
+                listingsLink.textContent = "Add your first product →";
+                empty.append(listingsLink);
                 sellerTopProducts.append(empty);
                 return;
             }
@@ -2143,10 +2375,15 @@
                 ]);
                 const sellerOrders = ordersResult.sellerOrders || [];
                 let activeListingCount = 0;
+                let cancelledUnpaidPromotions = ledgerResult.cancelledUnpaidPromotions || 0;
                 if (sellerPage === "dashboard") {
                     activeListingCount = null;
                     try {
                         const productsResult = await requestJson("/api/seller/products");
+                        cancelledUnpaidPromotions = Math.max(
+                            cancelledUnpaidPromotions,
+                            productsResult.cancelledUnpaidPromotions || 0
+                        );
                         activeListingCount = (productsResult.products || []).filter((product) =>
                             product.status === "active" && product.isAvailable !== false && product.moderationStatus !== "hidden"
                         ).length;
@@ -2160,8 +2397,11 @@
                 renderSellerOrders();
 
                 renderPayoutSummary(ledgerResult);
-                if (ledgerResult.mode === "simulated" && !payoutSummaryRefreshTimer) {
-                    payoutSummaryRefreshTimer = window.setInterval(refreshSellerPayoutSummary, 2000);
+                if (cancelledUnpaidPromotions > 0) {
+                    showMessage(sellerMessage, `${cancelledUnpaidPromotions} unpaid Z-balance promotion${cancelledUnpaidPromotions === 1 ? " was" : "s were"} removed. No additional balance was deducted.`, true);
+                }
+                if (sellerPage === "dashboard" && !payoutSummaryRefreshTimer) {
+                    payoutSummaryRefreshTimer = window.setInterval(refreshSellerPayoutSummary, 60000);
                 }
             } catch (error) {
                 if (sellerPage === "dashboard") {
@@ -2170,6 +2410,105 @@
                 } else {
                     sellerOrderList.textContent = error.message;
                 }
+            }
+        }
+
+        async function loadSellerNotifications() {
+            if (sellerNotificationsRequestInFlight) return;
+            sellerNotificationsRequestInFlight = true;
+            try {
+                const result = await requestJson("/api/account/notifications?workspace=seller");
+                const notifications = Array.isArray(result.notifications) ? result.notifications : [];
+                if (sellerPage === "notifications" && notifications.some((notification) => notification.type === "seller" && notification.productId)) {
+                    try {
+                        const listings = await requestJson("/api/seller/products");
+                        sellerProducts = listings.products;
+                    } catch (error) {
+                        sellerProducts = null;
+                        console.error("Seller listings could not be checked for repromotion:", error);
+                    }
+                }
+                const unreadCount = Number(result.unreadCount) || 0;
+                const notificationBadge = document.querySelector("#seller-notification-count");
+                if (notificationBadge) {
+                    notificationBadge.hidden = unreadCount === 0;
+                    notificationBadge.textContent = unreadCount > 99 ? "99+" : String(unreadCount);
+                    notificationBadge.setAttribute("aria-label", `${unreadCount} unread seller update${unreadCount === 1 ? "" : "s"}`);
+                }
+
+                if (sellerPage !== "notifications") return;
+                sellerNotificationsList.replaceChildren();
+                notifications.forEach((notification) => {
+                    const item = document.createElement("li");
+                    if (!notification.readAt) item.classList.add("is-new");
+                    const title = document.createElement("strong");
+                    title.textContent = notification.title;
+                    const date = document.createElement("time");
+                    date.dateTime = notification.createdAt;
+                    date.textContent = new Date(notification.createdAt).toLocaleString();
+                    const message = document.createElement("span");
+                    message.className = "seller-notifications-message";
+                    message.textContent = notification.message;
+                    item.append(title, date, message);
+                    const notifiedProduct = Array.isArray(sellerProducts)
+                        ? sellerProducts.find((product) => product.id === notification.productId)
+                        : null;
+                    if (notification.type === "seller" && notifiedProduct && notifiedProduct.promotion?.status !== "active") {
+                        const repromoteButton = document.createElement("button");
+                        repromoteButton.type = "button";
+                        repromoteButton.className = "seller-notification-repromote";
+                        repromoteButton.textContent = "Repromote";
+                        repromoteButton.addEventListener("click", async () => {
+                            repromoteButton.disabled = true;
+                            try {
+                                const result = await requestJson("/api/seller/products");
+                                sellerProducts = result.products;
+                                const product = sellerProducts.find((listing) => listing.id === notification.productId);
+                                const canPromote = product
+                                    && product.promotion?.status !== "active"
+                                    && product.status === "active"
+                                    && product.isAvailable !== false
+                                    && product.stock > 0
+                                    && product.reviewStatus !== "pending"
+                                    && product.reviewStatus !== "rejected"
+                                    && product.moderationStatus !== "hidden";
+                                if (!canPromote) throw new Error("This listing is no longer eligible for promotion. Check its status in Listings.");
+                                await choosePromotionPayment(product, repromoteButton);
+                            } catch (error) {
+                                sellerNotificationsStatus.textContent = error.message || "Could not start this promotion.";
+                            } finally {
+                                repromoteButton.disabled = false;
+                            }
+                        });
+                        item.append(repromoteButton);
+                    }
+                    sellerNotificationsList.append(item);
+                });
+                sellerNotificationsStatus.textContent = notifications.length
+                    ? unreadCount
+                        ? `${unreadCount} unread seller update${unreadCount === 1 ? "" : "s"}.`
+                        : "No new seller updates. Your recent updates are listed below."
+                    : "No seller updates yet.";
+
+                if (unreadCount > 0) {
+                    await requestJson("/api/account/notifications/read?workspace=seller", { method: "POST" });
+                    sellerNotificationsList.querySelectorAll(".is-new").forEach((item) => item.classList.remove("is-new"));
+                    sellerNotificationsStatus.textContent = notifications.length
+                        ? "No new seller updates. Your recent updates are listed below."
+                        : "No seller updates yet.";
+                    if (notificationBadge) {
+                        notificationBadge.hidden = true;
+                        notificationBadge.textContent = "";
+                    }
+                }
+            } catch (error) {
+                if (sellerPage === "notifications") {
+                    sellerNotificationsStatus.textContent = error.message || "Could not load seller updates.";
+                } else {
+                    console.error("Seller updates could not be loaded:", error);
+                }
+            } finally {
+                sellerNotificationsRequestInFlight = false;
             }
         }
 
@@ -2207,6 +2546,7 @@
                     if (sellerPage === "listings") await loadListings();
                     if (sellerPage === "promotions") await loadPromotionStats();
                     if (sellerPage === "orders" || sellerPage === "dashboard") await loadSellerOperations();
+                    await loadSellerNotifications();
                 }
             } catch (error) {
                 if (error.message.includes("Sign in")) {
@@ -2323,6 +2663,12 @@
             activeSellerOrderTrigger = null;
         });
         sellerListingDetailClose.addEventListener("click", () => sellerListingDetailView.close());
+        document.querySelector("#seller-promotion-payment-close").addEventListener("click", () => sellerPromotionPaymentView.close());
+        sellerPromotionPaymentForm.addEventListener("change", updatePromotionPaymentBreakdown);
+        sellerPromotionPaymentForm.addEventListener("submit", submitPromotionPayment);
+        sellerPromotionPaymentView.addEventListener("click", (event) => {
+            if (event.target === sellerPromotionPaymentView) sellerPromotionPaymentView.close();
+        });
         sellerListingDetailView.addEventListener("click", (event) => {
             if (event.target === sellerListingDetailView) sellerListingDetailView.close();
         });
@@ -2349,7 +2695,7 @@
                     : [];
                 const urlValue = document.querySelector("#product-image").value.trim();
                 const imageUrls = uploadedImageUrls.length ? uploadedImageUrls : (urlValue ? [urlValue] : []);
-                await requestJson(productId ? `/api/seller/products/${encodeURIComponent(productId)}` : "/api/seller/products", {
+                const result = await requestJson(productId ? `/api/seller/products/${encodeURIComponent(productId)}` : "/api/seller/products", {
                     method: productId ? "PATCH" : "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -2368,9 +2714,12 @@
                     resetProductUploadPreview();
                     updateProductUrlPreview();
                 }
-                showMessage(productMessage, productId
-                    ? "Your listing changes were submitted for moderator review."
-                    : "Your listing was submitted for moderator review and will be public after approval.", true);
+                const statusMessage = result.product.reviewStatus === "approved"
+                    ? "Your listing passed the automatic review checks and is now published."
+                    : `Your listing was rejected.${result.product.reviewReasons?.length ? ` Reason: ${result.product.reviewReasons.join(" ")}` : " Please update it and submit again."}`;
+                showMessage(productMessage, result.notificationError
+                    ? `${statusMessage} ${result.notificationError}`
+                    : statusMessage, !result.notificationError);
                 await loadListings();
             } catch (error) {
                 showMessage(productMessage, error.message);

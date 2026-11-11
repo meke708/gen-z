@@ -56,6 +56,34 @@
     const isProductPage = path.startsWith("/product/");
     const isSellerPortal = path === "/sell" || path.startsWith("/sell/");
     const isAdminPage = path.startsWith("/admin/");
+    if (isAdminPage) {
+        const brand = header.querySelector(".brand");
+        if (brand) {
+            let headerLeft = header.querySelector(".header-left");
+            if (!headerLeft) {
+                headerLeft = document.createElement("div");
+                headerLeft.className = "header-left";
+                header.insertBefore(headerLeft, nav);
+            }
+            headerLeft.replaceChildren(brand);
+            brand.href = "/admin/moderation";
+        }
+        nav.setAttribute("aria-label", "Administration navigation");
+    }
+    if (isSellerPortal) {
+        const brand = header.querySelector(".brand");
+        if (brand) {
+            let headerLeft = header.querySelector(".header-left");
+            if (!headerLeft) {
+                headerLeft = document.createElement("div");
+                headerLeft.className = "header-left";
+                header.insertBefore(headerLeft, nav);
+            }
+            headerLeft.append(brand);
+            brand.href = "/marketplace";
+        }
+        nav.setAttribute("aria-label", "Seller navigation");
+    }
     if (wideLayout || isShopPage || isProductPage || isSellerPortal || isAdminPage) {
         document.body.classList.add("layout-wide");
         if (wideLayout) document.body.classList.add(wideLayout[1]);
@@ -68,12 +96,24 @@
         layoutStylesheet.rel = "stylesheet";
         layoutStylesheet.href = "/wide-layout.css";
         document.head.append(layoutStylesheet);
+        if (isAdminPage) {
+            const adminStylesheet = document.createElement("link");
+            adminStylesheet.rel = "stylesheet";
+            adminStylesheet.href = "/admin-shell.css";
+            document.head.append(adminStylesheet);
+        } else if (isSellerPortal) {
+            const sellerStylesheet = document.createElement("link");
+            sellerStylesheet.rel = "stylesheet";
+            sellerStylesheet.href = "/seller-shell.css";
+            document.head.append(sellerStylesheet);
+        }
     }
     if (path === "/" || path === "/marketplace" || path === "/dashboard") {
         document.documentElement.classList.add("hide-scrollbar");
     }
 
-    const routes = path === "/" ? ["/marketplace"]
+    const routes = path.startsWith("/admin/accounts/") ? ["/admin/accounts"]
+        : path === "/" ? ["/marketplace"]
         : path.startsWith("/product/") ? ["/marketplace"]
         : path.startsWith("/shop/") ? ["/shops"]
             : path === "/checkout" ? ["/cart"]
@@ -99,6 +139,8 @@
     };
 
     const createSellerAvatar = () => {
+        const identity = document.createElement("div");
+        identity.className = "seller-account-identity";
         const link = document.createElement("a");
         link.className = "seller-account-avatar-link";
         link.href = "/sell/profile";
@@ -127,14 +169,17 @@
             image.hidden = true;
             fallback.hidden = false;
         });
-        avatar.append(image, fallback);
-        link.append(avatar, verificationWarning);
-        return { link, fallback, image, verificationWarning };
+        avatar.append(image, fallback, verificationWarning);
+        link.append(avatar);
+        const businessName = document.createElement("span");
+        businessName.className = "seller-account-business-name";
+        identity.append(link, businessName);
+        return { identity, link, fallback, image, businessName, verificationWarning };
     };
 
     const adminLinks = [
         ["/admin/moderation", "Moderation"],
-        ["/admin/support", "Support inbox"],
+        ["/admin/login-wallpaper", "Login wallpaper"],
         ["/marketplace", "Marketplace"]
     ];
     const superAdminLinks = [
@@ -142,16 +187,25 @@
         ["/admin/kyc", "Business verification"],
         ["/admin/support", "Support"],
         ["/admin/accounts", "User accounts"],
-        ["/admin/platform", "Platform controls"]
+        ["/admin/notifications", "Notifications"],
+        ["/admin/platform", "Platform controls"],
+        ["/admin/server-config", "Server configurations"],
+        ["/admin/commands", "Commands"],
+        ["/admin/statement-verification", "Verify statements"],
     ];
     const sellerLinks = [
         ["/sell/dashboard", "Dashboard"],
         ["/sell/orders", "Manage orders"],
         ["/sell/listings", "Manage listings"],
+        ["/sell/notifications", "Updates"],
         ["/sell/transactions", "Transactions"],
+        ["/sell/billing", "Billing"],
         ["/sell/assistant", "Shop AI assistant"],
+        ["/sell/profile", "Business profile"],
+        ["/sell/verification", "Business verification"],
         ["/support", "Help & support"],
-        ["/marketplace", "Marketplace"]
+        ["/marketplace", "Marketplace"],
+        ["/dashboard", "Buyer's account"]
     ];
 
     const orderedLinks = path.startsWith("/admin/") ? adminLinks : isSellerPortal ? sellerLinks : [];
@@ -161,7 +215,17 @@
         if (!anchor) {
             anchor = document.createElement("a");
             anchor.href = href;
-            anchor.textContent = label;
+        }
+        setNavLabel(anchor, label);
+        if (isSellerPortal && href === "/sell/notifications") {
+            anchor.classList.add("seller-updates-link");
+            anchor.setAttribute("aria-label", "Seller updates");
+            const badge = document.createElement("span");
+            badge.className = "seller-updates-count";
+            badge.id = "seller-notification-count";
+            badge.setAttribute("aria-label", "Unread seller updates");
+            badge.hidden = true;
+            anchor.append(badge);
         }
         nav.append(anchor);
     }
@@ -178,11 +242,35 @@
         accountLink.textContent = "My account";
     }
     if (accountLink) nav.append(accountLink);
+    if (isSellerPortal && path !== "/sell/notifications") {
+        fetch("/api/account/notifications?workspace=seller")
+            .then(async (response) => {
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || "Could not load seller updates.");
+                const badge = document.querySelector("#seller-notification-count");
+                if (!badge) return;
+                const unreadCount = Number(result.unreadCount) || 0;
+                badge.hidden = unreadCount === 0;
+                badge.textContent = unreadCount > 99 ? "99+" : String(unreadCount);
+                badge.setAttribute("aria-label", `${unreadCount} unread seller update${unreadCount === 1 ? "" : "s"}`);
+            })
+            .catch((error) => console.error("Seller update count could not be loaded:", error));
+    }
     const sellerAvatar = isSellerPortal ? createSellerAvatar() : null;
     if (sellerAvatar) {
-        const avatarSlot = header.querySelector("#seller-avatar-slot");
-        if (avatarSlot) avatarSlot.append(sellerAvatar.link);
-        else nav.append(sellerAvatar.link);
+        let avatarSlot = header.querySelector("#seller-avatar-slot");
+        if (!avatarSlot) {
+            let sellerActions = header.querySelector(".seller-header-actions");
+            if (!sellerActions) {
+                sellerActions = document.createElement("div");
+                sellerActions.className = "seller-header-actions";
+                header.append(sellerActions);
+            }
+            avatarSlot = document.createElement("span");
+            avatarSlot.id = "seller-avatar-slot";
+            sellerActions.prepend(avatarSlot);
+        }
+        avatarSlot.replaceChildren(sellerAvatar.identity);
     }
 
     const sellerMenuToggle = header.querySelector("#seller-mobile-nav-toggle");
@@ -209,7 +297,7 @@
         const href = normalizeHref(anchor);
         if (href === "/marketplace") setNavLabel(anchor, "Marketplace");
         else if (href === "/shops") setNavLabel(anchor, "Shops");
-        else if (href === "/dashboard") setNavLabel(anchor, "My account");
+        else if (href === "/dashboard") setNavLabel(anchor, isSellerPortal ? "Buyer's account" : isAdminPage ? "User account" : "My account");
         else if (href === "/login") setNavLabel(anchor, "Sign in");
 
         if (routes.includes(href)) anchor.setAttribute("aria-current", "page");
@@ -224,7 +312,7 @@
             })
             .then(({ user }) => {
                 accountLink.href = user ? "/dashboard" : "/login";
-                setNavLabel(accountLink, user ? "My account" : "Sign in");
+                setNavLabel(accountLink, user ? (isSellerPortal ? "Buyer's account" : isAdminPage ? "User account" : "My account") : "Sign in");
                 if (routes.includes(normalizeHref(accountLink))) accountLink.setAttribute("aria-current", "page");
                 else accountLink.removeAttribute("aria-current");
                 if (path.startsWith("/admin/") && user?.isSuperAdmin) {
@@ -233,8 +321,8 @@
                         if (!anchor) {
                             anchor = document.createElement("a");
                             anchor.href = href;
-                            anchor.textContent = label;
                         }
+                        setNavLabel(anchor, label);
                         if (routes.includes(href)) anchor.setAttribute("aria-current", "page");
                         nav.insertBefore(anchor, accountLink);
                     }
@@ -258,10 +346,12 @@
                     })
                     .then(({ shop }) => {
                         if (!shop) return;
+                        sellerAvatar.businessName.textContent = shop.name || "Business profile";
+                        sellerAvatar.link.setAttribute("aria-label", `Open ${shop.name || "business"} profile`);
                         sellerAvatar.fallback.textContent = shop.name?.trim()?.charAt(0)?.toLocaleUpperCase() || "?";
                         if (shop.kycStatus !== "verified") {
                             sellerAvatar.verificationWarning.hidden = false;
-                            sellerAvatar.link.setAttribute("aria-label", "Open business profile. Business not verified.");
+                            sellerAvatar.link.setAttribute("aria-label", `Open ${shop.name || "business"} profile. Business not verified.`);
                         }
                         if (typeof shop.coverImageUrl === "string" && shop.coverImageUrl.startsWith("https://")) {
                             sellerAvatar.image.src = shop.coverImageUrl;
