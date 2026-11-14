@@ -355,6 +355,9 @@ test('production mock payments require an explicit testing opt-in', () => {
   assert.throws(() => assertProductionPaymentConfiguration('production', 'mock', true, false), /ALLOW_MOCK_PAYMENTS_IN_PRODUCTION=true/);
   assert.doesNotThrow(() => assertProductionPaymentConfiguration('production', 'mock', false));
   assert.doesNotThrow(() => assertProductionPaymentConfiguration('production', 'mock', true, true));
+  assert.throws(() => assertProductionPaymentConfiguration('production', 'dpo'), /ALLOW_DPO_SANDBOX_IN_PRODUCTION=true/);
+  assert.doesNotThrow(() => assertProductionPaymentConfiguration('production', 'dpo', true, false, true));
+  assert.doesNotThrow(() => assertProductionPaymentConfiguration('development', 'dpo'));
   assert.doesNotThrow(() => assertProductionPaymentConfiguration('production', 'live'));
 });
 

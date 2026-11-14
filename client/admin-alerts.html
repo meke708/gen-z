@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f4f1e8">
+    <title>Admin alerts | Z Operations</title>
+    <style>
+        :root { color-scheme: light; --ink: #17231e; --muted: #68736d; --paper: #f4f1e8; --white: #fffefa; --forest: #18382e; --line: #d9d9cf; --warning: #8b3b2f; }
+        * { box-sizing: border-box; }
+        body { min-width: 320px; margin: 0; color: var(--ink); background: var(--paper); font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
+        button, select { font: inherit; }
+        .site-header { display: flex; min-height: 72px; align-items: center; justify-content: space-between; gap: 16px; padding: 12px max(24px, calc((100vw - 1120px) / 2)); border-bottom: 1px solid var(--line); background: var(--white); }
+        .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+        .brand-mark { display: grid; width: 36px; aspect-ratio: 1; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; font-family: Georgia, serif; font-size: 22px; }
+        nav { display: flex; flex-wrap: wrap; gap: 14px; font-size: 10px; font-weight: 700; }
+        nav a { color: var(--forest); text-decoration: none; }
+        main { width: min(1000px, calc(100% - 48px)); margin: 0 auto; padding: 40px 0 70px; }
+        .eyebrow { margin: 0 0 10px; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+        .page-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+        h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 38px; font-weight: 400; }
+        .intro { max-width: 700px; margin: 10px 0 20px; color: var(--muted); font-size: 12px; line-height: 1.65; }
+        .page-link { display: inline-flex; min-height: 36px; align-items: center; padding: 0 11px; border: 1px solid var(--ink); border-radius: 3px; color: var(--forest); text-decoration: none; font-size: 10px; font-weight: 700; white-space: nowrap; }
+        .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 18px 0; padding: 12px; border: 1px solid var(--line); background: var(--white); }
+        .toolbar label { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 11px; font-weight: 700; }
+        .toolbar select { min-height: 36px; padding: 0 9px; border: 1px solid var(--line); color: var(--ink); background: var(--white); }
+        .status-message { margin: 12px 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+        .status-message.is-error { color: var(--warning); }
+        .alert-list { display: grid; gap: 12px; }
+        .alert-card { padding: 16px; border: 1px solid var(--line); border-left: 4px solid var(--warning); background: var(--white); }
+        .alert-card.is-resolved { border-left-color: var(--forest); }
+        .alert-heading { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px; }
+        .alert-heading h2 { margin: 0; font-size: 15px; }
+        .alert-heading p { margin: 5px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
+        .alert-status { padding: 4px 8px; border-radius: 999px; color: var(--warning); background: #f5e8e2; font-size: 9px; font-weight: 700; text-transform: uppercase; }
+        .is-resolved .alert-status { color: var(--forest); background: #e8eddd; }
+        .alert-description { margin: 14px 0; font-size: 12px; line-height: 1.65; }
+        .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+        .metric { min-width: 0; padding: 10px; background: #f7f5ee; }
+        .metric strong { display: block; color: var(--forest); font-size: 15px; overflow-wrap: anywhere; }
+        .metric span { display: block; margin-top: 5px; color: var(--muted); font-size: 9px; line-height: 1.45; }
+        .alert-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; color: var(--muted); font-size: 10px; }
+        .empty { padding: 16px; border: 1px solid var(--line); color: var(--muted); background: var(--white); font-size: 12px; }
+        [hidden] { display: none !important; }
+        @media (max-width: 720px) { .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (max-width: 520px) {
+            .site-header { align-items: flex-start; padding: 12px 18px; }
+            nav { gap: 9px; }
+            main { width: calc(100% - 36px); padding-top: 30px; }
+            h1 { font-size: 32px; }
+            .page-heading { flex-direction: column; }
+        }
+    </style>
+    <link rel="stylesheet" href="/loading.css">
+    <script src="/loading.js"></script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+</head>
+<body>
+    <header class="site-header">
+        <a class="brand" href="/admin/accounts"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Operations</span></a>
+        <nav aria-label="Admin navigation">
+            <a href="/admin/accounts">Accounts</a>
+            <a href="/admin/notifications">Send notifications</a>
+            <a href="/admin/moderation">Moderation</a>
+        </nav>
+    </header>
+    <main>
+        <p class="eyebrow">Admin tools · Financial monitoring</p>
+        <div class="page-heading">
+            <div>
+                <h1>Admin alerts</h1>
+                <p class="intro">Wallet reconciliation alerts appear here with plain-language explanations and links to the account activity. An alert is a discrepancy to investigate, not proof of fraud. This list shows the latest 100 alerts for the selected status.</p>
+            </div>
+        </div>
+        <div class="toolbar">
+            <label for="status-filter">Alert status
+                <select id="status-filter">
+                    <option value="open">Open</option>
+                    <option value="all">All</option>
+                    <option value="resolved">Resolved</option>
+                </select>
+            </label>
+            <a class="page-link" href="/admin/accounts">Back to accounts</a>
+        </div>
+        <p class="status-message" id="status" role="status" aria-live="polite">Loading alerts...</p>
+        <div class="alert-list" id="alerts"></div>
+    </main>
+    <script>
+        const statusElement = document.querySelector("#status");
+        const alertsElement = document.querySelector("#alerts");
+        const statusFilter = document.querySelector("#status-filter");
+
+        function formatMoney(value) {
+            return `N$ ${Number(value).toFixed(2)}`;
+        }
+
+        function formatDate(value) {
+            return value ? new Date(value).toLocaleString() : "Not available";
+        }
+
+        function renderAlerts(alerts) {
+            alertsElement.replaceChildren();
+            if (!alerts.length) {
+                const empty = document.createElement("p");
+                empty.className = "empty";
+                empty.textContent = statusFilter.value === "open"
+                    ? "No open wallet reconciliation alerts. A mismatch is recorded here when an admin opens the affected account's activity page."
+                    : "No wallet reconciliation alerts match this filter.";
+                alertsElement.append(empty);
+                return;
+            }
+            for (const alert of alerts) {
+                const card = document.createElement("article");
+                card.className = `alert-card${alert.status === "resolved" ? " is-resolved" : ""}`;
+                const heading = document.createElement("div");
+                heading.className = "alert-heading";
+                const identity = document.createElement("div");
+                const title = document.createElement("h2");
+                title.textContent = alert.account?.name || "Account unavailable";
+                const email = document.createElement("p");
+                email.textContent = alert.account?.email || "Account record unavailable";
+                identity.append(title, email);
+                const badge = document.createElement("span");
+                badge.className = "alert-status";
+                badge.textContent = alert.status;
+                heading.append(identity, badge);
+
+                const description = document.createElement("p");
+                description.className = "alert-description";
+                description.textContent = alert.description;
+
+                const metrics = document.createElement("div");
+                metrics.className = "metrics";
+                for (const [label, value] of [
+                    ["Current account balance", formatMoney(alert.accountBalanceNAD)],
+                    ["Latest ledger balance", formatMoney(alert.ledgerBalanceNAD)],
+                    ["Amount present in both", formatMoney(alert.matchedBalanceNAD)],
+                    ["Account vs ledger difference", formatMoney(Math.abs(alert.differenceNAD))],
+                    ["Ledger-implied balance", formatMoney(alert.expectedBalanceNAD)],
+                    ["Wallet transactions", String(alert.transactionCount)],
+                    ["Detected", formatDate(alert.openedAt)],
+                    ["Last checked", formatDate(alert.lastCheckedAt)]
+                ]) {
+                    const metric = document.createElement("div");
+                    metric.className = "metric";
+                    const valueElement = document.createElement("strong");
+                    valueElement.textContent = value;
+                    const labelElement = document.createElement("span");
+                    labelElement.textContent = label;
+                    metric.append(valueElement, labelElement);
+                    metrics.append(metric);
+                }
+
+                const footer = document.createElement("div");
+                footer.className = "alert-footer";
+                const resolved = document.createElement("span");
+                resolved.textContent = alert.resolvedAt ? `Resolved: ${formatDate(alert.resolvedAt)}` : "Review the account before taking action.";
+                footer.append(resolved);
+                if (alert.account?.id) {
+                    const link = document.createElement("a");
+                    link.className = "page-link";
+                    link.href = `/admin/accounts/${encodeURIComponent(alert.account.id)}/activity`;
+                    link.textContent = "Review account activity";
+                    footer.append(link);
+                }
+                card.append(heading, description, metrics, footer);
+                alertsElement.append(card);
+            }
+        }
+
+        async function loadAlerts() {
+            statusElement.classList.remove("is-error");
+            statusElement.textContent = "Loading alerts...";
+            alertsElement.replaceChildren();
+            try {
+                const response = await fetch(`/api/admin/alerts?status=${encodeURIComponent(statusFilter.value)}`);
+                let result;
+                try { result = await response.json(); } catch { throw new Error("The server returned an invalid response."); }
+                if (!response.ok) throw new Error(result.error || "Admin alerts could not be loaded.");
+                renderAlerts(result.alerts);
+                statusElement.textContent = `${result.total} ${statusFilter.value === "all" ? "" : `${statusFilter.value} `}wallet reconciliation alert${result.total === 1 ? "" : "s"}${result.total > result.alerts.length ? ` · showing latest ${result.alerts.length}` : ""}.`;
+            } catch (error) {
+                statusElement.classList.add("is-error");
+                statusElement.textContent = error.message || "Admin alerts could not be loaded.";
+            }
+        }
+
+        statusFilter.addEventListener("change", loadAlerts);
+        loadAlerts();
+    </script>
+    <script src="/navigation.js" defer></script>
+</body>
+</html>

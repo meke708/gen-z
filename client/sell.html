@@ -352,6 +352,7 @@
         .seller-order-card-name { margin: 0; font-size: 13px; font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
         .seller-order-card-reference { color: var(--forest); font-size: 10px; font-weight: 700; }
         .seller-order-card-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+        .seller-shipping-needed { display: inline-flex; width: fit-content; align-items: center; padding: 4px 7px; border: 1px solid #e4c1ba; border-radius: 999px; color: #8b3b2f; background: #f8e9e5; font-size: 9px; font-weight: 700; line-height: 1.2; }
         .seller-order-card-side { display: grid; justify-items: end; gap: 9px; }
         .seller-order-card-payout { font-family: Georgia, "Times New Roman", serif; font-size: 16px; white-space: nowrap; }
         .seller-order-card-action { color: var(--forest); font-size: 10px; font-weight: 700; }
@@ -1964,6 +1965,12 @@
             const main = document.createElement("span");
             main.className = "seller-order-card-main";
             main.append(reference, itemName, meta);
+            if (sellerOrder.shippingNeeded) {
+                const shippingFlag = document.createElement("span");
+                shippingFlag.className = "seller-shipping-needed";
+                shippingFlag.textContent = "Shipping needed";
+                main.append(shippingFlag);
+            }
             const status = getSellerDecisionStatus(sellerOrder);
             const statusBadge = document.createElement("span");
             statusBadge.className = `seller-order-status incoming-${status.key}`;
@@ -2001,6 +2008,7 @@
             addDetail("Customer", sellerOrder.buyerName || "Customer");
             if (sellerOrder.paidAt) addDetail("Paid", new Date(sellerOrder.paidAt).toLocaleString());
             addDetail("Approval", getSellerDecisionStatus(sellerOrder).label);
+            addDetail("Shipping", sellerOrder.shippingNeeded ? "Shipping needed" : sellerOrder.fulfillmentStatus === "shipped" ? "Shipped" : "Not currently awaiting shipment");
             addDetail("Delivery town", sellerOrder.deliveryTown);
             addDetail("Shipping zone", sellerOrder.shippingZone.replaceAll("_", " "));
             addDetail("Payment", sellerOrder.paymentStatus.replaceAll("_", " ").replace(/\b\w/g, (character) => character.toUpperCase()));

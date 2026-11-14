@@ -35,6 +35,9 @@
         .finance-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
         .finance-metric { min-width: 0; padding: 10px; background: #f7f5ee; }
         .finance-metric strong { display: block; color: var(--forest); font-size: 15px; overflow-wrap: anywhere; }
+        .finance-metric.is-balance.is-matched strong { color: var(--forest); }
+        .finance-metric.is-balance.is-mismatch strong { color: var(--warning); }
+        .finance-metric.is-balance.is-unverified strong { color: var(--amber); }
         .finance-metric span { display: block; margin-top: 5px; color: var(--muted); font-size: 9px; line-height: 1.45; }
         .review-notes { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
         .review-note { padding: 11px 13px; border-left: 3px solid var(--amber); background: var(--white); color: var(--muted); font-size: 11px; line-height: 1.6; }
@@ -80,6 +83,8 @@
         <a class="brand" href="/admin/accounts"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Operations</span></a>
         <nav aria-label="Super-admin navigation">
             <a href="/admin/accounts">Accounts</a>
+            <a href="/admin/alerts">Admin alerts</a>
+            <a href="/admin/notifications">Send notifications</a>
             <a href="/admin/moderation">Moderation</a>
             <a href="/admin/support">Support</a>
         </nav>
@@ -176,18 +181,15 @@
             financeSummary.className = `finance-summary is-${reconciliation.status}`;
             const summary = document.createElement("p");
             if (reconciliation.status === "matched") {
-                summary.textContent = `Matched: the current account balance equals the latest wallet ledger balance, and the recorded credits, debits, and refunds reconcile across ${reconciliation.transactionCount} wallet transaction(s).`;
+                const correction = reconciliation.autoCorrection?.userNotified
+                    ? ` The system corrected the balance from ${formatMoney(reconciliation.autoCorrection.previousBalanceNAD)} to ${formatMoney(reconciliation.autoCorrection.correctedBalanceNAD)} and notified the user.`
+                    : "";
+                summary.textContent = `${reconciliation.description} Checked ${reconciliation.transactionCount} wallet transaction(s).${correction}`;
             } else if (reconciliation.status === "mismatch") {
                 const notification = reconciliation.adminNotified ? " An admin notification was sent." : " This discrepancy is already open for admin review.";
-                const balanceComparison = reconciliation.differenceNAD === 0
-                    ? "The account balance matches the latest recorded ledger balance."
-                    : `The account balance is ${formatMoney(Math.abs(reconciliation.differenceNAD))} ${reconciliation.differenceNAD < 0 ? "lower" : "higher"} than the latest ledger balance.`;
-                const ledgerComparison = reconciliation.ledgerIntegrityDifferenceNAD === 0
-                    ? ""
-                    : ` Ledger activity totals differ from the final recorded ledger snapshot by ${formatMoney(Math.abs(reconciliation.ledgerIntegrityDifferenceNAD))}.`;
-                summary.textContent = `Discrepancy found. The amount present in both balance records is ${formatMoney(reconciliation.matchedBalanceNAD)}. ${balanceComparison}${ledgerComparison}${notification}`;
+                summary.textContent = `${reconciliation.description} Amount present in both balance records: ${formatMoney(reconciliation.matchedBalanceNAD)}.${notification}`;
             } else {
-                summary.textContent = `No wallet transactions are recorded. The current ${formatMoney(reconciliation.accountBalanceNAD)} balance is treated as an unverified opening balance, not a confirmed mismatch.`;
+                summary.textContent = `${reconciliation.description} This is unverified, not a confirmed mismatch.`;
             }
             const metrics = document.createElement("div");
             metrics.className = "finance-grid";
@@ -206,7 +208,7 @@
                     ["Latest ledger balance", formatMoney(reconciliation.ledgerBalanceNAD)],
                     ["Balance amount matching both", formatMoney(reconciliation.matchedBalanceNAD)],
                     ["Inferred opening balance", formatMoney(reconciliation.openingBalanceNAD)],
-                    ["Wallet credits", formatMoney(reconciliation.creditsNAD)],
+                    ["Total wallet credits (cumulative)", formatMoney(reconciliation.creditsNAD)],
                     ["Purchase debits", formatMoney(reconciliation.debitsNAD)],
                     ["Purchase refunds", formatMoney(reconciliation.refundsNAD)],
                     ["Balance implied by all ledger entries", formatMoney(reconciliation.expectedBalanceNAD)]
@@ -214,6 +216,9 @@
             for (const [label, value] of values) {
                 const metric = document.createElement("div");
                 metric.className = "finance-metric";
+                if (label === "Current account balance" || label === "Latest ledger balance") {
+                    metric.classList.add("is-balance", `is-${reconciliation.status}`);
+                }
                 const amount = document.createElement("strong");
                 amount.textContent = value;
                 const caption = document.createElement("span");
@@ -223,7 +228,7 @@
             }
             const note = document.createElement("p");
             note.style.marginTop = "12px";
-            note.textContent = "This checks Z wallet ledger entries only. Card payments and other external payment methods are not wallet movements. Opening balance is inferred from the first retained wallet transaction; accounts without ledger entries cannot be independently reconciled.";
+            note.textContent = "Credits are the cumulative amount added to the wallet before spending, not the current balance or the flagged difference. Ledger balance formula: inferred opening balance + credits + refunds − purchase debits. This checks Z wallet ledger entries only; card payments and other external payment methods are not wallet movements. Opening balance is inferred from the first retained wallet transaction.";
             financeSummary.append(summary, metrics, note);
         }
 

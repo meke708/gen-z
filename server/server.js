@@ -12,7 +12,7 @@ const multer = require('multer');
 const helmet = require('helmet');
 const { rateLimit } = require('express-rate-limit');
 const { PDFParse } = require('pdf-parse');
-const { createPaymentAdapter } = require('./payment-adapter');
+const { createPaymentAdapter, isMatchingDpoPayment } = require('./payment-adapter');
 const { isAssistantModelReady, requestShopAssistantAnswer } = require('./shop-assistant');
 const { decryptKycDocument, detectKycDocumentMime, encryptKycDocument, getKycEncryptionKey, isKycStorageConfigured } = require('./kyc-storage');
 const { resolveLoginNetwork } = require('./login-activity');
@@ -23,6 +23,7 @@ const { DEFAULT_LOGIN_WALLPAPER, normalizeLoginWallpaper } = require('./login-wa
 const { normalizeBankPayoutAccount, normalizePayoutRequestAmount } = require('./payout-settings');
 const { getStatementSigningKey, signStatement, verifyStatement } = require('./statement-signature');
 const { getStatementPdfChecks } = require('./statement-pdf');
+const { isEmailVerificationTestEmail, parseEmailVerificationTestEmails } = require('./email-verification-settings');
 const { getDeveloperApiUsageCounters } = require('./developer-api-usage');
 const { verifyDeveloperTestPassword } = require('./developer-test-access');
 const {
@@ -45,6 +46,7 @@ const promotionPriceNAD = 50;
 const promotionDurationDays = 7;
 const assistantPriceNAD = 50;
 const paymentAdapter = createPaymentAdapter(process.env.PAYMENT_MODE || 'mock');
+const dpoPaymentsEnabled = paymentAdapter.mode === 'dpo';
 const developerTestSessions = new Map();
 const developerTestSessionDurationMs = 30 * 60 * 1000;
 const authRateLimit = rateLimit({
@@ -201,6 +203,7 @@ const statementPdfUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024, files: 1, fields: 1, fieldSize: 64 }
 });
+const emailVerificationTestEmails = parseEmailVerificationTestEmails(process.env.EMAIL_VERIFICATION_TEST_EMAILS);
 const passwordResetMailer = process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASSWORD
   ? nodemailer.createTransport({
     host: process.env.SMTP_HOST,
@@ -443,6 +446,7 @@ const moderationAuditSchema = new mongoose.Schema({
   action: { type: String, enum: [
     'listing_report_dismissed', 'listing_hidden', 'listing_restored',
     'account_suspended', 'account_reactivated',
+    'wallet_balance_auto_corrected',
     'seller_access_suspended', 'seller_access_reactivated',
     'seller_access_auto_held', 'seller_access_auto_released', 'seller_access_banned'
   ], required: true, index: true },
@@ -508,7 +512,7 @@ const orderSchema = new mongoose.Schema({
   paymentMethod: { type: String, enum: ['card', 'wallet'], default: 'card' },
   walletUsedNAD: { type: Number, default: 0, min: 0 },
   cardDueNAD: { type: Number, default: 0, min: 0 },
-  paymentMode: { type: String, enum: ['mock'], default: 'mock' },
+  paymentMode: { type: String, enum: ['mock', 'dpo'], default: 'mock' },
   paymentReference: { type: String, default: '' },
   reservationExpiresAt: { type: Date, required: true, index: true },
   reservationsReleasedAt: { type: Date, default: null },
@@ -651,7 +655,7 @@ const payoutHoldDurationMs = Number(process.env.PAYOUT_HOLD_HOURS || 72) * 60 * 
 if (!Number.isFinite(payoutHoldDurationMs) || payoutHoldDurationMs <= 0) {
   throw new Error('PAYOUT_HOLD_HOURS must be a positive number.');
 }
-const simulatedPayoutsEnabled = paymentAdapter.mode === 'mock' && process.env.NODE_ENV !== 'production' && process.env.SIMULATE_PAYOUTS !== 'false';
+const simulatedPayoutsEnabled = process.env.NODE_ENV !== 'production' && process.env.SIMULATE_PAYOUTS !== 'false';
 const payoutSweepSeconds = Number(process.env.PAYOUT_SWEEP_SECONDS || (simulatedPayoutsEnabled ? 1 : 60));
 if (!Number.isFinite(payoutSweepSeconds) || payoutSweepSeconds < 1 || payoutSweepSeconds > 3600) {
   throw new Error('PAYOUT_SWEEP_SECONDS must be between 1 and 3600.');
@@ -660,6 +664,7 @@ const payoutSweepIntervalMs = payoutSweepSeconds * 1000;
 const mockPaymentsRequested = paymentAdapter.mode === 'mock' && process.env.MOCK_PAYMENTS_ENABLED !== 'false';
 const allowMockPaymentsInProduction = process.env.ALLOW_MOCK_PAYMENTS_IN_PRODUCTION === 'true';
 const mockPaymentsEnabled = mockPaymentsRequested && (process.env.NODE_ENV !== 'production' || allowMockPaymentsInProduction);
+const allowDpoSandboxInProduction = process.env.ALLOW_DPO_SANDBOX_IN_PRODUCTION === 'true';
 
 app.use(helmet({
   contentSecurityPolicy: {
@@ -927,6 +932,12 @@ app.get('/admin/notifications', async (req, res) => {
   const user = await getSessionUser(req);
   if (!user || !isAdminUser(user)) return res.status(403).send('Admin access is not configured for this account.');
   return res.sendFile(path.join(__dirname, '..', 'client', 'admin-notifications.html'));
+});
+
+app.get('/admin/alerts', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user || !isAdminUser(user)) return res.status(403).send('Admin access is not configured for this account.');
+  return res.sendFile(path.join(__dirname, '..', 'client', 'admin-alerts.html'));
 });
 
 app.get('/admin/accounts/:id/activity', async (req, res) => {
@@ -1341,7 +1352,9 @@ function resolveAppBaseUrl({
 }
 
 async function createEmailVerification(user) {
-  if (process.env.NODE_ENV === 'production' && (!passwordResetMailer || !resolveAppBaseUrl())) {
+  const directVerificationLink = isEmailVerificationTestEmail(user.email, emailVerificationTestEmails);
+  if (process.env.NODE_ENV === 'production'
+    && ((!passwordResetMailer && !directVerificationLink) || !resolveAppBaseUrl())) {
     throw apiError(503, 'Email verification is not configured. Contact Z support.');
   }
   const baseUrl = resolveAppBaseUrl();
@@ -1353,7 +1366,7 @@ async function createEmailVerification(user) {
     { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
   );
   const verificationUrl = new URL(`/verify-email?token=${encodeURIComponent(token)}`, baseUrl).toString();
-  if (process.env.NODE_ENV === 'production') {
+  if (process.env.NODE_ENV === 'production' && !directVerificationLink) {
     await passwordResetMailer.sendMail({
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
       to: user.email,
@@ -1391,7 +1404,12 @@ async function getSessionUser(req) {
   }).populate('userId');
 
   const user = session?.userId || null;
-  return user?.isSuspended ? null : user;
+  if (!user || user.isSuspended) return null;
+  if (!req.walletInteractionReconciliationPromise) {
+    req.walletInteractionReconciliationPromise = reconcileWalletOnAccountInteraction(user);
+  }
+  await req.walletInteractionReconciliationPromise;
+  return user;
 }
 
 async function authenticateDeveloperApplication(req, res) {
@@ -1800,10 +1818,14 @@ function assertProductionPaymentConfiguration(
   nodeEnv = process.env.NODE_ENV,
   paymentMode = paymentAdapter.mode,
   mockPaymentsRequested = process.env.MOCK_PAYMENTS_ENABLED !== 'false',
-  allowMockPaymentsInProduction = process.env.ALLOW_MOCK_PAYMENTS_IN_PRODUCTION === 'true'
+  allowMockPaymentsInProduction = process.env.ALLOW_MOCK_PAYMENTS_IN_PRODUCTION === 'true',
+  allowDpoSandboxInProduction = process.env.ALLOW_DPO_SANDBOX_IN_PRODUCTION === 'true'
 ) {
   if (nodeEnv === 'production' && paymentMode === 'mock' && mockPaymentsRequested && !allowMockPaymentsInProduction) {
     throw new Error('Production startup blocked: set ALLOW_MOCK_PAYMENTS_IN_PRODUCTION=true only for a test deployment, or set MOCK_PAYMENTS_ENABLED=false to disable checkout.');
+  }
+  if (nodeEnv === 'production' && paymentMode === 'dpo' && !allowDpoSandboxInProduction) {
+    throw new Error('Production startup blocked: DPO mode uses sandbox payments. Set ALLOW_DPO_SANDBOX_IN_PRODUCTION=true only for a test deployment.');
   }
 }
 
@@ -1825,7 +1847,7 @@ function reconcileWalletBalance(accountBalanceNAD, ledgerSummary) {
     throw new TypeError('Account wallet balance must be a non-negative monetary amount.');
   }
   if (!ledgerSummary || !ledgerSummary.transactionCount) {
-    return {
+    const reconciliation = {
       status: 'unverified',
       transactionCount: 0,
       accountBalanceNAD: roundNAD(accountBalanceCents / 100),
@@ -1836,10 +1858,14 @@ function reconcileWalletBalance(accountBalanceNAD, ledgerSummary) {
       debitsNAD: 0,
       refundsNAD: 0,
       matchedBalanceNAD: null,
+      accountOnlyNAD: null,
+      ledgerOnlyNAD: null,
       differenceNAD: null,
       ledgerIntegrityDifferenceNAD: null,
       unverifiedBalanceNAD: roundNAD(accountBalanceCents / 100)
     };
+    reconciliation.description = describeWalletReconciliation(reconciliation);
+    return reconciliation;
   }
 
   const toCents = (value, label) => {
@@ -1862,8 +1888,9 @@ function reconcileWalletBalance(accountBalanceNAD, ledgerSummary) {
   const differenceCents = accountBalanceCents - ledgerBalanceCents;
   const ledgerIntegrityDifferenceCents = expectedBalanceCents - ledgerBalanceCents;
   const status = differenceCents === 0 && ledgerIntegrityDifferenceCents === 0 ? 'matched' : 'mismatch';
-
-  return {
+  const accountOnlyCents = Math.max(0, differenceCents);
+  const ledgerOnlyCents = Math.max(0, -differenceCents);
+  const reconciliation = {
     status,
     transactionCount: ledgerSummary.transactionCount,
     accountBalanceNAD: roundNAD(accountBalanceCents / 100),
@@ -1874,10 +1901,79 @@ function reconcileWalletBalance(accountBalanceNAD, ledgerSummary) {
     debitsNAD: roundNAD(debitsCents / 100),
     refundsNAD: roundNAD(refundsCents / 100),
     matchedBalanceNAD: roundNAD(Math.max(0, Math.min(accountBalanceCents, ledgerBalanceCents)) / 100),
+    accountOnlyNAD: roundNAD(accountOnlyCents / 100),
+    ledgerOnlyNAD: roundNAD(ledgerOnlyCents / 100),
     differenceNAD: roundNAD(differenceCents / 100),
     ledgerIntegrityDifferenceNAD: roundNAD(ledgerIntegrityDifferenceCents / 100),
     unverifiedBalanceNAD: 0
   };
+  reconciliation.description = describeWalletReconciliation(reconciliation);
+
+  return reconciliation;
+}
+
+function describeWalletReconciliation(reconciliation) {
+  if (reconciliation.status === 'unverified') {
+    return `No wallet transactions are recorded. The current balance is N$ ${reconciliation.accountBalanceNAD.toFixed(2)}, but there is no ledger evidence to verify it.`;
+  }
+  if (reconciliation.status === 'matched') {
+    return `The current account balance and latest wallet ledger balance both equal N$ ${reconciliation.accountBalanceNAD.toFixed(2)}. Recorded wallet credits, debits, and refunds also reconcile.`;
+  }
+
+  const explanations = [];
+  if (reconciliation.accountOnlyNAD > 0) {
+    explanations.push(`N$ ${reconciliation.accountOnlyNAD.toFixed(2)} is present in the account balance but has no matching wallet ledger balance. Confirm whether an authorized balance adjustment or missing ledger record explains it.`);
+  }
+  if (reconciliation.ledgerOnlyNAD > 0) {
+    explanations.push(`The wallet ledger supports N$ ${reconciliation.ledgerOnlyNAD.toFixed(2)} more than the current account balance. Check for an unintended balance change or an incomplete ledger update.`);
+  }
+  if (reconciliation.ledgerIntegrityDifferenceNAD !== 0) {
+    explanations.push(`Recorded credits, debits, and refunds imply N$ ${reconciliation.expectedBalanceNAD.toFixed(2)}, but the latest ledger snapshot is N$ ${reconciliation.ledgerBalanceNAD.toFixed(2)} (difference N$ ${Math.abs(reconciliation.ledgerIntegrityDifferenceNAD).toFixed(2)}).`);
+  }
+  return `Potential wallet discrepancy for admin review: ${explanations.join(' ')} This mismatch is not, by itself, proof of fraud.`;
+}
+
+function shouldAutoCorrectWalletBalance(reconciliation) {
+  return reconciliation.status === 'mismatch'
+    && reconciliation.transactionCount > 0
+    && reconciliation.ledgerIntegrityDifferenceNAD === 0
+    && reconciliation.differenceNAD !== 0
+    && reconciliation.ledgerBalanceNAD >= 0;
+}
+
+async function autoCorrectWalletBalance(admin, account, reconciliation, actorType = 'admin') {
+  if (!shouldAutoCorrectWalletBalance(reconciliation)) return null;
+
+  const previousBalanceNAD = Number(account.walletBalanceNAD || 0);
+  const correctedBalanceNAD = reconciliation.ledgerBalanceNAD;
+  return withMongoTransaction(async (session) => {
+    const updatedAccount = await User.findOneAndUpdate({
+      _id: account._id,
+      $expr: { $eq: [{ $ifNull: ['$walletBalanceNAD', 0] }, previousBalanceNAD] }
+    }, {
+      $set: { walletBalanceNAD: correctedBalanceNAD }
+    }, { new: true, session });
+    if (!updatedAccount) return null;
+
+    await AccountNotification.create([{
+      userId: account._id,
+      createdBy: admin._id,
+      title: 'Your wallet balance was corrected',
+      message: `We found a difference between your wallet balance and its transaction records. Your balance was updated from N$ ${reconciliation.accountBalanceNAD.toFixed(2)} to N$ ${correctedBalanceNAD.toFixed(2)} to match the recorded wallet transactions. If you have questions, please contact support.`,
+      destination: 'account'
+    }], { session });
+    await ModerationAudit.create([{
+      actorId: actorType === 'admin' ? admin._id : null,
+      actorType,
+      action: 'wallet_balance_auto_corrected',
+      targetType: 'account',
+      targetId: account._id.toString(),
+      targetLabel: `${account.name || 'Unnamed account'} (${account.email})`,
+      details: `Wallet balance automatically corrected from N$ ${reconciliation.accountBalanceNAD.toFixed(2)} to N$ ${correctedBalanceNAD.toFixed(2)} because transaction totals matched the latest ledger balance${actorType === 'system' ? ' during account activity' : ''}.`
+    }], { session });
+
+    return { previousBalanceNAD: reconciliation.accountBalanceNAD, correctedBalanceNAD, userNotified: true };
+  });
 }
 
 async function updateWalletReconciliationAlert(admin, account, reconciliation) {
@@ -1924,14 +2020,14 @@ async function updateWalletReconciliationAlert(admin, account, reconciliation) {
     alert = await WalletReconciliationAlert.findOneAndUpdate(
       { accountId: account._id },
       pipeline,
-      { upsert: true, new: true }
+      { upsert: true, new: true, updatePipeline: true }
     );
   } catch (error) {
     if (error?.code !== 11000) throw error;
     alert = await WalletReconciliationAlert.findOneAndUpdate(
       { accountId: account._id },
       pipeline,
-      { new: true }
+      { new: true, updatePipeline: true }
     );
     if (!alert) throw new Error('Could not update the wallet reconciliation alert after a concurrent update.');
   }
@@ -1944,10 +2040,7 @@ async function updateWalletReconciliationAlert(admin, account, reconciliation) {
     $set: { notifiedGeneration: alert.generation }
   }, { new: true });
   if (claim) {
-    const differenceDescription = reconciliation.differenceNAD === 0
-      ? `Ledger activity implies N$ ${reconciliation.expectedBalanceNAD.toFixed(2)}, but the final recorded balance is N$ ${reconciliation.ledgerBalanceNAD.toFixed(2)}.`
-      : `The account balance is N$ ${reconciliation.differenceNAD > 0 ? 'higher' : 'lower'} than the ledger by N$ ${Math.abs(reconciliation.differenceNAD).toFixed(2)}.`;
-    const message = `${account.name || 'Unnamed account'} (${account.email}) has a wallet reconciliation discrepancy. ${differenceDescription} Matching balance amount: N$ ${reconciliation.matchedBalanceNAD.toFixed(2)}. Review the account activity before taking action.`;
+    const message = `${account.name || 'Unnamed account'} (${account.email}) has a wallet reconciliation discrepancy. ${reconciliation.description} Amount present in both records: N$ ${reconciliation.matchedBalanceNAD.toFixed(2)}. Review the account activity before taking action.`;
     try {
       await AccountNotification.create({
         userId: admin._id,
@@ -1992,6 +2085,46 @@ async function getWalletLedgerSummary(userId) {
     firstBalanceAfterNAD: first.balanceAfterNAD,
     lastBalanceAfterNAD: last.balanceAfterNAD
   };
+}
+
+async function reconcileWalletOnAccountInteraction(account) {
+  const ledgerSummary = await getWalletLedgerSummary(account._id);
+  let reconciliation = reconcileWalletBalance(account.walletBalanceNAD || 0, ledgerSummary);
+  const requestingUserIsAdmin = isAdminUser(account);
+  let admin = requestingUserIsAdmin ? account : null;
+  if (reconciliation.status === 'mismatch' && !admin && mongoose.isValidObjectId(process.env.ADMIN_USER_ID)) {
+    const configuredAdmin = await User.findById(process.env.ADMIN_USER_ID).select('email emailVerified role').lean();
+    if (configuredAdmin && isAdminUser(configuredAdmin)) admin = configuredAdmin;
+  }
+
+  if (reconciliation.status === 'mismatch' && !admin) {
+    throw new Error('Wallet reconciliation could not run because the configured Super Admin account is unavailable.');
+  }
+
+  let autoCorrection = null;
+  if (admin) {
+    autoCorrection = await autoCorrectWalletBalance(
+      admin,
+      account,
+      reconciliation,
+      requestingUserIsAdmin ? 'admin' : 'system'
+    );
+    if (autoCorrection) {
+      account.walletBalanceNAD = autoCorrection.correctedBalanceNAD;
+      reconciliation = reconcileWalletBalance(autoCorrection.correctedBalanceNAD, ledgerSummary);
+    } else if (shouldAutoCorrectWalletBalance(reconciliation)) {
+      const currentAccount = await User.findById(account._id).select('walletBalanceNAD').lean();
+      if (currentAccount) {
+        account.walletBalanceNAD = currentAccount.walletBalanceNAD || 0;
+        reconciliation = reconcileWalletBalance(account.walletBalanceNAD, ledgerSummary);
+      }
+    }
+    await updateWalletReconciliationAlert(admin, account, reconciliation);
+  } else {
+    await updateWalletReconciliationAlert(account, account, reconciliation);
+  }
+
+  return { reconciliation, autoCorrection };
 }
 
 function calculateWalletPayment(totalNAD, walletBalanceNAD, paymentMethod) {
@@ -2349,6 +2482,10 @@ function resolveSellerApprovalState(autoApprovalEnabled) {
   return autoApprovalEnabled ? 'accepted' : 'pending';
 }
 
+function isSellerOrderShippingNeeded(sellerOrder) {
+  return sellerOrder?.approvalStatus === 'accepted' && sellerOrder?.fulfillmentStatus === 'processing';
+}
+
 function normalizeImageUrls(input) {
   const values = Array.isArray(input) ? input : [input];
   const seen = new Set();
@@ -2570,7 +2707,9 @@ app.post('/api/auth/register', async (req, res) => {
   if (referralCode && !/^[A-F0-9]{12}$/.test(referralCode)) {
     return res.status(400).json({ error: 'That referral code is not valid.' });
   }
-  if (process.env.NODE_ENV === 'production' && (!passwordResetMailer || !resolveAppBaseUrl())) {
+  const directVerificationLink = isEmailVerificationTestEmail(email, emailVerificationTestEmails);
+  if (process.env.NODE_ENV === 'production'
+    && ((!passwordResetMailer && !directVerificationLink) || !resolveAppBaseUrl())) {
     return res.status(503).json({ error: 'Email verification is not configured. Contact Z support.' });
   }
   const referrer = referralCode ? await User.findOne({ referralCode }) : null;
@@ -3186,15 +3325,29 @@ app.post('/api/orders', async (req, res) => {
   if (paymentMethod === 'wallet' && walletUsedNAD <= 0) {
     return res.status(409).json({ error: 'Your Z balance is empty. Choose card checkout instead.' });
   }
-  if (cardDueNAD > 0 && !mockPaymentsEnabled) {
+  if (cardDueNAD > 0 && !mockPaymentsEnabled && !dpoPaymentsEnabled) {
     return res.status(503).json({ error: 'Test card checkout is disabled. A live card provider is not configured.' });
   }
   await reserveOrderStock(quote.items);
 
   const orderNumber = `Z-${Date.now()}-${randomBytes(2).toString('hex').toUpperCase()}`;
-  const paymentIntent = cardDueNAD > 0 ? paymentAdapter.createIntent(orderNumber) : null;
+  let paymentIntent = null;
   let order;
   try {
+    if (cardDueNAD > 0 && dpoPaymentsEnabled) {
+      const appBaseUrl = resolveAppBaseUrl();
+      if (!appBaseUrl) throw apiError(503, 'A public application URL is required for DPO sandbox checkout.');
+      const returnUrl = new URL('/api/payments/dpo/return', appBaseUrl);
+      returnUrl.searchParams.set('orderNumber', orderNumber);
+      paymentIntent = await paymentAdapter.createIntent(orderNumber, {
+        amountNAD: cardDueNAD,
+        customerEmail: user.email,
+        returnUrl: returnUrl.toString(),
+        paymentTimeoutMinutes: Math.max(1, Math.ceil(reservationDurationMs / 60_000))
+      });
+    } else if (cardDueNAD > 0) {
+      paymentIntent = paymentAdapter.createIntent(orderNumber);
+    }
     order = await Order.create({
       orderNumber,
       buyerId: user._id,
@@ -3209,7 +3362,7 @@ app.post('/api/orders', async (req, res) => {
       paymentMethod,
       walletUsedNAD,
       cardDueNAD,
-      paymentMode: 'mock',
+      paymentMode: paymentAdapter.mode,
       paymentReference: paymentIntent?.reference || '',
       reservationExpiresAt: new Date(Date.now() + reservationDurationMs)
     });
@@ -3225,7 +3378,11 @@ app.post('/api/orders', async (req, res) => {
     paymentMethod: order.paymentMethod,
     walletUsedNAD: order.walletUsedNAD,
     cardDueNAD: order.cardDueNAD,
-    paymentIntent,
+    paymentIntent: paymentIntent
+      ? paymentAdapter.mode === 'dpo'
+        ? { status: paymentIntent.status, redirectUrl: paymentIntent.redirectUrl }
+        : paymentIntent
+      : null,
     reservationExpiresAt: order.reservationExpiresAt,
     sellerOrders: order.sellerOrders.map((sellerOrder) => ({
       shopName: sellerOrder.shopName,
@@ -3242,6 +3399,74 @@ app.post('/api/orders', async (req, res) => {
   });
 });
 
+app.get('/api/payments/dpo/return', async (req, res) => {
+  const orderNumber = typeof req.query.orderNumber === 'string' ? req.query.orderNumber : '';
+  const transactionToken = typeof req.query.TransactionToken === 'string'
+    ? req.query.TransactionToken
+    : typeof req.query.TransToken === 'string'
+      ? req.query.TransToken
+      : '';
+  const returnToCheckout = (status) => {
+    const appBaseUrl = resolveAppBaseUrl() || 'http://localhost:3001';
+    const checkoutUrl = new URL('/checkout', appBaseUrl);
+    if (orderNumber) checkoutUrl.searchParams.set('orderNumber', orderNumber);
+    checkoutUrl.searchParams.set('dpo', status);
+    return res.redirect(`${checkoutUrl.pathname}${checkoutUrl.search}`);
+  };
+
+  if (!dpoPaymentsEnabled || !orderNumber || !transactionToken) return returnToCheckout('invalid');
+  let order = await Order.findOne({
+    orderNumber,
+    paymentMode: 'dpo',
+    paymentReference: transactionToken
+  });
+  if (!order) return returnToCheckout('invalid');
+  if (typeof req.query.CompanyRef === 'string' && req.query.CompanyRef !== order.orderNumber) {
+    return returnToCheckout('invalid');
+  }
+  if (order.paymentStatus === 'paid') return returnToCheckout('paid');
+  await releaseExpiredReservations();
+  order = await Order.findById(order._id);
+  if (!order) return returnToCheckout('invalid');
+  if (order.paymentStatus !== 'pending' || order.reservationExpiresAt <= new Date() || order.reservationsReleasedAt) {
+    return returnToCheckout('not-paid');
+  }
+
+  const payment = await paymentAdapter.verifyIntent(transactionToken);
+  if (payment.status !== 'paid') return returnToCheckout('not-paid');
+  if (!isMatchingDpoPayment(payment, order.cardDueNAD, order.orderNumber)) {
+    console.error(`DPO payment verification mismatch for order ${order.orderNumber}.`);
+    return returnToCheckout('verification-error');
+  }
+
+  try {
+    await settleOrderPayment(order.orderNumber, order.buyerId, {
+      reference: payment.reference,
+      confirmedAt: new Date()
+    });
+  } catch (error) {
+    const updatedOrder = await Order.findOne({ orderNumber: order.orderNumber }).select('paymentStatus').lean();
+    if (updatedOrder?.paymentStatus !== 'paid') throw error;
+  }
+  return returnToCheckout('paid');
+});
+
+app.get('/api/orders/:orderNumber/payment-status', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to check your order payment.' });
+  await releaseExpiredReservations();
+  const order = await Order.findOne({ orderNumber: req.params.orderNumber, buyerId: user._id })
+    .select('orderNumber paymentStatus paymentMode cardDueNAD')
+    .lean();
+  if (!order) return res.status(404).json({ error: 'Order not found.' });
+  return res.json({
+    orderNumber: order.orderNumber,
+    paymentStatus: order.paymentStatus,
+    paymentMode: order.paymentMode,
+    cardDueNAD: order.cardDueNAD
+  });
+});
+
 app.post('/api/orders/:orderNumber/mock-payment', async (req, res) => {
   const user = await getSessionUser(req);
   if (!user) return res.status(401).json({ error: 'Sign in to confirm this test payment.' });
@@ -3254,7 +3479,9 @@ app.post('/api/orders/:orderNumber/mock-payment', async (req, res) => {
   }
   let payment = null;
   if (order.cardDueNAD > 0) {
-    if (!mockPaymentsEnabled) return res.status(503).json({ error: 'Test card checkout is disabled. A live card provider is not configured.' });
+    if (order.paymentMode !== 'mock' || !mockPaymentsEnabled) {
+      return res.status(503).json({ error: 'This card payment must be completed through its configured payment provider.' });
+    }
     payment = paymentAdapter.confirmIntent(order.paymentReference);
   }
   const paidOrder = await settleOrderPayment(order.orderNumber, user._id, payment);
@@ -3580,6 +3807,7 @@ app.get('/api/seller/orders', async (req, res) => {
       buyerName: getBuyerDisplayName(order),
       buyerId: order.buyerId ? { id: order.buyerId._id?.toString?.() || order.buyerId.toString?.(), name: order.buyerId.name || 'Customer' } : null,
       ...sellerOrder,
+      shippingNeeded: isSellerOrderShippingNeeded(sellerOrder),
       payoutMode: 'wallet'
     })));
   return res.json({ sellerOrders });
@@ -3804,6 +4032,7 @@ app.post('/api/seller/statements', sellerStatementRateLimit, async (req, res) =>
     walletBalanceNAD: roundNAD(account?.walletBalanceNAD || 0),
     entries,
     walletTransactions: walletTransactions.map((transaction) => ({
+      transactionId: transaction._id.toString(),
       type: transaction.type,
       amountNAD: transaction.amountNAD,
       balanceAfterNAD: transaction.balanceAfterNAD,
@@ -4241,6 +4470,7 @@ app.post('/api/admin/statements/verify-upload', adminStatementRateLimit, async (
         message: matched
           ? 'The signed Z Namibia record is valid and the uploaded PDF text matches its statement values.'
           : 'The signed record is valid, but one or more uploaded PDF values do not match it.',
+        accountId: record.userId.toString(),
         statement: record.snapshot,
         signature: record.signature,
         checks
@@ -5080,6 +5310,8 @@ app.get('/api/admin/users/:id/transactions', async (req, res) => {
   if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: 'Account not found.' });
 
   const type = typeof req.query.type === 'string' ? req.query.type : 'buyer-orders';
+  const orderNumber = typeof req.query.orderNumber === 'string' ? req.query.orderNumber.trim() : '';
+  const transactionId = typeof req.query.transactionId === 'string' ? req.query.transactionId : '';
   const page = req.query.page === undefined ? 1 : Number(req.query.page);
   const pageSize = req.query.pageSize === undefined ? 25 : Number(req.query.pageSize);
   const supportedTypes = [
@@ -5094,6 +5326,11 @@ app.get('/api/admin/users/:id/transactions', async (req, res) => {
     'appeal-access', 'referrals'
   ];
   if (!supportedTypes.includes(type)) return res.status(400).json({ error: 'Choose a supported transaction type.' });
+  if (orderNumber.length > 100) return res.status(400).json({ error: 'Order reference is too long.' });
+  if (transactionId && !mongoose.isValidObjectId(transactionId)) return res.status(400).json({ error: 'Transaction reference is invalid.' });
+  if ((orderNumber || transactionId) && !['seller-orders', 'wallet'].includes(type)) {
+    return res.status(400).json({ error: 'Transaction filters are only supported for seller orders and wallet records.' });
+  }
   if (!Number.isSafeInteger(page) || page < 1 || !Number.isSafeInteger(pageSize) || pageSize < 1 || pageSize > 100 || !Number.isSafeInteger((page - 1) * pageSize)) {
     return res.status(400).json({ error: 'Page must be a positive integer and page size must be between 1 and 100.' });
   }
@@ -5133,10 +5370,12 @@ app.get('/api/admin/users/:id/transactions', async (req, res) => {
       Order.countDocuments({ buyerId: account._id })
     ]);
   } else if (type === 'seller-orders') {
+    const sellerOrderMatch = { 'sellerOrders.sellerId': account._id };
+    if (orderNumber) sellerOrderMatch.orderNumber = orderNumber;
     [records, total] = await Promise.all([
       Order.aggregate([
         { $unwind: '$sellerOrders' },
-        { $match: { 'sellerOrders.sellerId': account._id } },
+        { $match: sellerOrderMatch },
         { $sort: { createdAt: -1, _id: -1, 'sellerOrders._id': -1 } },
         { $skip: skip },
         { $limit: pageSize },
@@ -5177,13 +5416,19 @@ app.get('/api/admin/users/:id/transactions', async (req, res) => {
           payoutMarkedAt: '$sellerOrders.payoutMarkedAt'
         } }
       ]),
-      Order.countDocuments({ 'sellerOrders.sellerId': account._id })
+      Order.countDocuments({
+        'sellerOrders.sellerId': account._id,
+        ...(orderNumber ? { orderNumber } : {})
+      })
     ]);
   } else if (type === 'wallet') {
+    const walletFilter = { userId: account._id };
+    if (orderNumber) walletFilter.orderNumber = orderNumber;
+    if (transactionId) walletFilter._id = transactionId;
     [records, total] = await Promise.all([
-      WalletTransaction.find({ userId: account._id }).sort({ createdAt: -1, _id: -1 }).skip(skip).limit(pageSize)
+      WalletTransaction.find(walletFilter).sort({ createdAt: -1, _id: -1 }).skip(skip).limit(pageSize)
         .select('type amountNAD balanceAfterNAD orderNumber description reference createdAt updatedAt').lean(),
-      WalletTransaction.countDocuments({ userId: account._id })
+      WalletTransaction.countDocuments(walletFilter)
     ]);
   } else if (type === 'payouts') {
     [records, total] = await Promise.all([
@@ -5911,6 +6156,62 @@ app.post('/api/admin/notifications', async (req, res) => {
   return res.status(201).json({ ok: true, deliveredCount });
 });
 
+app.get('/api/admin/alerts', async (req, res) => {
+  const admin = await getSessionUser(req);
+  if (!admin || !isAdminUser(admin)) return res.status(403).json({ error: 'Admin access is not configured for this account.' });
+  const status = req.query.status || 'open';
+  if (!['open', 'resolved', 'all'].includes(status)) {
+    return res.status(400).json({ error: 'Choose open, resolved, or all alerts.' });
+  }
+  const filter = status === 'all' ? {} : { status };
+  const [alerts, total] = await Promise.all([
+    WalletReconciliationAlert.find(filter)
+      .sort({ lastCheckedAt: -1, _id: -1 })
+      .limit(100)
+      .populate({ path: 'accountId', select: 'name email' })
+      .lean(),
+    WalletReconciliationAlert.countDocuments(filter)
+  ]);
+  return res.json({
+    alerts: alerts.map((alert) => {
+      const reconciliation = {
+        status: 'mismatch',
+        accountBalanceNAD: alert.accountBalanceNAD,
+        ledgerBalanceNAD: alert.ledgerBalanceNAD,
+        expectedBalanceNAD: alert.expectedBalanceNAD,
+        matchedBalanceNAD: alert.matchedBalanceNAD,
+        accountOnlyNAD: Math.max(0, alert.differenceNAD),
+        ledgerOnlyNAD: Math.max(0, -alert.differenceNAD),
+        differenceNAD: alert.differenceNAD,
+        ledgerIntegrityDifferenceNAD: alert.ledgerIntegrityDifferenceNAD
+      };
+      const reconciliationDescription = describeWalletReconciliation(reconciliation);
+      return {
+        id: alert._id.toString(),
+        status: alert.status,
+        account: alert.accountId ? {
+          id: alert.accountId._id.toString(),
+          name: alert.accountId.name || 'Unnamed account',
+          email: alert.accountId.email
+        } : null,
+        description: alert.status === 'open'
+          ? reconciliationDescription
+          : reconciliationDescription.replace('Potential wallet discrepancy for admin review:', 'Previously detected discrepancy (resolved):'),
+        accountBalanceNAD: alert.accountBalanceNAD,
+        ledgerBalanceNAD: alert.ledgerBalanceNAD,
+        matchedBalanceNAD: alert.matchedBalanceNAD,
+        differenceNAD: alert.differenceNAD,
+        ledgerIntegrityDifferenceNAD: alert.ledgerIntegrityDifferenceNAD,
+        transactionCount: alert.transactionCount,
+        openedAt: alert.openedAt,
+        resolvedAt: alert.resolvedAt,
+        lastCheckedAt: alert.lastCheckedAt
+      };
+    }),
+    total
+  });
+});
+
 app.get('/api/admin/users/:id/activity', async (req, res) => {
   const admin = await getSessionUser(req);
   if (!admin || !isAdminUser(admin)) return res.status(403).json({ error: 'Admin access is not configured for this account.' });
@@ -5966,7 +6267,11 @@ app.get('/api/admin/users/:id/activity', async (req, res) => {
     User.countDocuments({ referredBy: account._id }),
     getWalletLedgerSummary(account._id)
   ]);
-  const walletReconciliation = reconcileWalletBalance(account.walletBalanceNAD || 0, walletLedgerSummary);
+  let walletReconciliation = reconcileWalletBalance(account.walletBalanceNAD || 0, walletLedgerSummary);
+  let autoCorrection = await autoCorrectWalletBalance(admin, account, walletReconciliation);
+  if (autoCorrection) {
+    walletReconciliation = reconcileWalletBalance(autoCorrection.correctedBalanceNAD, walletLedgerSummary);
+  }
   const { adminNotified } = await updateWalletReconciliationAlert(admin, account, walletReconciliation);
   const shopIds = shops.map((shop) => shop._id);
   const [receivedReportStats, receivedReports, reportHiddenListings] = shopIds.length
@@ -6021,7 +6326,8 @@ app.get('/api/admin/users/:id/activity', async (req, res) => {
     },
     financialReconciliation: {
       ...walletReconciliation,
-      adminNotified
+      adminNotified,
+      autoCorrection
     },
     riskSignals: {
       dismissedReportCount: account.dismissedListingReportCount || 0,
@@ -7698,6 +8004,7 @@ if (require.main === module) {
 module.exports = {
   canCancelOrder,
   resolveSellerApprovalState,
+  isSellerOrderShippingNeeded,
   normalizeCartItems,
   normalizeSavedCartItems,
   normalizeSavedWishlistIds,
@@ -7741,6 +8048,8 @@ module.exports = {
   resolvePayoutStatus,
   calculateWalletPayment,
   reconcileWalletBalance,
+  describeWalletReconciliation,
+  shouldAutoCorrectWalletBalance,
   isMatchingPromotionWalletDebit,
   getPromotionPaymentIssue,
   shouldCancelUnpaidPromotion,

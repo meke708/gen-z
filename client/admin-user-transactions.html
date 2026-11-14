@@ -34,10 +34,20 @@
         .toolbar button:disabled { opacity: .45; cursor: not-allowed; }
         .record-list { display: grid; gap: 10px; }
         .record { border: 1px solid var(--line); background: var(--white); }
+        .review-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 300px); align-items: start; gap: 14px; }
+        .review-layout:not(.is-reviewing) { display: block; }
+        .statement-claim { position: sticky; top: 16px; padding: 16px; border: 1px solid var(--line); background: var(--white); }
+        .statement-claim[hidden] { display: none; }
+        .statement-claim h2 { margin: 0; font: 400 20px Georgia, serif; }
+        .statement-claim p { color: var(--muted); font-size: 10px; line-height: 1.6; overflow-wrap: anywhere; }
+        #statement-claim-expected { color: var(--warning); font-weight: 700; }
+        .statement-claim pre { max-height: 240px; overflow: auto; padding: 10px; border: 1px solid var(--line); background: #f8f7f1; font: 10px/1.5 Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .record.is-review-target { border: 2px solid var(--warning); }
         .record summary { padding: 14px; cursor: pointer; font-size: 12px; font-weight: 700; overflow-wrap: anywhere; }
         .record pre { margin: 0; padding: 0 14px 14px; color: var(--muted); font: 10px/1.6 Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
         .empty { padding: 18px; border: 1px solid var(--line); color: var(--muted); background: var(--white); font-size: 11px; }
         @media (max-width: 760px) { .page-heading { flex-direction: column; } }
+        @media (max-width: 760px) { .review-layout { grid-template-columns: 1fr; } .statement-claim { position: static; grid-row: 1; } }
         @media (max-width: 520px) {
             .site-header { align-items: flex-start; padding: 12px 18px; }
             nav { gap: 9px; }
@@ -115,7 +125,17 @@
             <button id="previous-page" type="button" disabled>Previous</button>
             <button id="next-page" type="button" disabled>Next</button>
         </div>
-        <div class="record-list" id="records"></div>
+        <div class="review-layout" id="review-layout">
+            <div class="record-list" id="records"></div>
+            <aside class="statement-claim" id="statement-claim" aria-labelledby="statement-claim-title" hidden>
+                <h2 id="statement-claim-title">Statement claim</h2>
+                <p id="statement-claim-meta"></p>
+                <strong>Text extracted from uploaded PDF</strong>
+                <pre id="statement-claim-excerpt"></pre>
+                <p id="statement-claim-expected"></p>
+                <p>This claim is untrusted PDF text. Compare it with the highlighted official transaction before taking action.</p>
+            </aside>
+        </div>
     </main>
     <script>
         const accountId = window.location.pathname.split("/").filter(Boolean).at(-2);
@@ -123,17 +143,43 @@
         const accountIdentity = document.querySelector("#account-identity");
         const status = document.querySelector("#status");
         const recordsElement = document.querySelector("#records");
+        const reviewLayout = document.querySelector("#review-layout");
+        const statementClaim = document.querySelector("#statement-claim");
         const typeFilter = document.querySelector("#type-filter");
         const pageSizeSelect = document.querySelector("#page-size");
         const pageSummary = document.querySelector("#page-summary");
         const previousButton = document.querySelector("#previous-page");
         const nextButton = document.querySelector("#next-page");
         const backUrl = `/admin/accounts/${encodeURIComponent(accountId)}/details`;
+        const pageQuery = new URLSearchParams(window.location.search);
+        const orderNumberFilter = pageQuery.get("orderNumber") || "";
+        const transactionIdFilter = pageQuery.get("transactionId") || "";
+        const statementReviewId = pageQuery.get("statementReview") || "";
+        const statementCheckIndex = pageQuery.get("statementCheck") || "";
         let currentPage = 1;
         let totalPages = 0;
         let requestInFlight = false;
         document.querySelector("#back-link").href = backUrl;
         document.querySelector("#details-link").href = backUrl;
+
+        if (statementReviewId) {
+            reviewLayout.classList.add("is-reviewing");
+            statementClaim.hidden = false;
+            try {
+                const claim = JSON.parse(sessionStorage.getItem(`statement-review:${statementReviewId}:${statementCheckIndex}`) || "null");
+                if (!claim || claim.statementId !== statementReviewId) throw new Error("Review claim details were not found.");
+                document.querySelector("#statement-claim-meta").textContent =
+                    `${claim.label} · ${claim.shopName} · Statement ${claim.statementId}`;
+                document.querySelector("#statement-claim-excerpt").textContent =
+                    claim.claimExcerpt || "No matching transaction text was found in the uploaded PDF. Recheck the original upload.";
+                document.querySelector("#statement-claim-expected").textContent =
+                    `Official signed value: ${claim.expectedValue || "See statement record"}`;
+            } catch (error) {
+                document.querySelector("#statement-claim-meta").textContent = error.message || "Review claim details are unavailable.";
+                document.querySelector("#statement-claim-excerpt").textContent = "Return to statement verification and upload the PDF again.";
+                document.querySelector("#statement-claim-expected").textContent = "";
+            }
+        }
 
         const recordTitles = {
             "buyer-orders": (record) => `${record.orderNumber} · N$ ${Number(record.totalNAD || 0).toFixed(2)} · ${record.paymentStatus}`,
@@ -182,6 +228,13 @@
             for (const record of result.records) {
                 const item = document.createElement("details");
                 item.className = "record";
+                const isTargetOrder = orderNumberFilter && record.orderNumber === orderNumberFilter;
+                const isTargetTransaction = transactionIdFilter
+                    && (record._id === transactionIdFilter || record.transactionId === transactionIdFilter);
+                if (isTargetOrder || isTargetTransaction) {
+                    item.classList.add("is-review-target");
+                    item.open = true;
+                }
                 const summary = document.createElement("summary");
                 summary.textContent = recordTitles[result.type](record);
                 const content = document.createElement("pre");
@@ -206,6 +259,8 @@
                 page: String(currentPage),
                 pageSize: pageSizeSelect.value
             });
+            if (orderNumberFilter) params.set("orderNumber", orderNumberFilter);
+            if (transactionIdFilter) params.set("transactionId", transactionIdFilter);
             try {
                 const response = await fetch(`/api/admin/users/${encodeURIComponent(accountId)}/transactions?${params}`);
                 let result;
@@ -231,7 +286,7 @@
                 status.textContent = error.message || "Account history could not be loaded.";
             } finally {
                 requestInFlight = false;
-                typeFilter.disabled = false;
+                typeFilter.disabled = Boolean(orderNumberFilter || transactionIdFilter);
                 pageSizeSelect.disabled = false;
                 previousButton.disabled = currentPage <= 1 || totalPages === 0;
                 nextButton.disabled = currentPage >= totalPages || totalPages === 0;

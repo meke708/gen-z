@@ -75,6 +75,9 @@
         .checks li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid #e8ebdf; font-size: 10px; }
         .check-pass { color: var(--forest); font-weight: 700; }
         .check-fail { color: var(--red); font-weight: 700; }
+        .check-result { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+        .review-transaction { display: inline-flex; min-height: 30px; align-items: center; padding: 0 9px; border: 1px solid var(--forest); border-radius: 3px; color: var(--white); background: var(--forest); font-size: 9px; font-weight: 700; text-decoration: none; }
+        .review-transaction:hover { color: var(--forest); background: transparent; }
         .limitation { margin: 16px 0 0; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 10px; line-height: 1.6; }
         @media (max-width: 900px) { .usage-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
         @media (max-width: 620px) { .site-header { align-items: flex-start; flex-direction: column; } main { margin-top: 30px; } form, .result, .usage-panel { padding: 15px; } .usage-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .usage-breakdowns { grid-template-columns: 1fr; } .handoff-form { grid-template-columns: 1fr; } .handoff-note { grid-column: 1; } }
@@ -377,14 +380,65 @@
                 resultTitle.textContent = result.message;
                 resultTitle.className = `result-title ${result.verified ? "pass" : "fail"}`;
                 resultMeta.textContent = `Statement ${result.statement.statementId} · ${result.statement.shopName} · ${new Date(result.statement.issuedAt).toLocaleString()}`;
-                for (const check of result.checks) {
+                for (const [checkIndex, check] of result.checks.entries()) {
                     const item = document.createElement("li");
                     const label = document.createElement("span");
                     const outcome = document.createElement("span");
                     label.textContent = check.label;
                     outcome.className = check.matched ? "check-pass" : "check-fail";
                     outcome.textContent = check.matched ? "Match" : "Mismatch";
-                    item.append(label, outcome);
+                    const checkResult = document.createElement("div");
+                    checkResult.className = "check-result";
+                    checkResult.append(outcome);
+                    if (!check.matched) {
+                        const sellerOrderMatch = /^Seller order (\d+)/.exec(check.label);
+                        const walletActivityMatch = /^Wallet activity (\d+)/.exec(check.label);
+                        const isBalanceCheck = check.label === "Z balance";
+                        let target = null;
+                        if (sellerOrderMatch) {
+                            const entry = result.statement.entries[Number(sellerOrderMatch[1]) - 1];
+                            if (entry?.orderNumber) target = { type: "seller-orders", orderNumber: entry.orderNumber };
+                        } else if (walletActivityMatch) {
+                            const transaction = result.statement.walletTransactions[Number(walletActivityMatch[1]) - 1];
+                            if (transaction) {
+                                target = {
+                                    type: "wallet",
+                                    ...(transaction.transactionId ? { transactionId: transaction.transactionId } : {}),
+                                    ...(transaction.orderNumber ? { orderNumber: transaction.orderNumber } : {})
+                                };
+                            }
+                        } else if (isBalanceCheck) {
+                            target = { type: "wallet" };
+                        }
+                        if (target && result.accountId) {
+                            const claim = {
+                                label: check.label,
+                                claimExcerpt: check.claimExcerpt || "",
+                                expectedValue: check.expectedValue || "",
+                                statementId: result.statement.statementId,
+                                shopName: result.statement.shopName,
+                                issuedAt: result.statement.issuedAt
+                            };
+                            try {
+                                sessionStorage.setItem(`statement-review:${claim.statementId}:${checkIndex}`, JSON.stringify(claim));
+                            } catch {
+                                throw new Error("Could not save temporary review details in this browser session.");
+                            }
+                            const query = new URLSearchParams({
+                                type: target.type,
+                                statementReview: claim.statementId,
+                                statementCheck: String(checkIndex)
+                            });
+                            if (target.orderNumber) query.set("orderNumber", target.orderNumber);
+                            if (target.transactionId) query.set("transactionId", target.transactionId);
+                            const link = document.createElement("a");
+                            link.className = "review-transaction";
+                            link.href = `/admin/accounts/${encodeURIComponent(result.accountId)}/transactions?${query}`;
+                            link.textContent = isBalanceCheck ? "Review balance ledger" : "Review transaction";
+                            checkResult.append(link);
+                        }
+                    }
+                    item.append(label, checkResult);
                     checksList.append(item);
                 }
                 resultPanel.hidden = false;

@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { reconcileWalletBalance } = require('./server');
+const { reconcileWalletBalance, shouldAutoCorrectWalletBalance } = require('./server');
 
 test('wallet balance without ledger history is shown as unverified, not mismatched', () => {
   const reconciliation = reconcileWalletBalance(42.5, null);
@@ -9,6 +9,7 @@ test('wallet balance without ledger history is shown as unverified, not mismatch
   assert.equal(reconciliation.accountBalanceNAD, 42.5);
   assert.equal(reconciliation.unverifiedBalanceNAD, 42.5);
   assert.equal(reconciliation.matchedBalanceNAD, null);
+  assert.match(reconciliation.description, /no ledger evidence to verify it/);
 });
 
 test('wallet credits, purchase debits, and refunds reconcile against the current balance', () => {
@@ -29,6 +30,7 @@ test('wallet credits, purchase debits, and refunds reconcile against the current
   assert.equal(reconciliation.matchedBalanceNAD, 145);
   assert.equal(reconciliation.differenceNAD, 0);
   assert.equal(reconciliation.ledgerIntegrityDifferenceNAD, 0);
+  assert.match(reconciliation.description, /both equal N\$ 145\.00/);
 });
 
 test('a first wallet purchase debit infers its pre-transaction opening balance', () => {
@@ -48,8 +50,8 @@ test('a first wallet purchase debit infers its pre-transaction opening balance',
   assert.equal(reconciliation.expectedBalanceNAD, 70);
 });
 
-test('wallet reconciliation reports the portion shared by account and ledger balances', () => {
-  const reconciliation = reconcileWalletBalance(130, {
+test('wallet reconciliation explains account funds missing from the ledger', () => {
+  const reconciliation = reconcileWalletBalance(170, {
     transactionCount: 2,
     firstType: 'seller_credit',
     firstAmountNAD: 50,
@@ -61,8 +63,10 @@ test('wallet reconciliation reports the portion shared by account and ledger bal
   });
 
   assert.equal(reconciliation.status, 'mismatch');
-  assert.equal(reconciliation.matchedBalanceNAD, 130);
-  assert.equal(reconciliation.differenceNAD, -20);
+  assert.equal(reconciliation.matchedBalanceNAD, 150);
+  assert.equal(reconciliation.differenceNAD, 20);
+  assert.match(reconciliation.description, /N\$ 20\.00 is present in the account balance/);
+  assert.match(reconciliation.description, /not, by itself, proof of fraud/);
 });
 
 test('wallet reconciliation detects transaction totals that do not match the final ledger snapshot', () => {
@@ -81,4 +85,34 @@ test('wallet reconciliation detects transaction totals that do not match the fin
   assert.equal(reconciliation.differenceNAD, 0);
   assert.equal(reconciliation.expectedBalanceNAD, 145);
   assert.equal(reconciliation.ledgerIntegrityDifferenceNAD, 5);
+  assert.match(reconciliation.description, /imply N\$ 145\.00, but the latest ledger snapshot is N\$ 140\.00/);
+  assert.equal(shouldAutoCorrectWalletBalance(reconciliation), false);
+});
+
+test('wallet balances are auto-correctable only when a nonempty ledger is internally consistent', () => {
+  const consistentMismatch = reconcileWalletBalance(170, {
+    transactionCount: 2,
+    firstType: 'seller_credit',
+    firstAmountNAD: 50,
+    firstBalanceAfterNAD: 150,
+    creditsNAD: 50,
+    debitsNAD: 0,
+    refundsNAD: 0,
+    lastBalanceAfterNAD: 150
+  });
+  const unverified = reconcileWalletBalance(170, null);
+  const matched = reconcileWalletBalance(150, {
+    transactionCount: 2,
+    firstType: 'seller_credit',
+    firstAmountNAD: 50,
+    firstBalanceAfterNAD: 150,
+    creditsNAD: 50,
+    debitsNAD: 0,
+    refundsNAD: 0,
+    lastBalanceAfterNAD: 150
+  });
+
+  assert.equal(shouldAutoCorrectWalletBalance(consistentMismatch), true);
+  assert.equal(shouldAutoCorrectWalletBalance(unverified), false);
+  assert.equal(shouldAutoCorrectWalletBalance(matched), false);
 });

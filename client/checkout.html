@@ -128,7 +128,7 @@
                     <label class="payment-choice"><input type="radio" name="payment-method" value="wallet" id="wallet-payment-choice" disabled><span>Use Z balance<small id="wallet-available">Choose a delivery town to load your balance.</small></span></label>
                 </fieldset>
                 <p class="wallet-payment-breakdown" id="wallet-payment-breakdown" hidden></p>
-                <p class="demo-note">Z balance is virtual credit held by Z Namibia. It can be used for purchases here. Card checkout is simulated in this test version; no real payment is processed.</p>
+                <p class="demo-note">Z balance is virtual credit held by Z Namibia. Card checkout uses the server-configured test mode; DPO sandbox payments do not charge real money.</p>
                 <button class="primary-button" id="create-order" type="button" disabled><span>Create test order</span><span aria-hidden="true">&#8594;</span></button>
                 <button class="secondary-button" id="confirm-payment" type="button" hidden>Confirm payment</button>
                 <p class="message" id="payment-message" role="status" aria-live="polite"></p>
@@ -297,8 +297,43 @@
                 const walletUsedNAD = Math.min(walletBalanceNAD, totalNAD);
                 const cardDueNAD = Math.max(0, totalNAD - walletUsedNAD);
                 walletPaymentBreakdown.textContent = cardDueNAD > 0
-                    ? `${money(walletUsedNAD)} from Z balance · ${money(cardDueNAD)} by test card`
+                    ? `${money(walletUsedNAD)} from Z balance · ${money(cardDueNAD)} by test payment`
                     : `${money(walletUsedNAD)} from Z balance · no card payment needed`;
+            }
+        }
+
+        async function showDpoReturnStatus() {
+            const params = new URLSearchParams(window.location.search);
+            const dpoStatus = params.get("dpo");
+            const orderNumber = params.get("orderNumber");
+            if (!dpoStatus) return;
+            checkoutGrid.hidden = false;
+            document.querySelector("#empty-state").hidden = true;
+            if (!orderNumber) {
+                paymentMessage.textContent = "The DPO payment return did not include an order reference. Check your orders before trying again.";
+                return;
+            }
+
+            try {
+                const order = await requestJson(`/api/orders/${encodeURIComponent(orderNumber)}/payment-status`);
+                if (order.paymentStatus === "paid") {
+                    window.ZCartSync.saveCart([]);
+                    paymentMessage.textContent = "DPO sandbox confirmed your payment. No real money was charged, and your order is recorded.";
+                    paymentMessage.classList.add("success");
+                    checkoutItems.replaceChildren();
+                    document.querySelector("#seller-breakdown").replaceChildren();
+                    confirmPaymentButton.hidden = true;
+                    createOrderButton.hidden = true;
+                    return;
+                }
+
+                paymentMessage.textContent = dpoStatus === "verification-error"
+                    ? "We could not verify the DPO payment details. Your order is not marked paid; please contact support before trying again."
+                    : "DPO has not confirmed this payment. Your order is still pending, so do not create a duplicate order.";
+                createOrderButton.disabled = true;
+                confirmPaymentButton.hidden = true;
+            } catch (error) {
+                paymentMessage.textContent = error.message;
             }
         }
 
@@ -320,14 +355,19 @@
                     })
                 });
                 activeOrder = order;
+                if (order.paymentMode === "dpo" && order.paymentIntent?.redirectUrl) {
+                    paymentMessage.textContent = "Order created. Redirecting to DPO's secure sandbox checkout...";
+                    window.location.assign(order.paymentIntent.redirectUrl);
+                    return;
+                }
                 const paymentSummary = order.walletUsedNAD > 0
-                    ? `${money(order.walletUsedNAD)} from Z balance${order.cardDueNAD > 0 ? ` and ${money(order.cardDueNAD)} by test card` : ''}`
-                    : `${money(order.cardDueNAD)} by test card`;
+                    ? `${money(order.walletUsedNAD)} from Z balance${order.cardDueNAD > 0 ? ` and ${money(order.cardDueNAD)} by test payment` : ''}`
+                    : `${money(order.cardDueNAD)} by test payment`;
                 paymentMessage.textContent = `Order ${order.orderNumber} created. ${paymentSummary}. Stock is reserved until ${new Date(order.reservationExpiresAt).toLocaleTimeString()}.`;
                 paymentMessage.classList.add("success");
                 confirmPaymentButton.hidden = false;
                 confirmPaymentButton.textContent = order.cardDueNAD > 0
-                    ? `Simulate card payment · ${money(order.cardDueNAD)}`
+                    ? `Simulate test payment · ${money(order.cardDueNAD)}`
                     : `Pay with Z balance · ${money(order.walletUsedNAD)}`;
                 createOrderButton.querySelector("span").textContent = "Test order created";
             } catch (error) {
@@ -360,7 +400,7 @@
             }
         });
 
-        window.ZCartSync.initialize().then(loadCart).catch((error) => {
+        window.ZCartSync.initialize().then(loadCart).then(showDpoReturnStatus).catch((error) => {
             document.querySelector("#empty-state").hidden = false;
             checkoutMessage.textContent = error.message;
         });
