@@ -28,6 +28,12 @@ const {
   isEmailVerificationLinkAllowed,
   parseEmailVerificationTestEmails
 } = require('./email-verification-settings');
+const {
+  EMAIL_VERIFICATION_RESEND_COOLDOWN_MS,
+  EMAIL_VERIFICATION_RESEND_LIMIT,
+  createEmailVerificationResendReservation,
+  getEmailVerificationResendLimitStatus
+} = require('./email-verification-resend');
 const { getDeveloperApiUsageCounters } = require('./developer-api-usage');
 const { verifyDeveloperTestPassword } = require('./developer-test-access');
 const {
@@ -231,6 +237,8 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true, lowercase: true, trim: true, maxlength: 254 },
   role: { type: String, enum: ['customer', 'moderator', 'sandbox'], default: 'customer', index: true },
   emailVerified: { type: Boolean, default: false },
+  emailVerificationResendHistory: { type: [Date], default: [] },
+  emailVerificationLastResendAt: { type: Date },
   isSuspended: { type: Boolean, default: false, index: true },
   walletBalanceNAD: { type: Number, default: 0, min: 0 },
   payoutBankAccount: {
@@ -2897,6 +2905,28 @@ app.post('/api/auth/verify-email/resend', emailVerificationRateLimit, async (req
   const user = await getSessionUser(req);
   if (!user) return res.status(401).json({ error: 'Sign in to verify your email address.' });
   if (user.emailVerified) return res.status(409).json({ error: 'Your email address is already verified.' });
+  const now = new Date();
+  const reservation = createEmailVerificationResendReservation(user._id, now);
+  const reserved = await User.findOneAndUpdate(
+    reservation.filter,
+    reservation.update,
+    reservation.options
+  );
+  if (!reserved) {
+    const currentUser = await User.findById(user._id)
+      .select('emailVerified emailVerificationResendHistory emailVerificationLastResendAt')
+      .lean();
+    if (currentUser?.emailVerified) {
+      return res.status(409).json({ error: 'Your email address is already verified.' });
+    }
+    const limitStatus = getEmailVerificationResendLimitStatus(currentUser, now);
+    const retryAfterSeconds = limitStatus?.retryAfterSeconds || Math.ceil(EMAIL_VERIFICATION_RESEND_COOLDOWN_MS / 1000);
+    res.set('Retry-After', String(retryAfterSeconds));
+    const error = limitStatus?.reason === 'cooldown'
+      ? 'Please wait at least 60 seconds between verification email resends.'
+      : `You can request at most ${EMAIL_VERIFICATION_RESEND_LIMIT} verification email resends every 24 hours. Please try again later.`;
+    return res.status(429).json({ error });
+  }
   try {
     const verificationUrl = await createEmailVerification(user);
     return res.json({
