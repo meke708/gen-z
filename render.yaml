@@ -31,6 +31,12 @@ services:
         sync: false
       - key: AI_OLLAMA_URL
         sync: false
+      - key: EMAIL_DELIVERY_PROVIDER
+        value: google_apps_script
+      - key: EMAIL_WEBHOOK_URL
+        sync: false
+      - key: EMAIL_WEBHOOK_SECRET
+        sync: false
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT
@@ -46,7 +52,7 @@ services:
       - key: EMAIL_VERIFICATION_TEST_EMAILS
         sync: false
       - key: ALLOW_EMAIL_VERIFICATION_LINKS_IN_PRODUCTION
-        sync: false
+        value: "false"
       - key: CLOUDINARY_CLOUD_NAME
         sync: false
       - key: CLOUDINARY_API_KEY

@@ -83,7 +83,58 @@ The Admin statement-verification page includes statement verification and API us
 - A development sandbox user is created only when the configured `SANDBOX_EMAIL` registers against a loopback MongoDB URI with `NODE_ENV` other than `production`. The sandbox role does not grant moderation or Super Admin access and cannot be activated against a hosted database.
 - KYC uploads are disabled on the free Blueprint because local files are not durable. To enable them later, configure durable private storage, set `KYC_STORAGE_DURABLE=true` and `KYC_STORAGE_DIR`, and keep `KYC_ENCRYPTION_KEY` backed up separately from the documents.
 - The shop assistant needs a reachable Ollama service with the configured model. Set `AI_OLLAMA_URL` to a private, reachable endpoint; do not expose the Ollama port publicly. Until configured, assistants remain unavailable.
-- Configure image uploads and password reset email using the `CLOUDINARY_*` and `SMTP_*` settings. Resend works through the existing SMTP integration: verify a sending domain with Resend, then set `SMTP_HOST=smtp.resend.com`, `SMTP_PORT=465`, `SMTP_SECURE=true`, `SMTP_USER=resend`, `SMTP_PASSWORD` to a Resend API key, and `SMTP_FROM` to an address on that verified domain. Keep the API key only in Render's environment settings, never in source control. Render supplies the public service URL for reset and verification links automatically; set `APP_BASE_URL` only when using a custom HTTPS domain. For preview testing, `EMAIL_VERIFICATION_TEST_EMAILS` can contain a comma-separated allowlist of addresses that receive a verification link in the browser instead of email. `ALLOW_EMAIL_VERIFICATION_LINKS_IN_PRODUCTION=true` enables that flow for all addresses; only use it on a non-customer-facing test deployment because it does not prove ownership of the email address. Turn off `ALLOW_EMAIL_VERIFICATION_LINKS_IN_PRODUCTION` and clear `EMAIL_VERIFICATION_TEST_EMAILS` before using email verification for public signups.
+- Render is configured to send verification and password-reset emails through a Google Apps Script webhook (`EMAIL_DELIVERY_PROVIDER=google_apps_script`). Set `EMAIL_WEBHOOK_URL` and `EMAIL_WEBHOOK_SECRET` in Render after deploying the protected script below. The endpoint must be HTTPS and use the `/macros/s/.../exec` path. Render supplies the public service URL used in email links automatically; set `APP_BASE_URL` only for a custom HTTPS domain. `EMAIL_VERIFICATION_TEST_EMAILS` and `ALLOW_EMAIL_VERIFICATION_LINKS_IN_PRODUCTION` make the app return verification links in the browser instead of sending email; clear the allowlist and keep the latter `false` for actual email verification.
+- If using SMTP instead, set `EMAIL_DELIVERY_PROVIDER=smtp` and configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, and `SMTP_FROM`.
+
+### Google Apps Script email webhook
+
+Create an Apps Script project and save this secret in **Project Settings → Script properties** as `EMAIL_WEBHOOK_SECRET`. Generate a random secret with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` and use the same value in the Script property and Render environment. Do not put it in source control or share it in chat.
+
+```javascript
+function doPost(e) {
+  const expectedSecret = PropertiesService.getScriptProperties().getProperty('EMAIL_WEBHOOK_SECRET');
+  let data;
+  try {
+    data = JSON.parse(e && e.postData && e.postData.contents || '');
+  } catch (error) {
+    return ContentService.createTextOutput('Invalid request');
+  }
+  if (!expectedSecret || !data || !constantTimeEquals(data.secret, expectedSecret)) {
+    return ContentService.createTextOutput('Unauthorized');
+  }
+
+  const allowedSubjects = [
+    'Verify your Z email address',
+    'Reset your Z password'
+  ];
+  const recipient = typeof data.to === 'string' ? data.to.trim() : '';
+  const body = typeof data.text === 'string' ? data.text : '';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)
+      || !allowedSubjects.includes(data.subject)
+      || !body
+      || body.length > 12000) {
+    return ContentService.createTextOutput('Invalid email');
+  }
+
+  MailApp.sendEmail({
+    to: recipient,
+    subject: data.subject,
+    body: body
+  });
+  return ContentService.createTextOutput('Sent');
+}
+
+function constantTimeEquals(actual, expected) {
+  if (typeof actual !== 'string' || actual.length !== expected.length) return false;
+  let difference = 0;
+  for (let i = 0; i < expected.length; i += 1) {
+    difference |= actual.charCodeAt(i) ^ expected.charCodeAt(i);
+  }
+  return difference === 0;
+}
+```
+
+Deploy as a **Web app**, execute as yourself, and allow access to anyone; the shared secret in the JSON body protects the public endpoint. Copy the `/exec` URL into Render as `EMAIL_WEBHOOK_URL`. Keep `EMAIL_VERIFICATION_TEST_EMAILS` empty and `ALLOW_EMAIL_VERIFICATION_LINKS_IN_PRODUCTION=false` so signup sends email instead of returning a browser link. Google imposes sending quotas that vary by account and may change; this is not a guaranteed 100-email-per-day service.
 - Checkout defaults to simulated mock payments. To test DPO Pay's hosted sandbox locally, set `PAYMENT_MODE=dpo`, `DPO_COMPANY_TOKEN`, and `DPO_SERVICE_TYPE_ID` in `server/.env`. Use the v6 sandbox endpoint and credentials/service IDs from DPO's [developer sandbox documentation](https://docs.dpopay.com/dpo-pay-by-network/reference/sandbox-test-credentials); the app sends NAD orders to DPO's hosted checkout and verifies returned tokens server-to-server before marking orders paid. This provider integration covers marketplace orders; paid promotions and assistant purchases remain mock-only. The server stores test credentials only in environment variables; never commit them. The repository does not support DPO live payments. DPO sandbox checkout is blocked in production unless `ALLOW_DPO_SANDBOX_IN_PRODUCTION=true` is explicitly set for a non-customer-facing test deployment.
 - The Blueprint disables mock checkout in production by default. To test mock orders on a non-customer-facing Render deployment, set `MOCK_PAYMENTS_ENABLED=true` and `ALLOW_MOCK_PAYMENTS_IN_PRODUCTION=true` in that service's environment, then redeploy. Mock checkout only records simulated payments; it does not charge money. Turn it off before accepting real customers.
 - Product promotions are currently N$50 for 7 days and use the simulated test-payment flow only. No money is charged; in production this flow requires the mock-payment testing opt-in described above.

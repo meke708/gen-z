@@ -21,6 +21,7 @@ const { getServerDiagnostics } = require('./runtime-diagnostics');
 const { listAllowedTests, runAllowedTest, runAllAllowedTests } = require('./approved-test-runner');
 const { DEFAULT_LOGIN_WALLPAPER, normalizeLoginWallpaper } = require('./login-wallpaper');
 const { normalizeBankPayoutAccount, normalizePayoutRequestAmount } = require('./payout-settings');
+const { createEmailDeliveryConfig, sendAccountEmail } = require('./email-delivery');
 const { getStatementSigningKey, signStatement, verifyStatement } = require('./statement-signature');
 const { getStatementPdfChecks } = require('./statement-pdf');
 const {
@@ -208,7 +209,8 @@ const statementPdfUpload = multer({
 });
 const emailVerificationTestEmails = parseEmailVerificationTestEmails(process.env.EMAIL_VERIFICATION_TEST_EMAILS);
 const allowEmailVerificationLinksInProduction = process.env.ALLOW_EMAIL_VERIFICATION_LINKS_IN_PRODUCTION === 'true';
-const passwordResetMailer = process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASSWORD
+const emailDeliveryConfig = createEmailDeliveryConfig(process.env);
+const passwordResetMailer = emailDeliveryConfig.provider === 'smtp' && emailDeliveryConfig.configured
   ? nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT || 587),
@@ -217,6 +219,13 @@ const passwordResetMailer = process.env.SMTP_HOST && process.env.SMTP_USER && pr
     auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD }
   })
   : null;
+
+async function sendTransactionalEmail(message) {
+  await sendAccountEmail(emailDeliveryConfig, message, {
+    smtpMailer: passwordResetMailer,
+    from: process.env.SMTP_FROM || process.env.SMTP_USER
+  });
+}
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true, maxlength: 80 },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true, maxlength: 254 },
@@ -1362,7 +1371,7 @@ async function createEmailVerification(user) {
     allowEmailVerificationLinksInProduction
   );
   if (process.env.NODE_ENV === 'production'
-    && ((!passwordResetMailer && !directVerificationLink) || !resolveAppBaseUrl())) {
+    && ((!emailDeliveryConfig.configured && !directVerificationLink) || !resolveAppBaseUrl())) {
     throw apiError(503, 'Email verification is not configured. Contact Z support.');
   }
   const baseUrl = resolveAppBaseUrl();
@@ -1375,8 +1384,7 @@ async function createEmailVerification(user) {
   );
   const verificationUrl = new URL(`/verify-email?token=${encodeURIComponent(token)}`, baseUrl).toString();
   if (process.env.NODE_ENV === 'production' && !directVerificationLink) {
-    await passwordResetMailer.sendMail({
-      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+    await sendTransactionalEmail({
       to: user.email,
       subject: 'Verify your Z email address',
       text: `Hello ${user.name},\n\nVerify your Z email address within 24 hours:\n${verificationUrl}\n\nIf you did not create this account, you can ignore this email.`
@@ -2721,7 +2729,7 @@ app.post('/api/auth/register', async (req, res) => {
     allowEmailVerificationLinksInProduction
   );
   if (process.env.NODE_ENV === 'production'
-    && ((!passwordResetMailer && !directVerificationLink) || !resolveAppBaseUrl())) {
+    && ((!emailDeliveryConfig.configured && !directVerificationLink) || !resolveAppBaseUrl())) {
     return res.status(503).json({ error: 'Email verification is not configured. Contact Z support.' });
   }
   const referrer = referralCode ? await User.findOne({ referralCode }) : null;
@@ -2820,7 +2828,7 @@ app.post('/api/auth/forgot-password', passwordResetRateLimit, async (req, res) =
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
     return res.status(400).json({ error: 'Enter a valid email address.' });
   }
-  if (process.env.NODE_ENV === 'production' && (!passwordResetMailer || !resolveAppBaseUrl())) {
+  if (process.env.NODE_ENV === 'production' && (!emailDeliveryConfig.configured || !resolveAppBaseUrl())) {
     return res.status(503).json({ error: 'Password reset email is not configured. Contact Z support.' });
   }
   const baseUrl = resolveAppBaseUrl();
@@ -2840,8 +2848,7 @@ app.post('/api/auth/forgot-password', passwordResetRateLimit, async (req, res) =
 
   if (process.env.NODE_ENV === 'production') {
     try {
-      await passwordResetMailer.sendMail({
-        from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      await sendTransactionalEmail({
         to: user.email,
         subject: 'Reset your Z password',
         text: `Hello ${user.name},\n\nUse this link within 15 minutes to reset your Z password:\n${resetUrl}\n\nIf you did not request this, you can ignore this email.`
