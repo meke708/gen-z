@@ -4062,7 +4062,7 @@ app.post('/api/seller/statements', sellerStatementRateLimit, async (req, res) =>
     Order.find({ 'sellerOrders.sellerId': user._id, paymentStatus: 'paid' }).sort({ createdAt: -1 }).lean(),
     WalletTransaction.find({
       userId: user._id,
-      type: { $in: ['purchase_debit', 'purchase_refund', 'withdrawal_debit'] }
+      type: { $in: ['seller_credit', 'purchase_debit', 'purchase_refund', 'withdrawal_debit'] }
     }).sort({ createdAt: -1 }).limit(50).lean()
   ]);
   const now = new Date();

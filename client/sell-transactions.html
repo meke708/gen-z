@@ -74,56 +74,69 @@
         .payout-history li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px; padding: 10px 0; border-top: 1px solid #e8ebdf; font-size: 10px; }
         .payout-history small { color: var(--muted); }
         .payout-history-empty { margin: 14px 0 0; color: var(--muted); font-size: 10px; }
-        .statement-print-header { display: none; }
+        .statement-document { display: none; }
         .statement-auth { padding: 12px 20px; border-bottom: 1px solid var(--line); font-size: 10px; line-height: 1.6; }
         .statement-auth summary { color: var(--forest); cursor: pointer; font-weight: 700; }
         .statement-auth details > div { padding-top: 10px; overflow-wrap: anywhere; }
         .statement-auth p { margin: 4px 0; }
         .statement-auth code { font-size: 9px; overflow-wrap: anywhere; }
         .statement-auth .statement-verification-link { font-weight: 700; }
-        .statement-print-reference { display: none; }
         @media print {
-            @page { size: A4; margin: 14mm 12mm; }
-            body { min-width: 0; color: #17231e; background: #fff; font-family: Arial, sans-serif; }
-            .site-header, .payout-card, main > .eyebrow, main > h1, main > .intro, .table-actions, #status, #payout-note { display: none !important; }
-            main { width: 100%; margin: 0; padding: 0; }
-            .transactions-content { display: block; width: 100%; }
-            .statement-print-header { display: none; }
-            body.statement-generated .statement-print-header { display: block; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 2px solid #18382e; }
-            .statement-print-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
-            .statement-print-brand { display: flex; align-items: center; gap: 12px; }
-            .statement-print-mark { display: grid; width: 38px; height: 38px; flex: 0 0 auto; place-items: center; border: 1.5px solid #18382e; border-radius: 50%; color: #18382e; font: 22px Georgia, serif; }
-            .statement-print-brand-name { margin: 0; color: #18382e; font-size: 9px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
-            .statement-print-title { margin: 3px 0 2px; font: 22px Georgia, "Times New Roman", serif; }
-            .statement-print-subtitle { margin: 0; color: #68736d; font-size: 9px; }
-            .statement-print-meta { display: grid; min-width: 190px; gap: 7px; }
-            .statement-print-meta span, .statement-print-account span { display: block; margin-bottom: 2px; color: #68736d; font-size: 8px; letter-spacing: .05em; text-transform: uppercase; }
-            .statement-print-meta strong, .statement-print-account strong { font-size: 9px; overflow-wrap: anywhere; }
-            .statement-print-account { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 14px; }
-            .report-toolbar { margin-bottom: 14px; }
-            .report-metric { min-height: 0; padding: 11px 13px; border-color: #d9d9cf; background: #fff; break-inside: avoid; }
-            .report-total { font-size: 18px; }
-            .table-card { overflow: visible; border: 0; background: #fff; }
-            .table-card-heading { padding: 0 0 8px; border-bottom: 1px solid #18382e; font: 17px Georgia, "Times New Roman", serif; }
-            .table-wrap { overflow: visible; }
-            table { width: 100%; min-width: 0; table-layout: fixed; }
-            th { padding: 8px 7px; border-bottom: 1px solid #cbd4cd; color: #46564d; background: #edf2ed !important; font-size: 8px; }
-            td { padding: 8px 7px; color: #17231e; font-size: 8px; overflow-wrap: anywhere; }
-            th:first-child, td:first-child { width: 12%; }
-            th:nth-child(2), td:nth-child(2) { width: 32%; }
-            th:nth-child(3), td:nth-child(3) { width: 15%; }
-            th:nth-child(4), td:nth-child(4) { width: 18%; }
-            th:last-child, td:last-child { width: 23%; }
-            tr { break-inside: avoid; }
-            .activity-reference, .date-note { color: #59665f; font-size: 8px; }
-            .amount { font-size: 10px; }
-            .payout-status { padding: 0; border: 0 !important; color: #17231e !important; background: transparent !important; font-size: 8px; white-space: normal; }
-            .empty-state[hidden] { display: none !important; }
+            @page {
+                size: A4;
+                margin: 14mm 12mm 18mm;
+                @bottom-left { content: "Z Namibia · Virtual wallet statement"; color: #555; font: 7pt Arial, sans-serif; }
+                @bottom-right { content: "Page " counter(page) " of " counter(pages); color: #555; font: 7pt Arial, sans-serif; }
+            }
+            body { min-width: 0; color: #111; background: #fff; font-family: Arial, sans-serif; }
+            body.statement-generated .site-header,
+            body.statement-generated main > .eyebrow,
+            body.statement-generated main > h1,
+            body.statement-generated main > .intro,
+            body.statement-generated .transactions-content > :not(.statement-document) { display: none !important; }
+            body.statement-generated main,
+            body.statement-generated .transactions-content { display: block; width: 100%; margin: 0; padding: 0; }
+            body.statement-generated .statement-document { display: block; color: #111; font-size: 9pt; }
+            .statement-document-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; min-height: 86px; margin-bottom: 18px; }
+            .statement-document-brand { display: flex; align-items: center; gap: 10px; padding-top: 20px; }
+            .statement-document-mark { display: grid; width: 38px; height: 38px; place-items: center; border: 1.5px solid #18382e; border-radius: 50%; color: #18382e; font: 23px Georgia, serif; }
+            .statement-document-issuer { margin: 0 0 2px; color: #18382e; font-size: 10pt; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+            .statement-document-title { margin: 0; font: 19pt Georgia, "Times New Roman", serif; }
+            .statement-document-subtitle { margin: 3px 0 0; color: #555; font-size: 8pt; }
+            .statement-reference-box { width: 190px; padding: 9px 10px; border: 1px solid #888; text-align: center; }
+            .statement-reference-box span, .statement-info-label, .statement-summary-label { display: block; color: #555; font-size: 7.5pt; font-weight: 700; text-transform: uppercase; }
+            .statement-reference-box strong { display: block; margin: 5px 0; font-size: 8pt; overflow-wrap: anywhere; }
+            .statement-reference-box .statement-issued-date { color: #536789; font-size: 12pt; font-weight: 400; }
+            .statement-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 5px; }
+            .statement-info-box { min-height: 84px; padding: 9px 11px; border: 1px solid #444; line-height: 1.4; }
+            .statement-info-label { margin: 0 0 7px; color: #333; }
+            .statement-info-box p { margin: 0; }
+            .statement-info-box strong { font-weight: 700; }
+            .statement-summary { display: grid; grid-template-columns: repeat(3, 1fr); margin: 11px 0 6px; border: 1px solid #bbb; }
+            .statement-summary-item { padding: 8px 10px; border-right: 1px solid #bbb; }
+            .statement-summary-item:last-child { border-right: 0; }
+            .statement-summary-value { display: block; margin-top: 4px; font-size: 11pt; font-weight: 700; }
+            .statement-activity-note { margin: 0 0 8px; color: #444; font-size: 7.5pt; }
+            .statement-ledger { width: 100%; min-width: 0; border-collapse: collapse; table-layout: fixed; text-align: left; }
+            .statement-ledger thead { display: table-header-group; }
+            .statement-ledger th { padding: 5px 4px; border-top: 1px solid #444; border-bottom: 1px solid #777; color: #111; background: #fff !important; font-size: 7.5pt; letter-spacing: 0; text-transform: none; }
+            .statement-ledger td { padding: 4px; border-bottom: 1px solid #d5d5d5; font-size: 7.5pt; vertical-align: top; overflow-wrap: anywhere; }
+            .statement-ledger tbody tr:nth-child(even) { background: #f0f0f0 !important; print-color-adjust: exact; }
+            .statement-ledger th:nth-child(1), .statement-ledger td:nth-child(1) { width: 13%; }
+            .statement-ledger th:nth-child(2), .statement-ledger td:nth-child(2) { width: 17%; }
+            .statement-ledger th:nth-child(3), .statement-ledger td:nth-child(3) { width: 34%; }
+            .statement-ledger th:nth-child(4), .statement-ledger td:nth-child(4),
+            .statement-ledger th:nth-child(5), .statement-ledger td:nth-child(5) { width: 12%; }
+            .statement-ledger th:nth-child(6), .statement-ledger td:nth-child(6) { width: 12%; }
+            .statement-ledger .numeric { text-align: right; white-space: nowrap; }
+            .statement-ledger tr { break-inside: avoid; page-break-inside: avoid; }
+            .statement-empty { padding: 14px 4px; border-bottom: 1px solid #d5d5d5; text-align: center; }
+            .statement-transaction-note { color: #555; font-size: 7pt; }
+            .statement-document-footer { margin-top: 14px; padding-top: 9px; border-top: 1px solid #888; font-size: 7.5pt; line-height: 1.45; overflow-wrap: anywhere; }
+            .statement-document-footer p { margin: 4px 0; }
+            .statement-document-footer a { color: #18382e; }
+            .statement-document-disclaimer { color: #444; }
             .statement-auth { display: none !important; }
-            .statement-print-reference { display: block !important; margin-top: 16px; padding: 12px 0 0; border-top: 1px solid #cbd4cd; color: #17231e; font-size: 8px; line-height: 1.55; overflow-wrap: anywhere; }
-            .statement-print-reference strong { display: block; margin-bottom: 3px; color: #18382e; font-size: 10px; }
-            .statement-print-reference a { color: #18382e; }
-            .statement-print-disclaimer { margin: 8px 0 0; color: #59665f; }
         }
         [hidden] { display: none !important; }
         @media (max-width: 680px) {
@@ -152,26 +165,48 @@
         <h1>Transactions</h1>
         <p class="intro">Track seller earnings and spending from your virtual Z balance.</p>
         <div class="transactions-content">
-            <div class="statement-print-header">
-                <div class="statement-print-heading">
-                    <div class="statement-print-brand">
-                        <span class="statement-print-mark" aria-hidden="true">Z</span>
+            <section class="statement-document" aria-label="Z Namibia wallet statement">
+                <header class="statement-document-header">
+                    <div class="statement-document-brand">
+                        <span class="statement-document-mark" aria-hidden="true">Z</span>
                         <div>
-                            <p class="statement-print-brand-name">Z Namibia</p>
-                            <h2 class="statement-print-title">Seller account statement</h2>
-                            <p class="statement-print-subtitle">Virtual Z balance activity · amounts in NAD</p>
+                            <p class="statement-document-issuer">Z Namibia</p>
+                            <h2 class="statement-document-title">Seller wallet statement</h2>
+                            <p class="statement-document-subtitle">Virtual balance activity · all amounts in NAD</p>
                         </div>
                     </div>
-                    <div class="statement-print-meta">
-                        <div><span>Statement reference</span><strong id="statement-print-id-top"></strong></div>
-                        <div><span>Issued</span><strong id="statement-print-issued"></strong></div>
+                    <div class="statement-reference-box">
+                        <span>Statement reference</span>
+                        <strong id="statement-document-reference"></strong>
+                        <span>Generated date</span>
+                        <strong class="statement-issued-date" id="statement-document-issued"></strong>
                     </div>
+                </header>
+                <div class="statement-info-grid">
+                    <section class="statement-info-box">
+                        <p class="statement-info-label">Issuer</p>
+                        <p><strong>Z Namibia</strong><br>Seller virtual wallet<br>Digitally signed account activity</p>
+                    </section>
+                    <section class="statement-info-box">
+                        <p class="statement-info-label">Account information</p>
+                        <p>Seller shop: <strong id="statement-document-shop"></strong><br>Account type: Z Namibia seller wallet<br>Available balance: <strong id="statement-document-balance"></strong></p>
+                    </section>
                 </div>
-                <div class="statement-print-account">
-                    <div><span>Seller shop</span><strong id="statement-print-shop"></strong></div>
-                    <div><span>Records included</span><strong id="statement-print-record-count"></strong></div>
+                <div class="statement-summary">
+                    <div class="statement-summary-item"><span class="statement-summary-label">Wallet transactions</span><strong class="statement-summary-value" id="statement-document-count"></strong></div>
+                    <div class="statement-summary-item"><span class="statement-summary-label">Credits in this statement</span><strong class="statement-summary-value" id="statement-document-credits"></strong></div>
+                    <div class="statement-summary-item"><span class="statement-summary-label">Debits in this statement</span><strong class="statement-summary-value" id="statement-document-debits"></strong></div>
                 </div>
-            </div>
+                <p class="statement-activity-note" id="statement-document-activity-note"></p>
+                <table class="statement-ledger">
+                    <thead><tr><th>Date</th><th>Reference</th><th>Description</th><th class="numeric">Debit (N$)</th><th class="numeric">Credit (N$)</th><th class="numeric">Balance (N$)</th></tr></thead>
+                    <tbody id="statement-ledger-rows"></tbody>
+                </table>
+                <footer class="statement-document-footer">
+                    <p><strong>Verification:</strong> <a id="statement-document-verification"></a></p>
+                    <p class="statement-document-disclaimer">This is a Z Namibia virtual-wallet statement, not a bank statement or proof of a bank deposit or transfer. Simulated withdrawals reduce virtual balance only and are not sent to a bank.</p>
+                </footer>
+            </section>
             <div class="report-toolbar">
                 <div class="report-metric"><strong class="report-total" id="report-total">N$ 0.00 <span>Z balance available</span></strong></div>
                 <div class="report-metric"><span class="held-total" id="held-total">0 on hold</span></div>
@@ -243,12 +278,6 @@
                     </table>
                     <p class="empty-state" id="empty-state" hidden>No Z balance activity yet. Seller earnings, purchases, and simulated withdrawals will appear here.</p>
                 </div>
-                <div class="statement-print-reference" id="statement-print-reference" hidden>
-                    <strong>Verify this digitally signed Z Namibia statement</strong>
-                    Reference: <span id="statement-print-id"></span><br>
-                    <a id="statement-print-url"></a>
-                    <p class="statement-print-disclaimer">This records activity in Z Namibia’s virtual balance only. It is not a bank statement or proof of a bank deposit or transfer. Simulated withdrawals are not sent to a bank.</p>
-                </div>
             </section>
             <p class="status" id="status" role="status" aria-live="polite"></p>
             <p class="note" id="payout-note">Seller earnings become virtual Z balance after the delivery hold. Purchases and simulated withdrawals are recorded here; no bank transfer is made.</p>
@@ -272,6 +301,7 @@
         const payoutHistory = document.querySelector("#payout-history");
         const payoutHistoryEmpty = document.querySelector("#payout-history-empty");
         const money = new Intl.NumberFormat("en-NA", { style: "currency", currency: "NAD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const statementAmount = new Intl.NumberFormat("en-NA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         let refreshInFlight = false;
         let refreshTimer = null;
         let currentLedger = null;
@@ -568,6 +598,131 @@
             window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
         }
 
+        function renderStatementDocument(statement, verificationUrl) {
+            const transactions = [...statement.walletTransactions]
+                .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt) || a.transactionId.localeCompare(b.transactionId));
+            const sellerEntries = new Map(statement.entries.map((entry) => [entry.orderNumber, entry]));
+            const walletOrderNumbers = new Set(transactions
+                .filter((transaction) => transaction.type === "seller_credit")
+                .map((transaction) => transaction.orderNumber));
+            const referenceOnlyEntries = statement.entries.filter((entry) => !walletOrderNumbers.has(entry.orderNumber));
+            const activityRows = [
+                ...transactions.map((transaction) => ({
+                    kind: "wallet",
+                    value: transaction,
+                    date: new Date(transaction.createdAt),
+                    reference: transaction.orderNumber || transaction.transactionId
+                })),
+                ...referenceOnlyEntries.map((entry) => ({
+                    kind: "seller-order",
+                    value: entry,
+                    date: new Date(entry.walletCreditedAt || entry.payoutMarkedAt || entry.createdAt),
+                    reference: entry.orderNumber
+                }))
+            ].sort((a, b) => a.date - b.date || a.reference.localeCompare(b.reference));
+            const ledgerRows = document.querySelector("#statement-ledger-rows");
+            ledgerRows.replaceChildren();
+            let creditCents = 0;
+            let debitCents = 0;
+
+            for (const item of activityRows) {
+                const row = document.createElement("tr");
+                const dateCell = document.createElement("td");
+                const referenceCell = document.createElement("td");
+                const descriptionCell = document.createElement("td");
+                const debitCell = document.createElement("td");
+                debitCell.className = "numeric";
+                const creditCell = document.createElement("td");
+                creditCell.className = "numeric";
+                const balanceCell = document.createElement("td");
+                balanceCell.className = "numeric";
+
+                if (Number.isNaN(item.date.getTime())) throw new Error("The statement contains an invalid activity date.");
+                dateCell.textContent = item.date.toLocaleDateString("en-GB");
+                referenceCell.textContent = item.reference || "-";
+
+                if (item.kind === "seller-order") {
+                    const entry = item.value;
+                    const amount = Number(entry.payoutNAD);
+                    if (!Number.isFinite(amount) || amount < 0) throw new Error("The statement contains an invalid seller payout.");
+                    const statusLabel = {
+                        eligible: "Eligible",
+                        paid: "Previous payout record",
+                        disputed: "Disputed",
+                        held: "On hold"
+                    }[entry.payoutStatus] || "Not posted";
+                    descriptionCell.textContent = `Seller order · ${entry.shopName} · ${money.format(amount)} · ${statusLabel}`;
+                    const note = document.createElement("small");
+                    note.className = "statement-transaction-note";
+                    note.textContent = "Reference only · not included in wallet totals";
+                    descriptionCell.append(document.createElement("br"), note);
+                    debitCell.textContent = "-";
+                    creditCell.textContent = "-";
+                    balanceCell.textContent = "-";
+                } else {
+                    const transaction = item.value;
+                    const amount = Number(transaction.amountNAD);
+                    const balance = Number(transaction.balanceAfterNAD);
+                    const isDebit = ["purchase_debit", "withdrawal_debit"].includes(transaction.type);
+                    const isCredit = ["seller_credit", "purchase_refund"].includes(transaction.type);
+                    if (!Number.isFinite(amount) || amount < 0 || !Number.isFinite(balance) || (!isDebit && !isCredit)) {
+                        throw new Error("The statement contains an invalid wallet transaction.");
+                    }
+
+                    const amountCents = Math.round(amount * 100);
+                    if (isDebit) debitCents += amountCents;
+                    else creditCents += amountCents;
+                    const sellerEntry = transaction.type === "seller_credit" ? sellerEntries.get(transaction.orderNumber) : null;
+                    const transactionDescription = transaction.description || (transaction.type === "seller_credit" ? "Seller credit" : transaction.type === "purchase_refund" ? "Purchase refund" : transaction.type === "withdrawal_debit" ? "Simulated withdrawal" : "Wallet purchase");
+                    descriptionCell.textContent = sellerEntry
+                        ? `${transactionDescription} · ${sellerEntry.shopName}`
+                        : transactionDescription;
+                    if (transaction.type === "withdrawal_debit") {
+                        const note = document.createElement("small");
+                        note.className = "statement-transaction-note";
+                        note.textContent = "Simulated · no bank transfer";
+                        descriptionCell.append(document.createElement("br"), note);
+                    }
+                    debitCell.textContent = isDebit ? statementAmount.format(amount) : "-";
+                    creditCell.textContent = isCredit ? statementAmount.format(amount) : "-";
+                    balanceCell.textContent = statementAmount.format(balance);
+                }
+
+                row.append(dateCell, referenceCell, descriptionCell, debitCell, creditCell, balanceCell);
+                ledgerRows.append(row);
+            }
+
+            if (!activityRows.length) {
+                const row = document.createElement("tr");
+                const emptyCell = document.createElement("td");
+                emptyCell.className = "statement-empty";
+                emptyCell.colSpan = 6;
+                emptyCell.textContent = "No wallet transactions are recorded.";
+                row.append(emptyCell);
+                ledgerRows.append(row);
+            }
+
+            const issuedAt = new Date(statement.issuedAt);
+            if (Number.isNaN(issuedAt.getTime())) throw new Error("The statement issue date is invalid.");
+            document.querySelector("#statement-document-reference").textContent = statement.statementId;
+            document.querySelector("#statement-document-issued").textContent = issuedAt.toLocaleDateString("en-GB");
+            document.querySelector("#statement-document-shop").textContent = statement.shopName;
+            document.querySelector("#statement-document-balance").textContent = money.format(Number(statement.walletBalanceNAD));
+            document.querySelector("#statement-document-count").textContent = String(transactions.length);
+            document.querySelector("#statement-document-credits").textContent = money.format(creditCents / 100);
+            document.querySelector("#statement-document-debits").textContent = money.format(debitCents / 100);
+            const activityDates = transactions.map((transaction) => new Date(transaction.createdAt));
+            const activityRange = activityDates.length
+                ? `Activity dates: ${activityDates[0].toLocaleDateString("en-GB")} – ${activityDates[activityDates.length - 1].toLocaleDateString("en-GB")}. `
+                : "";
+            const limit = Number(statement.walletTransactionLimit);
+            document.querySelector("#statement-document-activity-note").textContent =
+                `${activityRange}${transactions.length} wallet transaction${transactions.length === 1 ? "" : "s"} shown${Number.isSafeInteger(limit) && limit > 0 ? ` (maximum ${limit} most recent)` : ""}.${referenceOnlyEntries.length ? ` ${referenceOnlyEntries.length} seller-order records are shown for reference only and are not included in wallet totals.` : ""}`;
+            const verificationLink = document.querySelector("#statement-document-verification");
+            verificationLink.href = verificationUrl;
+            verificationLink.textContent = "Verify signed statement online";
+        }
+
         exportTransactionsButton.addEventListener("click", exportTransactions);
         printStatementButton.addEventListener("click", async () => {
             printStatementButton.disabled = true;
@@ -586,7 +741,7 @@
                 }
                 if (!response.ok) throw new Error(result.error || "Could not generate the signed statement.");
 
-                renderTransactions(result.statement);
+                renderStatementDocument(result.statement, result.verificationUrl);
                 printStatementButton.disabled = true;
                 document.querySelector("#statement-reference").textContent = result.statement.statementId;
                 const issuedAt = new Date(result.statement.issuedAt);
@@ -594,26 +749,14 @@
                 for (const verificationLink of document.querySelectorAll(".statement-verification-link")) {
                     verificationLink.href = result.verificationUrl;
                 }
-                document.querySelector("#statement-print-id").textContent = result.statement.statementId;
-                document.querySelector("#statement-print-id-top").textContent = result.statement.statementId;
-                document.querySelector("#statement-print-issued").textContent = issuedAt.toLocaleDateString();
-                document.querySelector("#statement-print-shop").textContent = result.statement.shopName;
-                const sellerOrderCount = result.statement.entries.length;
-                const walletTransactionCount = result.statement.walletTransactions.length;
-                document.querySelector("#statement-print-record-count").textContent =
-                    `${sellerOrderCount} seller ${sellerOrderCount === 1 ? "order" : "orders"} · ${walletTransactionCount} wallet ${walletTransactionCount === 1 ? "transaction" : "transactions"} (up to ${result.statement.walletTransactionLimit})`;
-                const printVerificationLink = document.querySelector("#statement-print-url");
-                printVerificationLink.href = result.verificationUrl;
-                printVerificationLink.textContent = result.verificationUrl;
-                document.querySelector("#statement-print-reference").hidden = false;
                 document.querySelector("#statement-signature").textContent = result.signature;
                 document.querySelector("#statement-coverage").textContent =
-                    `Includes ${result.statement.entries.length} seller-order entries and up to ${result.statement.walletTransactionLimit} wallet activity records.`;
+                    `Includes ${result.statement.entries.length} seller-order records and ${result.statement.walletTransactions.length} wallet transactions (up to ${result.statement.walletTransactionLimit} most recent).`;
                 statementAuth.hidden = false;
                 document.body.classList.add("statement-generated");
-                status.textContent = "Statement generated and signed. Its official verification link and signature will be included in the printout.";
+                status.textContent = "Statement generated and signed. For a clean PDF, turn off Headers and footers in the print settings.";
                 const previousTitle = document.title;
-                document.title = `Z Namibia statement ${result.statement.statementId}`;
+                document.title = "Z Namibia seller wallet statement";
                 window.addEventListener("afterprint", () => {
                     document.title = previousTitle;
                 }, { once: true });
