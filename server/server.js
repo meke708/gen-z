@@ -269,7 +269,7 @@ const userSchema = new mongoose.Schema({
 const walletTransactionSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   reference: { type: String, required: true, unique: true },
-  type: { type: String, enum: ['seller_credit', 'purchase_debit', 'purchase_refund'], required: true },
+  type: { type: String, enum: ['seller_credit', 'purchase_debit', 'purchase_refund', 'withdrawal_debit'], required: true },
   amountNAD: { type: Number, required: true, min: 0 },
   balanceAfterNAD: { type: Number, required: true, min: 0 },
   orderNumber: { type: String, required: true },
@@ -1865,6 +1865,14 @@ function roundNAD(value) {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
+function isWalletDebitType(type) {
+  return ['purchase_debit', 'withdrawal_debit'].includes(type);
+}
+
+function getWalletBalanceChange(type, amountNAD) {
+  return isWalletDebitType(type) ? -amountNAD : amountNAD;
+}
+
 function reconcileWalletBalance(accountBalanceNAD, ledgerSummary) {
   const accountBalanceCents = Math.round(Number(accountBalanceNAD) * 100);
   if (!Number.isSafeInteger(accountBalanceCents) || accountBalanceCents < 0) {
@@ -1897,7 +1905,7 @@ function reconcileWalletBalance(accountBalanceNAD, ledgerSummary) {
     if (!Number.isSafeInteger(cents) || cents < 0) throw new TypeError(`${label} must be a non-negative monetary amount.`);
     return cents;
   };
-  if (!['seller_credit', 'purchase_debit', 'purchase_refund'].includes(ledgerSummary.firstType)) {
+  if (!['seller_credit', 'purchase_debit', 'purchase_refund', 'withdrawal_debit'].includes(ledgerSummary.firstType)) {
     throw new TypeError('First wallet transaction has an unsupported type.');
   }
   const amountCents = toCents(ledgerSummary.firstAmountNAD, 'First wallet transaction amount');
@@ -1906,7 +1914,9 @@ function reconcileWalletBalance(accountBalanceNAD, ledgerSummary) {
   const creditsCents = toCents(ledgerSummary.creditsNAD || 0, 'Wallet credits');
   const debitsCents = toCents(ledgerSummary.debitsNAD || 0, 'Wallet debits');
   const refundsCents = toCents(ledgerSummary.refundsNAD || 0, 'Wallet refunds');
-  const firstMovementCents = ledgerSummary.firstType === 'purchase_debit' ? -amountCents : amountCents;
+  const firstMovementCents = isWalletDebitType(ledgerSummary.firstType)
+    ? -amountCents
+    : amountCents;
   const openingBalanceCents = firstBalanceCents - firstMovementCents;
   const expectedBalanceCents = openingBalanceCents + creditsCents + refundsCents - debitsCents;
   const differenceCents = accountBalanceCents - ledgerBalanceCents;
@@ -2092,7 +2102,7 @@ async function getWalletLedgerSummary(userId) {
         _id: null,
         transactionCount: { $sum: 1 },
         creditsNAD: { $sum: { $cond: [{ $eq: ['$type', 'seller_credit'] }, '$amountNAD', 0] } },
-        debitsNAD: { $sum: { $cond: [{ $eq: ['$type', 'purchase_debit'] }, '$amountNAD', 0] } },
+        debitsNAD: { $sum: { $cond: [{ $in: ['$type', ['purchase_debit', 'withdrawal_debit']] }, '$amountNAD', 0] } },
         refundsNAD: { $sum: { $cond: [{ $eq: ['$type', 'purchase_refund'] }, '$amountNAD', 0] } }
       } }
     ]),
@@ -2283,10 +2293,9 @@ async function applyWalletTransaction({
     return existing;
   }
 
-  const update = type === 'purchase_debit'
-    ? { $inc: { walletBalanceNAD: -amountNAD } }
-    : { $inc: { walletBalanceNAD: amountNAD } };
-  const balanceCondition = type === 'purchase_debit'
+  const isDebit = isWalletDebitType(type);
+  const update = { $inc: { walletBalanceNAD: getWalletBalanceChange(type, amountNAD) } };
+  const balanceCondition = isDebit
     ? { $expr: { $gte: [{ $ifNull: ['$walletBalanceNAD', 0] }, amountNAD] } }
     : {};
   const user = await User.findOneAndUpdate(
@@ -2294,7 +2303,7 @@ async function applyWalletTransaction({
     update,
     { returnDocument: 'after', session }
   );
-  if (!user && type === 'purchase_debit') throw apiError(409, insufficientBalanceMessage);
+  if (!user && isDebit) throw apiError(409, insufficientBalanceMessage);
   if (!user) throw new Error('Could not update the Z wallet for this transaction.');
 
   const [transaction] = await WalletTransaction.create([{
@@ -3997,7 +4006,7 @@ app.get('/api/seller/payout-ledger', async (req, res) => {
   const orders = await Order.find({ 'sellerOrders.sellerId': user._id, paymentStatus: 'paid' }).sort({ createdAt: -1 }).lean();
   const walletTransactions = await WalletTransaction.find({
     userId: user._id,
-    type: { $in: ['purchase_debit', 'purchase_refund'] }
+    type: { $in: ['purchase_debit', 'purchase_refund', 'withdrawal_debit'] }
   }).sort({ createdAt: -1 }).limit(50).lean();
   const now = new Date();
   const entries = orders.flatMap((order) => order.sellerOrders
@@ -4053,7 +4062,7 @@ app.post('/api/seller/statements', sellerStatementRateLimit, async (req, res) =>
     Order.find({ 'sellerOrders.sellerId': user._id, paymentStatus: 'paid' }).sort({ createdAt: -1 }).lean(),
     WalletTransaction.find({
       userId: user._id,
-      type: { $in: ['purchase_debit', 'purchase_refund'] }
+      type: { $in: ['purchase_debit', 'purchase_refund', 'withdrawal_debit'] }
     }).sort({ createdAt: -1 }).limit(50).lean()
   ]);
   const now = new Date();
@@ -4600,28 +4609,44 @@ app.post('/api/seller/payout-requests', sellerPayoutRateLimit, async (req, res) 
   const normalized = normalizePayoutRequestAmount(req.body?.amountNAD, account.walletBalanceNAD);
   if (normalized.error) return res.status(400).json({ error: normalized.error });
 
-  const request = await SimulatedPayoutRequest.create({
-    userId: user._id,
-    shopId: shop._id,
-    amountNAD: normalized.amountNAD,
-    status: 'simulated',
-    mode: 'simulated',
-    destination: {
-      bankName: account.payoutBankAccount.bankName,
-      accountName: account.payoutBankAccount.accountName,
-      accountLast4: account.payoutBankAccount.accountLast4
-    }
+  const { request, transaction } = await withMongoTransaction(async (session) => {
+    const [request] = await SimulatedPayoutRequest.create([{
+      userId: user._id,
+      shopId: shop._id,
+      amountNAD: normalized.amountNAD,
+      status: 'simulated',
+      mode: 'simulated',
+      destination: {
+        bankName: account.payoutBankAccount.bankName,
+        accountName: account.payoutBankAccount.accountName,
+        accountLast4: account.payoutBankAccount.accountLast4
+      }
+    }], { session });
+    const orderNumber = `WD-${request._id.toString()}`;
+    const transaction = await applyWalletTransaction({
+      userId: user._id,
+      reference: `withdrawal:${request._id.toString()}`,
+      type: 'withdrawal_debit',
+      amountNAD: normalized.amountNAD,
+      orderNumber,
+      description: `Simulated withdrawal to ${account.payoutBankAccount.bankName} account ending ${account.payoutBankAccount.accountLast4}`,
+      session,
+      insufficientBalanceMessage: 'Your Z balance changed. Refresh your balance and try again.'
+    });
+    return { request, transaction };
   });
   return res.status(201).json({
     simulated: true,
-    fundsMoved: false,
+    walletDebited: true,
+    externalTransferMade: false,
+    walletBalanceNAD: transaction.balanceAfterNAD,
     request: {
       id: request._id.toString(),
       amountNAD: request.amountNAD,
       status: request.status,
       createdAt: request.createdAt
     },
-    message: 'Simulated request recorded. No funds were sent, reserved, or deducted.'
+    message: `Simulated withdrawal of N$ ${normalized.amountNAD.toFixed(2)} was deducted from your Z balance. No bank transfer was made.`
   });
 });
 
@@ -8063,6 +8088,8 @@ module.exports = {
   getBuyerDisplayName,
   normalizeDuplicateText,
   buildProductDuplicateKey,
+  isWalletDebitType,
+  getWalletBalanceChange,
   buildSellerMarketBenchmarks,
   normalizeSupportRequest,
   normalizeSuspensionAppeal,

@@ -48,7 +48,7 @@
         .payout-status { display: inline-block; padding: 6px 9px; border: 1px solid #e2c987; border-radius: 999px; color: #76552f; background: #f6eddb; font-size: 9px; font-weight: 700; white-space: nowrap; }
         .payout-status.eligible, .payout-status.refund, .payout-status.credit, .payout-status.paid, .payout-status.simulated { border-color: #b6d0b9; color: #285b3a; background: #e8f2e9; }
         .payout-status.purchase { border-color: #dce2d2; color: var(--forest); background: #edf0df; }
-        .payout-status.disputed { border-color: #dfb2a7; color: #8b3b2f; background: #f8e9e5; }
+        .payout-status.disputed, .payout-status.withdrawal { border-color: #dfb2a7; color: #8b3b2f; background: #f8e9e5; }
         .empty-state { margin: 0; padding: 35px 20px; color: var(--muted); font-size: 12px; }
         .status { min-height: 20px; margin: 0; color: #8b3b2f; font-size: 11px; }
         .note { margin: 0; padding: 16px 18px; border: 1px solid #dce2d2; color: var(--muted); background: #e9edda; font-size: 10px; line-height: 1.7; }
@@ -135,9 +135,9 @@
                 <div class="report-metric"><span class="paid-total" id="paid-total">0 wallet credits</span></div>
             </div>
             <section class="payout-card" aria-labelledby="payout-settings-heading">
-                <h2 id="payout-settings-heading">Transfer to bank account</h2>
-                <p class="payout-intro">Save a payout destination label and use it to try the withdrawal request flow.</p>
-                <p class="simulated-note">Prototype only: withdrawals are simulated. No funds are transferred, reserved, or deducted. Save only the account display name, bank name, and last four digits. Do not enter a full account or card number.</p>
+                <h2 id="payout-settings-heading">Simulated withdrawal</h2>
+                <p class="payout-intro">Request a simulated withdrawal from your available Z balance.</p>
+                <p class="simulated-note">Prototype only: a simulated withdrawal is deducted from your virtual Z balance and recorded in your transactions. No money is transferred to a bank. Save only the account display name, bank name, and last four digits. Do not enter a full account or card number.</p>
                 <form class="payout-form" id="payout-account-form">
                     <label for="payout-bank-name">Namibian bank
                         <select id="payout-bank-name" name="bankName" required>
@@ -164,7 +164,7 @@
                     <label for="withdrawal-amount">Request amount (NAD)
                         <input id="withdrawal-amount" name="amountNAD" type="number" min="0.01" step="0.01" required>
                     </label>
-                    <button class="payout-action" id="request-withdrawal" type="submit" disabled>Record simulated request</button>
+                    <button class="payout-action" id="request-withdrawal" type="submit" disabled>Request simulated withdrawal</button>
                 </form>
                 <p class="payout-message" id="withdrawal-message" role="status" aria-live="polite"></p>
                 <h3 class="payout-intro">Recent simulated requests</h3>
@@ -198,7 +198,7 @@
                         <thead><tr><th>Date</th><th>Activity</th><th>Amount</th><th>Status</th><th>Details</th></tr></thead>
                         <tbody id="payout-rows"></tbody>
                     </table>
-                    <p class="empty-state" id="empty-state" hidden>No Z balance activity yet. Seller earnings and purchases will appear here.</p>
+                    <p class="empty-state" id="empty-state" hidden>No Z balance activity yet. Seller earnings, purchases, and simulated withdrawals will appear here.</p>
                 </div>
                 <div class="statement-print-reference" id="statement-print-reference" hidden>
                     <strong>Z Namibia statement reference</strong><br>
@@ -207,7 +207,7 @@
                 </div>
             </section>
             <p class="status" id="status" role="status" aria-live="polite"></p>
-            <p class="note" id="payout-note">Seller earnings become virtual Z balance after the delivery hold. The balance can be spent on Z; no EFT is made.</p>
+            <p class="note" id="payout-note">Seller earnings become virtual Z balance after the delivery hold. Purchases and simulated withdrawals are recorded here; no bank transfer is made.</p>
         </div>
     </main>
     <script>
@@ -264,7 +264,7 @@
                 const description = document.createElement("span");
                 description.textContent = `${money.format(Number(request.amountNAD || 0))} to ${request.destination.bankName} account ending ${request.destination.accountLast4}`;
                 const meta = document.createElement("small");
-                meta.textContent = `Simulated · ${new Date(request.createdAt).toLocaleString()}`;
+                meta.textContent = `Simulated · deducted from Z balance · ${new Date(request.createdAt).toLocaleString()}`;
                 item.append(description, meta);
                 payoutHistory.append(item);
             }
@@ -316,7 +316,7 @@
             event.preventDefault();
             if (!withdrawalForm.reportValidity()) return;
             requestWithdrawalButton.disabled = true;
-            setPayoutMessage(withdrawalMessage, "Recording simulated request...");
+            setPayoutMessage(withdrawalMessage, "Recording simulated withdrawal...");
             try {
                 const amountNAD = Number(new FormData(withdrawalForm).get("amountNAD"));
                 const result = await requestPayoutApi("/api/seller/payout-requests", {
@@ -324,10 +324,16 @@
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ amountNAD })
                 });
-                setPayoutMessage(withdrawalMessage, result.message || "Simulated request recorded. No funds were moved.");
+                setPayoutMessage(withdrawalMessage, result.message || "Simulated withdrawal deducted from your Z balance. No bank transfer was made.");
                 withdrawalForm.reset();
-                await loadPayoutSettings();
-                payoutSettingsLoaded = true;
+                if (Number.isFinite(result.walletBalanceNAD)) updateWithdrawalBalance(result.walletBalanceNAD);
+                try {
+                    await loadPayoutSettings();
+                    payoutSettingsLoaded = true;
+                } catch (error) {
+                    setPayoutMessage(payoutAccountMessage, error.message || "Could not refresh payout settings.", true);
+                }
+                await loadTransactions();
             } catch (error) {
                 setPayoutMessage(withdrawalMessage, error.message || "Could not record simulated request.", true);
                 requestWithdrawalButton.disabled = false;
@@ -374,7 +380,7 @@
             document.querySelector("#report-total").firstChild.textContent = `${money.format(Number(result.walletBalanceNAD || 0))} `;
             heldTotal.textContent = `${countFor("held")} on hold`;
             paidTotal.textContent = `${countFor("eligible")} wallet credits`;
-            payoutNote.textContent = "Seller earnings are credited to the virtual Z balance after the delivery hold. They can be used for purchases on Z; no EFT is made.";
+            payoutNote.textContent = "Seller earnings are credited to the virtual Z balance after the delivery hold. Purchases and simulated withdrawals are recorded here; no bank transfer is made.";
             rows.replaceChildren();
             const activity = [
                 ...result.entries.map((entry) => ({
@@ -408,6 +414,7 @@
                     const transaction = item.value;
                     const isRefund = transaction.type === "purchase_refund";
                     const isSellerCredit = transaction.type === "seller_credit";
+                    const isWithdrawal = transaction.type === "withdrawal_debit";
                     const amount = money.format(Number(transaction.amountNAD));
                     const activityTitle = document.createElement("span");
                     activityTitle.className = "activity-title";
@@ -418,8 +425,8 @@
                     activityCell.append(activityTitle, reference);
                     amountCell.classList.add(isRefund || isSellerCredit ? "credit" : "debit");
                     amountCell.textContent = `${isRefund || isSellerCredit ? "+" : "-"}${amount}`;
-                    status.classList.add(isRefund ? "refund" : isSellerCredit ? "credit" : "purchase");
-                    status.textContent = isRefund ? "Refund" : isSellerCredit ? "Seller credit" : "Purchase";
+                    status.classList.add(isWithdrawal ? "withdrawal" : isRefund ? "refund" : isSellerCredit ? "credit" : "purchase");
+                    status.textContent = isWithdrawal ? "Simulated withdrawal" : isRefund ? "Refund" : isSellerCredit ? "Seller credit" : "Purchase";
                     paymentNote.textContent = `Balance after ${money.format(Number(transaction.balanceAfterNAD))}`;
                 } else {
                     const entry = item.value;
@@ -477,12 +484,13 @@
                 ["Reference", (item) => item.value.orderNumber],
                 ["Z balance amount (NAD)", (item) => {
                     const amount = Number(item.kind === "wallet" ? item.value.amountNAD : item.value.payoutNAD || 0);
-                    return (item.kind === "wallet" && item.value.type === "purchase_debit" ? -amount : amount).toFixed(2);
+                    return (item.kind === "wallet" && ["purchase_debit", "withdrawal_debit"].includes(item.value.type) ? -amount : amount).toFixed(2);
                 }],
                 ["Status", (item) => item.kind === "wallet"
                     ? item.value.type === "purchase_refund"
                         ? "Refund"
-                        : item.value.type === "seller_credit" ? "Seller credit" : "Purchase"
+                        : item.value.type === "seller_credit" ? "Seller credit"
+                            : item.value.type === "withdrawal_debit" ? "Simulated withdrawal" : "Purchase"
                     : item.value.payoutStatus === "eligible"
                         ? "Credited to Z balance"
                         : item.value.payoutStatus === "paid"

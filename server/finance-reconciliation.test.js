@@ -1,6 +1,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { reconcileWalletBalance, shouldAutoCorrectWalletBalance } = require('./server');
+const {
+  getWalletBalanceChange,
+  isWalletDebitType,
+  reconcileWalletBalance,
+  shouldAutoCorrectWalletBalance
+} = require('./server');
 
 test('wallet balance without ledger history is shown as unverified, not mismatched', () => {
   const reconciliation = reconcileWalletBalance(42.5, null);
@@ -48,6 +53,30 @@ test('a first wallet purchase debit infers its pre-transaction opening balance',
   assert.equal(reconciliation.status, 'matched');
   assert.equal(reconciliation.openingBalanceNAD, 100);
   assert.equal(reconciliation.expectedBalanceNAD, 70);
+});
+
+test('a first simulated withdrawal debit infers its pre-transaction opening balance', () => {
+  const reconciliation = reconcileWalletBalance(70, {
+    transactionCount: 1,
+    firstType: 'withdrawal_debit',
+    firstAmountNAD: 30,
+    firstBalanceAfterNAD: 70,
+    creditsNAD: 0,
+    debitsNAD: 30,
+    refundsNAD: 0,
+    lastBalanceAfterNAD: 70
+  });
+
+  assert.equal(reconciliation.status, 'matched');
+  assert.equal(reconciliation.openingBalanceNAD, 100);
+  assert.equal(reconciliation.expectedBalanceNAD, 70);
+});
+
+test('simulated withdrawals use the same debit direction as purchases', () => {
+  assert.equal(isWalletDebitType('withdrawal_debit'), true);
+  assert.equal(isWalletDebitType('purchase_debit'), true);
+  assert.equal(isWalletDebitType('seller_credit'), false);
+  assert.equal(getWalletBalanceChange('withdrawal_debit', 30), -30);
 });
 
 test('wallet reconciliation explains account funds missing from the ledger', () => {

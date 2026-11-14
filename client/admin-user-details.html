@@ -173,6 +173,7 @@
                 ["Total seller earnings", formatAmount(balances.sellerPayout.totalNAD), `${balances.sellerPayout.orderCount} paid seller orders recorded.`],
                 ["Seller credits", formatAmount(balances.walletLedger.seller_credit?.amountNAD || 0), `${balances.walletLedger.seller_credit?.count || 0} ledger entries.`],
                 ["Purchase debits", formatAmount(balances.walletLedger.purchase_debit?.amountNAD || 0), `${balances.walletLedger.purchase_debit?.count || 0} ledger entries.`],
+                ["Simulated withdrawal debits", formatAmount(balances.walletLedger.withdrawal_debit?.amountNAD || 0), `${balances.walletLedger.withdrawal_debit?.count || 0} ledger entries; no bank transfers are made.`],
                 ["Refunds", formatAmount(balances.walletLedger.purchase_refund?.amountNAD || 0), `${balances.walletLedger.purchase_refund?.count || 0} ledger entries.`]
             ];
             summary.textContent = `Show ${cards.length} balance totals`;
