@@ -31,7 +31,7 @@ function createEmailVerificationResendReservation(userId, now = new Date()) {
         emailVerificationLastResendAt: now
       }
     }],
-    options: { returnDocument: 'after', timestamps: false }
+    options: { returnDocument: 'after', timestamps: false, updatePipeline: true }
   };
 }
 

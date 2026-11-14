@@ -54,4 +54,5 @@ test('verification resend reservation atomically filters cooldown and rolling-wi
     now.getTime() - EMAIL_VERIFICATION_RESEND_COOLDOWN_MS);
   assert.deepEqual(reservation.update[0].$set.emailVerificationResendHistory.$concatArrays[1], [now]);
   assert.equal(reservation.update[0].$set.emailVerificationLastResendAt, now);
+  assert.equal(reservation.options.updatePipeline, true);
 });
