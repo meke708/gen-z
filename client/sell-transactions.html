@@ -167,7 +167,7 @@
                     <button class="payout-action" id="request-withdrawal" type="submit" disabled>Request simulated withdrawal</button>
                 </form>
                 <p class="payout-message" id="withdrawal-message" role="status" aria-live="polite"></p>
-                <h3 class="payout-intro">Recent simulated requests</h3>
+                <h3 class="payout-intro">Latest 2 simulated requests</h3>
                 <ul class="payout-history" id="payout-history"></ul>
                 <p class="payout-history-empty" id="payout-history-empty">No simulated withdrawal requests yet.</p>
             </section>
@@ -259,7 +259,7 @@
         function renderPayoutHistory(requests) {
             payoutHistory.replaceChildren();
             payoutHistoryEmpty.hidden = requests.length > 0;
-            for (const request of requests) {
+            for (const request of requests.slice(0, 2)) {
                 const item = document.createElement("li");
                 const description = document.createElement("span");
                 description.textContent = `${money.format(Number(request.amountNAD || 0))} to ${request.destination.bankName} account ending ${request.destination.accountLast4}`;
