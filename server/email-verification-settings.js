@@ -13,4 +13,12 @@ function isEmailVerificationTestEmail(email, allowedEmails) {
   return typeof email === 'string' && allowedEmails.includes(email.trim().toLowerCase());
 }
 
-module.exports = { parseEmailVerificationTestEmails, isEmailVerificationTestEmail };
+function isEmailVerificationLinkAllowed(email, allowedEmails, allowAllEmails = false) {
+  return allowAllEmails || isEmailVerificationTestEmail(email, allowedEmails);
+}
+
+module.exports = {
+  isEmailVerificationLinkAllowed,
+  isEmailVerificationTestEmail,
+  parseEmailVerificationTestEmails
+};

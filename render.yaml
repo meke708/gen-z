@@ -45,6 +45,8 @@ services:
         sync: false
       - key: EMAIL_VERIFICATION_TEST_EMAILS
         sync: false
+      - key: ALLOW_EMAIL_VERIFICATION_LINKS_IN_PRODUCTION
+        sync: false
       - key: CLOUDINARY_CLOUD_NAME
         sync: false
       - key: CLOUDINARY_API_KEY

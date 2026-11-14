@@ -23,7 +23,10 @@ const { DEFAULT_LOGIN_WALLPAPER, normalizeLoginWallpaper } = require('./login-wa
 const { normalizeBankPayoutAccount, normalizePayoutRequestAmount } = require('./payout-settings');
 const { getStatementSigningKey, signStatement, verifyStatement } = require('./statement-signature');
 const { getStatementPdfChecks } = require('./statement-pdf');
-const { isEmailVerificationTestEmail, parseEmailVerificationTestEmails } = require('./email-verification-settings');
+const {
+  isEmailVerificationLinkAllowed,
+  parseEmailVerificationTestEmails
+} = require('./email-verification-settings');
 const { getDeveloperApiUsageCounters } = require('./developer-api-usage');
 const { verifyDeveloperTestPassword } = require('./developer-test-access');
 const {
@@ -204,6 +207,7 @@ const statementPdfUpload = multer({
   limits: { fileSize: 10 * 1024 * 1024, files: 1, fields: 1, fieldSize: 64 }
 });
 const emailVerificationTestEmails = parseEmailVerificationTestEmails(process.env.EMAIL_VERIFICATION_TEST_EMAILS);
+const allowEmailVerificationLinksInProduction = process.env.ALLOW_EMAIL_VERIFICATION_LINKS_IN_PRODUCTION === 'true';
 const passwordResetMailer = process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASSWORD
   ? nodemailer.createTransport({
     host: process.env.SMTP_HOST,
@@ -1352,7 +1356,11 @@ function resolveAppBaseUrl({
 }
 
 async function createEmailVerification(user) {
-  const directVerificationLink = isEmailVerificationTestEmail(user.email, emailVerificationTestEmails);
+  const directVerificationLink = isEmailVerificationLinkAllowed(
+    user.email,
+    emailVerificationTestEmails,
+    allowEmailVerificationLinksInProduction
+  );
   if (process.env.NODE_ENV === 'production'
     && ((!passwordResetMailer && !directVerificationLink) || !resolveAppBaseUrl())) {
     throw apiError(503, 'Email verification is not configured. Contact Z support.');
@@ -2707,7 +2715,11 @@ app.post('/api/auth/register', async (req, res) => {
   if (referralCode && !/^[A-F0-9]{12}$/.test(referralCode)) {
     return res.status(400).json({ error: 'That referral code is not valid.' });
   }
-  const directVerificationLink = isEmailVerificationTestEmail(email, emailVerificationTestEmails);
+  const directVerificationLink = isEmailVerificationLinkAllowed(
+    email,
+    emailVerificationTestEmails,
+    allowEmailVerificationLinksInProduction
+  );
   if (process.env.NODE_ENV === 'production'
     && ((!passwordResetMailer && !directVerificationLink) || !resolveAppBaseUrl())) {
     return res.status(503).json({ error: 'Email verification is not configured. Contact Z support.' });
