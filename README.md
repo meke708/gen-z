@@ -110,18 +110,23 @@ function doPost(e) {
   ];
   const recipient = typeof data.to === 'string' ? data.to.trim() : '';
   const body = typeof data.text === 'string' ? data.text : '';
+  const htmlBody = typeof data.html === 'string' ? data.html : '';
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)
       || !allowedSubjects.includes(data.subject)
+      || (data.html !== undefined && typeof data.html !== 'string')
       || !body
-      || body.length > 12000) {
+      || body.length > 12000
+      || htmlBody.length > 24000) {
     return ContentService.createTextOutput('Invalid email');
   }
 
-  MailApp.sendEmail({
+  const message = {
     to: recipient,
     subject: data.subject,
     body: body
-  });
+  };
+  if (htmlBody) message.htmlBody = htmlBody;
+  MailApp.sendEmail(message);
   return ContentService.createTextOutput('Sent');
 }
 

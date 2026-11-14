@@ -22,6 +22,7 @@ const { listAllowedTests, runAllowedTest, runAllAllowedTests } = require('./appr
 const { DEFAULT_LOGIN_WALLPAPER, normalizeLoginWallpaper } = require('./login-wallpaper');
 const { normalizeBankPayoutAccount, normalizePayoutRequestAmount } = require('./payout-settings');
 const { createEmailDeliveryConfig, sendAccountEmail } = require('./email-delivery');
+const { createVerificationEmail } = require('./email-templates');
 const { getStatementSigningKey, signStatement, verifyStatement } = require('./statement-signature');
 const { getStatementPdfChecks } = require('./statement-pdf');
 const {
@@ -1392,10 +1393,11 @@ async function createEmailVerification(user) {
   );
   const verificationUrl = new URL(`/verify-email?token=${encodeURIComponent(token)}`, baseUrl).toString();
   if (process.env.NODE_ENV === 'production' && !directVerificationLink) {
+    const emailContent = createVerificationEmail({ name: user.name, verificationUrl });
     await sendTransactionalEmail({
       to: user.email,
       subject: 'Verify your Z email address',
-      text: `Hello ${user.name},\n\nVerify your Z email address within 24 hours:\n${verificationUrl}\n\nIf you did not create this account, you can ignore this email.`
+      ...emailContent
     });
     return '';
   }

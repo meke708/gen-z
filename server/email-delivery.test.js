@@ -30,7 +30,8 @@ test('Google Apps Script email delivery authenticates the JSON request and requi
   await sendAccountEmail(config, {
     to: 'buyer@example.com',
     subject: 'Verify your Z email address',
-    text: 'Open the verification link.'
+    text: 'Open the verification link.',
+    html: '<p>Open the verification link.</p>'
   }, {
     fetchImpl: async (url, options) => {
       request = { url, options, body: JSON.parse(options.body) };
@@ -43,6 +44,7 @@ test('Google Apps Script email delivery authenticates the JSON request and requi
   assert.equal(request.options.headers['Content-Type'], 'application/json');
   assert.equal(request.body.secret, webhookSecret);
   assert.equal(request.body.to, 'buyer@example.com');
+  assert.equal(request.body.html, '<p>Open the verification link.</p>');
 
   await assert.rejects(() => sendAccountEmail(config, {
     to: 'buyer@example.com',
