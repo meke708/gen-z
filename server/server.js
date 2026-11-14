@@ -1393,7 +1393,25 @@ async function createEmailVerification(user) {
   );
   const verificationUrl = new URL(`/verify-email?token=${encodeURIComponent(token)}`, baseUrl).toString();
   if (process.env.NODE_ENV === 'production' && !directVerificationLink) {
-    const emailContent = createVerificationEmail({ name: user.name, verificationUrl });
+    let featuredProduct = null;
+    try {
+      const promotedProducts = await getActivePromotedProducts();
+      featuredProduct = promotedProducts.length
+        ? promotedProducts[Math.floor(Math.random() * promotedProducts.length)]
+        : null;
+    } catch (error) {
+      console.error('Could not load a promoted listing for the verification email:', error.message);
+    }
+    const emailContent = createVerificationEmail({
+      name: user.name,
+      verificationUrl,
+      featuredProduct: featuredProduct
+        ? {
+          ...featuredProduct,
+          url: new URL(`/product/${encodeURIComponent(featuredProduct.id)}`, baseUrl).toString()
+        }
+        : null
+    });
     await sendTransactionalEmail({
       to: user.email,
       subject: 'Verify your Z email address',
