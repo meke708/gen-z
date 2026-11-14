@@ -24,25 +24,32 @@ function createVerificationEmail({ name, verificationUrl, featuredProduct = null
   const productUrl = getHttpsUrl(featuredProduct?.url);
   const imageUrl = getHttpsUrl(featuredProduct?.imageUrl);
   const productTitle = featuredProduct?.title ? escapeHtml(featuredProduct.title) : '';
+  const rawDescription = typeof featuredProduct?.description === 'string'
+    ? featuredProduct.description.trim().slice(0, 180)
+    : '';
+  const productDescription = rawDescription ? escapeHtml(rawDescription) : '';
   const shopName = featuredProduct?.shopName ? escapeHtml(featuredProduct.shopName) : '';
   const town = featuredProduct?.town ? escapeHtml(featuredProduct.town) : '';
   const price = Number(featuredProduct?.priceNAD);
   const priceLabel = Number.isFinite(price) ? `N$ ${price.toFixed(2)}` : '';
   const featuredProductText = productUrl && productTitle
-    ? `\n\nSponsored find from the Z marketplace:\n${featuredProduct.title}${shopName ? ` by ${featuredProduct.shopName}` : ''}${priceLabel ? ` · ${priceLabel}` : ''}\n${productUrl}`
+    ? `\n\n${featuredProduct.title}${productDescription ? `\n${rawDescription}` : ''}${shopName ? `\n${featuredProduct.shopName}` : ''}${priceLabel ? ` · ${priceLabel}` : ''}\n${productUrl}`
     : '';
   const featuredProductHtml = productUrl && productTitle
-    ? `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:30px;border:1px solid #dfe8df;border-radius:10px;overflow:hidden;">
+    ? `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:24px;border:1px solid #dfe8df;border-radius:10px;overflow:hidden;">
       <tr>
-        <td colspan="2" style="padding:14px 18px;background:#f2f7e9;color:#18382e;font-size:12px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">A promoted find from the Z marketplace</td>
-      </tr>
-      ${imageUrl ? `<tr><td colspan="2" style="padding:0;"><a href="${escapeHtml(productUrl)}" style="text-decoration:none;"><img src="${escapeHtml(imageUrl)}" alt="${productTitle}" width="536" style="display:block;width:100%;max-width:536px;height:auto;border:0;"></a></td></tr>` : ''}
-      <tr>
-        <td colspan="2" style="padding:18px 20px 20px;">
-          <p style="margin:0 0 6px;color:#52705e;font-size:12px;font-weight:bold;">${shopName}${shopName && town ? ' · ' : ''}${town}</p>
-          <h2 style="margin:0 0 10px;color:#18382e;font-size:20px;line-height:1.35;word-break:break-word;">${productTitle}</h2>
-          ${priceLabel ? `<p style="margin:0 0 16px;color:#18382e;font-size:18px;font-weight:bold;">${priceLabel}</p>` : ''}
-          <a href="${escapeHtml(productUrl)}" style="display:inline-block;padding:11px 18px;border-radius:6px;background:#18382e;color:#d8f36a;font-size:14px;font-weight:bold;text-decoration:none;">View this listing</a>
+        <td height="220" valign="bottom" bgcolor="#18382e"${imageUrl ? ` background="${escapeHtml(imageUrl)}"` : ''} style="height:220px;background-color:#18382e;${imageUrl ? `background-image:url('${escapeHtml(imageUrl)}');background-position:center;background-repeat:no-repeat;background-size:cover;` : ''}">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+            <tr>
+              <td bgcolor="#18382e" style="padding:16px 18px;background-color:rgba(24,56,46,0.88);color:#ffffff;">
+                <p style="margin:0 0 5px;color:#d8f36a;font-size:12px;font-weight:bold;">${shopName}${shopName && town ? ' · ' : ''}${town}</p>
+                <h2 style="margin:0 0 7px;color:#ffffff;font-size:20px;line-height:1.3;word-break:break-word;">${productTitle}</h2>
+                ${productDescription ? `<p style="margin:0 0 10px;color:#f1f5ee;font-size:13px;line-height:1.45;">${productDescription}</p>` : ''}
+                ${priceLabel ? `<p style="margin:0 0 12px;color:#d8f36a;font-size:16px;font-weight:bold;">${priceLabel}</p>` : ''}
+                <a href="${escapeHtml(productUrl)}" style="display:inline-block;padding:9px 15px;border-radius:5px;background:#d8f36a;color:#18382e;font-size:13px;font-weight:bold;text-decoration:none;">View product</a>
+              </td>
+            </tr>
+          </table>
         </td>
       </tr>
     </table>`

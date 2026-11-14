@@ -32,6 +32,7 @@ test('verification email matches Z branding and features a promoted marketplace 
     verificationUrl: 'https://z.example/verify-email?token=abc',
     featuredProduct: {
       title: 'Handmade basket',
+      description: 'A handwoven basket made by local artisans.',
       shopName: 'Local Crafts',
       town: 'Windhoek',
       priceNAD: 180,
@@ -43,12 +44,14 @@ test('verification email matches Z branding and features a promoted marketplace 
   assert.match(email.html, /#18382e/);
   assert.match(email.html, /#d8f36a/);
   assert.match(email.html, />Z<\/td>/);
-  assert.match(email.html, /A promoted find from the Z marketplace/);
+  assert.doesNotMatch(email.html, /A promoted find from the Z marketplace/);
   assert.match(email.html, /Handmade basket/);
+  assert.match(email.html, /A handwoven basket made by local artisans\./);
   assert.match(email.html, /N\$ 180\.00/);
-  assert.match(email.html, /src="https:\/\/images\.example\/basket\.jpg"/);
+  assert.match(email.html, /background="https:\/\/images\.example\/basket\.jpg"/);
+  assert.doesNotMatch(email.html, /<img[^>]+images\.example\/basket\.jpg/);
   assert.match(email.html, /href="https:\/\/z\.example\/product\/product-123"/);
-  assert.match(email.text, /Handmade basket by Local Crafts · N\$ 180\.00/);
+  assert.match(email.text, /Handmade basket\nA handwoven basket made by local artisans\.\nLocal Crafts · N\$ 180\.00/);
 });
 
 test('verification email omits a promoted listing with an unsafe URL', () => {
