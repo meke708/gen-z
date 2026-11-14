@@ -58,10 +58,16 @@ async function sendAccountEmail(config, message, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...message, secret: config.webhookSecret }),
+      redirect: 'follow',
       signal: controller.signal
     });
-    if (!response.ok || (await response.text()).trim() !== 'Sent') {
-      throw new Error('Google Apps Script did not confirm email delivery.');
+    const responseText = (await response.text()).trim();
+    if (['Unauthorized', 'Invalid request', 'Invalid email'].includes(responseText)) {
+      throw new Error(`Google Apps Script rejected the request: ${responseText}.`);
+    }
+    if (!response.ok) throw new Error(`Google Apps Script returned HTTP ${response.status}.`);
+    if (responseText !== 'Sent') {
+      throw new Error(`Google Apps Script returned an unexpected response (HTTP ${response.status}).`);
     }
   } finally {
     clearTimeout(timeout);

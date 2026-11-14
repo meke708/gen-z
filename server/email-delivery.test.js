@@ -39,6 +39,7 @@ test('Google Apps Script email delivery authenticates the JSON request and requi
   });
   assert.equal(request.url, config.webhookUrl);
   assert.equal(request.options.method, 'POST');
+  assert.equal(request.options.redirect, 'follow');
   assert.equal(request.options.headers['Content-Type'], 'application/json');
   assert.equal(request.body.secret, webhookSecret);
   assert.equal(request.body.to, 'buyer@example.com');
@@ -49,7 +50,23 @@ test('Google Apps Script email delivery authenticates the JSON request and requi
     text: 'Open the verification link.'
   }, {
     fetchImpl: async () => ({ ok: true, text: async () => 'Unauthorized' })
-  }), /did not confirm email delivery/);
+  }), /rejected the request: Unauthorized/);
+
+  await assert.rejects(() => sendAccountEmail(config, {
+    to: 'buyer@example.com',
+    subject: 'Verify your Z email address',
+    text: 'Open the verification link.'
+  }, {
+    fetchImpl: async () => ({ ok: false, status: 403, text: async () => 'Access denied' })
+  }), /returned HTTP 403/);
+
+  await assert.rejects(() => sendAccountEmail(config, {
+    to: 'buyer@example.com',
+    subject: 'Verify your Z email address',
+    text: 'Open the verification link.'
+  }, {
+    fetchImpl: async () => ({ ok: true, status: 200, text: async () => '<html>Sign in</html>' })
+  }), /unexpected response \(HTTP 200\)/);
 });
 
 test('SMTP remains configurable and sends through the existing mailer', async () => {
