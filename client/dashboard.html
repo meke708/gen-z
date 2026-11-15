@@ -93,6 +93,11 @@
         .account-view[hidden] { display: none !important; }
         .account-view .eyebrow { color: var(--muted); }
         .account-view h2 { margin: 0 0 10px; font-family: Georgia, "Times New Roman", serif; font-size: 30px; font-weight: 400; }
+        .conversation-view-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+        .conversation-view-header h2 { margin: 0; }
+        .conversation-view-header .account-action { display: inline-flex; align-items: center; justify-self: auto; text-decoration: none; }
+        .conversation-view-header .account-action:hover { border-color: var(--lime); color: var(--ink); background: var(--lime); }
+        .conversation-view-header .account-action:focus-visible { outline: 2px solid var(--forest); outline-offset: 3px; }
         .account-view > p:not(.eyebrow) { margin: 0 0 18px; color: var(--muted); font-size: 14px; line-height: 1.7; }
         .account-view .hero { margin-top: 22px; }
         .profile-form { display: grid; max-width: 620px; gap: 16px; }
@@ -517,6 +522,7 @@
                 <nav class="sidebar-nav" aria-label="Account menu">
                     <button type="button" data-account-target="overview" aria-current="page"><span aria-hidden="true">⌂</span>Overview</button>
                     <button type="button" data-account-target="notifications"><span aria-hidden="true">♧</span>Notifications<span class="notification-count" id="notification-count" aria-label="Unread notifications" hidden></span></button>
+                    <button type="button" data-account-target="conversations"><span aria-hidden="true">✉</span>Conversations<span class="notification-count" id="conversation-count" aria-label="Unread messages" hidden></span></button>
                     <button type="button" data-account-target="wishlist"><span aria-hidden="true">♡</span>Wishlist</button>
                     <button type="button" data-account-target="orders"><span aria-hidden="true">▤</span>Orders</button>
                     <button type="button" data-account-target="profile"><span aria-hidden="true">○</span>Profile</button>
@@ -585,6 +591,17 @@
                         <p class="login-activity-status" id="support-notifications-status" role="status" aria-live="polite">Loading support tasks...</p>
                         <ol class="login-activity-list" id="support-notifications-list"></ol>
                     </section>
+                </section>
+
+                <section class="account-view" id="account-view-conversations" data-account-view="conversations" aria-labelledby="conversations-title" hidden>
+                    <p class="eyebrow">Talk to a shop</p>
+                    <div class="conversation-view-header">
+                        <h2 id="conversations-title">Conversations</h2>
+                        <a class="account-action" href="/messages">Open conversation inbox</a>
+                    </div>
+                    <p>Message sellers about products and continue your chats here.</p>
+                    <p class="login-activity-status" id="buyer-conversations-status" role="status" aria-live="polite">Loading your conversations...</p>
+                    <ol class="login-activity-list" id="buyer-conversations-list"></ol>
                 </section>
 
                 <section class="account-view" id="account-view-wishlist" data-account-view="wishlist" aria-labelledby="wishlist-title" hidden>
@@ -1032,8 +1049,45 @@
             if (section === "notifications") void loadLoginActivity();
             if (section === "notifications") void loadAccountNotifications();
             if (section === "notifications") void loadSupportNotifications();
+            if (section === "conversations") void loadBuyerConversations();
             if (section === "wishlist") void loadWishlist();
             return true;
+        }
+
+        async function loadBuyerConversations() {
+            const status = document.querySelector("#buyer-conversations-status");
+            const list = document.querySelector("#buyer-conversations-list");
+            const badge = document.querySelector("#conversation-count");
+            status.textContent = "Loading your conversations...";
+            list.replaceChildren();
+            try {
+                const response = await fetch("/api/messages/conversations");
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || "Could not load your conversations.");
+                const conversations = Array.isArray(result.conversations) ? result.conversations : [];
+                const unreadCount = conversations.reduce((total, conversation) => total + (conversation.role === "buyer" ? conversation.unreadCount : 0), 0);
+                badge.textContent = String(unreadCount);
+                badge.hidden = unreadCount === 0;
+                const buyerConversations = conversations.filter((conversation) => conversation.role === "buyer");
+                status.textContent = buyerConversations.length
+                    ? `${buyerConversations.length} ${buyerConversations.length === 1 ? "conversation" : "conversations"}.`
+                    : "No conversations yet. Open a product page and choose Message seller to start one.";
+                buyerConversations.forEach((conversation) => {
+                    const item = document.createElement("li");
+                    item.classList.toggle("is-new", conversation.unreadCount > 0);
+                    const link = document.createElement("a");
+                    link.href = `/messages?conversation=${encodeURIComponent(conversation.id)}`;
+                    link.textContent = `${conversation.participantName} · ${conversation.productTitle}`;
+                    const preview = document.createElement("span");
+                    preview.className = "login-activity-status";
+                    preview.textContent = conversation.lastMessageText || "Open conversation";
+                    item.append(link, preview);
+                    list.append(item);
+                });
+            } catch (error) {
+                badge.hidden = true;
+                status.textContent = error.message || "Could not load your conversations.";
+            }
         }
 
         function renderWishlist() {

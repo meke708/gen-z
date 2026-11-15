@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f4f1e8">
+    <title>Conversations | Z Namibia</title>
+    <style>
+        :root { color-scheme: light; --ink: #17231e; --muted: #68736d; --paper: #f4f1e8; --white: #fffefa; --lime: #d8f36a; --forest: #18382e; --line: #d9d9cf; }
+        * { box-sizing: border-box; }
+        body { min-width: 320px; margin: 0; color: var(--ink); background: var(--paper); font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
+        button, textarea { font: inherit; }
+        a { color: inherit; }
+        .site-header { display: flex; min-height: 72px; align-items: center; justify-content: space-between; gap: 18px; padding: 12px max(24px, calc((100vw - 1100px) / 2)); border-bottom: 1px solid var(--line); }
+        .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+        .brand-mark { display: grid; width: 36px; aspect-ratio: 1; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; font-family: Georgia, serif; font-size: 22px; }
+        .header-links { display: flex; align-items: center; gap: 18px; font-size: 11px; font-weight: 700; }
+        .header-links a { text-decoration: none; }
+        main { width: min(1100px, calc(100% - 40px)); margin: 0 auto; padding: 38px 0 64px; }
+        .page-heading { margin: 0 0 20px; font-family: Georgia, "Times New Roman", serif; font-size: 38px; font-weight: 400; }
+        .eyebrow { margin: 0 0 8px; color: var(--forest); font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+        .inbox { display: grid; height: min(720px, max(320px, calc(100vh - 300px))); height: min(720px, max(320px, calc(100dvh - 300px))); min-height: 0; grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.5fr); border: 1px solid var(--line); background: var(--white); }
+        .conversation-sidebar { display: grid; min-width: 0; min-height: 0; grid-template-rows: auto auto minmax(0, 1fr); border-right: 1px solid var(--line); }
+        .sidebar-heading, .thread-heading { min-height: 67px; padding: 15px 18px; border-bottom: 1px solid var(--line); }
+        .sidebar-heading h2, .thread-heading h2 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 20px; font-weight: 400; }
+        .sidebar-heading p, .thread-heading p { margin: 4px 0 0; color: var(--muted); font-size: 10px; }
+        .conversation-status { margin: 14px 15px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+        .conversation-list { display: grid; min-height: 0; gap: 1px; overflow-y: auto; margin: 0; padding: 0; list-style: none; }
+        .conversation-list button { display: grid; width: 100%; gap: 5px; padding: 13px 15px; border: 0; border-bottom: 1px solid #eeeee7; color: var(--ink); background: transparent; cursor: pointer; text-align: left; }
+        .conversation-list button:hover, .conversation-list button[aria-current="true"] { background: #f2f4e9; }
+        .conversation-list button:focus-visible { outline: 2px solid #397d54; outline-offset: -2px; }
+        .conversation-list strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+        .conversation-list span { overflow: hidden; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+        .conversation-list .unread { justify-self: start; padding: 3px 6px; border-radius: 999px; color: var(--white); background: #b65b22; font-size: 9px; font-weight: 700; }
+        .thread { display: grid; min-width: 0; min-height: 0; grid-template-rows: auto minmax(0, 1fr) auto; }
+        .thread-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .thread-heading-copy { min-width: 0; }
+        .thread-heading h2, .thread-heading p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .message-product-tag { display: flex; align-items: center; gap: 9px; margin-bottom: 8px; padding: 6px; border: 1px solid var(--line); color: var(--ink); background: rgba(255, 254, 250, 0.8); text-decoration: none; }
+        .message-product-tag:hover { border-color: var(--forest); }
+        .message-product-tag img, .message-product-tag-mark { display: grid; width: 42px; height: 42px; flex: 0 0 auto; place-items: center; object-fit: cover; color: var(--forest); background: #e4ecc9; font-family: Georgia, serif; font-size: 20px; }
+        .message-product-tag-copy { display: grid; min-width: 0; gap: 4px; }
+        .message-product-tag-copy strong { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+        .message-product-tag-copy small { color: var(--muted); font-size: 9px; }
+        .message-feed { display: flex; min-height: 0; flex-direction: column; gap: 10px; overflow-y: auto; padding: 18px; }
+        .message-empty { margin: auto; color: var(--muted); font-size: 12px; line-height: 1.6; text-align: center; }
+        .message-bubble { max-width: min(78%, 520px); padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px 10px 10px 2px; background: #f5f4ed; }
+        .message-bubble.mine { align-self: flex-end; border-color: #d7e3c9; border-radius: 10px 10px 2px 10px; background: #edf2e2; }
+        .message-bubble p { margin: 0; font-size: 12px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .message-bubble footer { margin-top: 6px; color: var(--muted); font-size: 9px; }
+        .message-form { display: grid; gap: 8px; padding: 14px 18px; border-top: 1px solid var(--line); }
+        .message-form textarea { width: 100%; min-height: 78px; max-height: 180px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: var(--white); font-size: 12px; line-height: 1.5; resize: vertical; }
+        .message-form textarea:focus { outline: 2px solid rgba(24, 56, 46, 0.2); border-color: var(--forest); }
+        .message-product-toggle { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 10px; cursor: pointer; }
+        .message-product-toggle input { width: 15px; height: 15px; margin: 0; accent-color: var(--forest); }
+        .message-form-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .message-form-actions span { color: var(--muted); font-size: 9px; }
+        .message-form button { min-height: 40px; padding: 0 16px; border: 1px solid var(--ink); border-radius: 3px; color: var(--white); background: var(--ink); cursor: pointer; font-size: 11px; font-weight: 700; }
+        .message-form button:hover { color: var(--ink); background: var(--lime); }
+        .message-form button:disabled { opacity: 0.6; cursor: wait; }
+        .thread-status { min-height: 16px; margin: 0; color: #8b3b2f; font-size: 10px; line-height: 1.5; }
+        .thread-status.success { color: var(--forest); }
+        [hidden] { display: none !important; }
+        @media (max-width: 700px) {
+            .site-header { min-height: 64px; padding: 10px 18px; }
+            .header-links { gap: 12px; font-size: 10px; }
+            main { width: calc(100% - 28px); padding-top: 25px; }
+            .page-heading { font-size: 32px; }
+            .inbox { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 0.42fr) minmax(0, 1fr); }
+            .conversation-sidebar { border-right: 0; border-bottom: 1px solid var(--line); }
+            .message-feed { padding: 13px; }
+            .message-bubble { max-width: 88%; }
+        }
+        @media (max-height: 700px) {
+            main { padding-top: 20px; padding-bottom: 20px; }
+            .page-heading { margin-bottom: 12px; }
+            .inbox { height: max(260px, calc(100vh - 220px)); height: max(260px, calc(100dvh - 220px)); }
+        }
+    </style>
+    <link rel="stylesheet" href="/loading.css">
+    <script src="/loading.js"></script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+</head>
+<body>
+    <header class="site-header">
+        <a class="brand" href="/marketplace" aria-label="Z Namibia marketplace"><span class="brand-mark" aria-hidden="true">Z</span><span>Z Namibia</span></a>
+        <nav class="header-links" aria-label="Account navigation"><a href="/marketplace">Marketplace</a><a href="/dashboard">Buyer profile</a><a href="/sell/dashboard">Seller dashboard</a></nav>
+    </header>
+    <main>
+        <p class="eyebrow">Buyer and seller inbox</p>
+        <h1 class="page-heading">Conversations</h1>
+        <p class="conversation-status" id="inbox-status" role="status" aria-live="polite">Loading your inbox...</p>
+        <section class="inbox" aria-label="Direct messages">
+            <aside class="conversation-sidebar" aria-label="Conversation list">
+                <div class="sidebar-heading"><h2>Your chats</h2><p>Chats stay here so you can continue later.</p></div>
+                <p class="conversation-status" id="conversation-status" role="status" aria-live="polite"></p>
+                <ol class="conversation-list" id="conversation-list"></ol>
+            </aside>
+            <section class="thread" aria-label="Message thread">
+                <header class="thread-heading" id="thread-heading">
+                    <div class="thread-heading-copy">
+                        <h2 id="thread-title">Choose a conversation</h2>
+                        <p id="thread-subtitle">Select a chat or start one from a product page.</p>
+                    </div>
+                </header>
+                <div class="message-feed" id="message-feed" aria-live="polite"><p class="message-empty">Your messages will appear here.</p></div>
+                <form class="message-form" id="message-form" hidden>
+                    <label class="sr-only" for="message-input">Your message</label>
+                    <label class="message-product-toggle" for="tag-product-message"><input id="tag-product-message" type="checkbox"> Attach this product to the message</label>
+                    <textarea id="message-input" maxlength="2000" placeholder="Write a message..." required></textarea>
+                    <div class="message-form-actions"><span>Keep messages under 2,000 characters.</span><button type="submit" id="send-message">Send message</button></div>
+                    <p class="thread-status" id="thread-status" role="status" aria-live="polite"></p>
+                </form>
+            </section>
+        </section>
+    </main>
+    <script>
+        const inboxStatus = document.querySelector("#inbox-status");
+        const conversationStatus = document.querySelector("#conversation-status");
+        const conversationList = document.querySelector("#conversation-list");
+        const threadTitle = document.querySelector("#thread-title");
+        const threadSubtitle = document.querySelector("#thread-subtitle");
+        const thread = document.querySelector(".thread");
+        const messageFeed = document.querySelector("#message-feed");
+        const messageForm = document.querySelector("#message-form");
+        const messageInput = document.querySelector("#message-input");
+        const tagProductCheckbox = document.querySelector("#tag-product-message");
+        const threadStatus = document.querySelector("#thread-status");
+        const sendButton = document.querySelector("#send-message");
+        const query = new URLSearchParams(window.location.search);
+        const requestedConversationId = query.get("conversation") || "";
+        const requestedProductId = query.get("productId") || "";
+        const requestedTagProduct = query.get("tagProduct") === "1";
+        let conversations = [];
+        let activeConversationId = "";
+        let pendingProductId = "";
+        let refreshTimer;
+
+        async function requestJson(url, options = {}) {
+            const response = await fetch(url, options);
+            let result;
+            try { result = await response.json(); } catch { throw new Error("The server returned an invalid response."); }
+            if (!response.ok) throw new Error(result.error || "Could not load your conversations.");
+            return result;
+        }
+
+        function formatTime(value) {
+            const date = new Date(value);
+            return Number.isNaN(date.getTime()) ? "" : date.toLocaleString("en-NA", { dateStyle: "medium", timeStyle: "short" });
+        }
+
+        function updateConversationList() {
+            conversationList.replaceChildren();
+            conversations.forEach((conversation) => {
+                const item = document.createElement("li");
+                const button = document.createElement("button");
+                button.type = "button";
+                button.dataset.conversationId = conversation.id;
+                button.setAttribute("aria-current", String(conversation.id === activeConversationId));
+                const participant = document.createElement("strong");
+                participant.textContent = conversation.participantName;
+                const product = document.createElement("span");
+                product.textContent = conversation.productTitle;
+                const preview = document.createElement("span");
+                preview.textContent = conversation.lastMessageText || "Start the conversation";
+                button.append(participant, product, preview);
+                if (conversation.unreadCount > 0) {
+                    const unread = document.createElement("span");
+                    unread.className = "unread";
+                    unread.textContent = `${conversation.unreadCount} new`;
+                    button.append(unread);
+                }
+                button.addEventListener("click", () => void selectConversation(conversation.id));
+                item.append(button);
+                conversationList.append(item);
+            });
+        }
+
+        async function loadConversations() {
+            const result = await requestJson("/api/messages/conversations");
+            conversations = Array.isArray(result.conversations) ? result.conversations : [];
+            conversationStatus.textContent = conversations.length
+                ? `${conversations.length} ${conversations.length === 1 ? "chat" : "chats"}`
+                : "No conversations yet.";
+            updateConversationList();
+            return conversations;
+        }
+
+        function setThreadHeading(title, subtitle) {
+            threadTitle.textContent = title;
+            threadSubtitle.textContent = subtitle;
+        }
+
+        function showPendingProduct(product, tagProduct) {
+            pendingProductId = product.id;
+            activeConversationId = "";
+            tagProductCheckbox.checked = tagProduct;
+            updateConversationList();
+            setThreadHeading(product.shop.name, `Start a chat about ${product.title}`);
+            messageFeed.replaceChildren();
+            const intro = document.createElement("p");
+            intro.className = "message-empty";
+            intro.textContent = `Ask ${product.shop.name} a question about ${product.title}.`;
+            messageFeed.append(intro);
+            messageForm.hidden = false;
+            messageInput.placeholder = `Ask about ${product.title}...`;
+            messageInput.focus();
+            const url = new URL(window.location.href);
+            url.searchParams.delete("conversation");
+            url.searchParams.set("productId", product.id);
+            if (tagProduct) url.searchParams.set("tagProduct", "1");
+            else url.searchParams.delete("tagProduct");
+            window.history.replaceState({}, "", url);
+        }
+
+        function renderMessages(data) {
+            const wasNearBottom = messageFeed.scrollHeight - messageFeed.scrollTop - messageFeed.clientHeight < 80;
+            setThreadHeading(data.conversation.participantName, data.conversation.productTitle);
+            messageFeed.replaceChildren();
+            if (!data.messages.length) {
+                const empty = document.createElement("p");
+                empty.className = "message-empty";
+                empty.textContent = "Send a message to get the conversation started.";
+                messageFeed.append(empty);
+            } else {
+                data.messages.forEach((message) => {
+                    const bubble = document.createElement("article");
+                    bubble.className = `message-bubble${message.mine ? " mine" : ""}`;
+                    if (message.productTag) {
+                        const productTag = document.createElement("a");
+                        productTag.className = "message-product-tag";
+                        productTag.href = `/product/${encodeURIComponent(message.productTag.productId)}`;
+                        if (message.productTag.imageUrl) {
+                            const image = document.createElement("img");
+                            image.src = message.productTag.imageUrl;
+                            image.alt = "";
+                            image.loading = "lazy";
+                            productTag.append(image);
+                        } else {
+                            const mark = document.createElement("span");
+                            mark.className = "message-product-tag-mark";
+                            mark.textContent = "Z";
+                            productTag.append(mark);
+                        }
+                        const copy = document.createElement("span");
+                        copy.className = "message-product-tag-copy";
+                        const title = document.createElement("strong");
+                        title.textContent = message.productTag.title;
+                        const price = document.createElement("small");
+                        price.textContent = `Tagged product · N$ ${Number(message.productTag.priceNAD).toFixed(2)}`;
+                        copy.append(title, price);
+                        productTag.append(copy);
+                        bubble.append(productTag);
+                    }
+                    const body = document.createElement("p");
+                    body.textContent = message.body;
+                    const meta = document.createElement("footer");
+                    meta.textContent = `${message.senderName} · ${formatTime(message.createdAt)}`;
+                    bubble.append(body, meta);
+                    messageFeed.append(bubble);
+                });
+            }
+            messageForm.hidden = false;
+            messageInput.placeholder = "Write a message...";
+            if (wasNearBottom || messageFeed.scrollTop === 0) messageFeed.scrollTop = messageFeed.scrollHeight;
+        }
+
+        async function loadThread(conversationId) {
+            const result = await requestJson(`/api/messages/conversations/${encodeURIComponent(conversationId)}`);
+            if (activeConversationId === conversationId) renderMessages(result);
+        }
+
+        async function selectConversation(conversationId, tagProduct = false) {
+            activeConversationId = conversationId;
+            pendingProductId = "";
+            tagProductCheckbox.checked = tagProduct;
+            threadStatus.textContent = "";
+            threadStatus.classList.remove("success");
+            messageForm.hidden = false;
+            updateConversationList();
+            const url = new URL(window.location.href);
+            url.searchParams.set("conversation", conversationId);
+            url.searchParams.delete("productId");
+            if (tagProduct) url.searchParams.set("tagProduct", "1");
+            else url.searchParams.delete("tagProduct");
+            url.searchParams.delete("focus");
+            window.history.replaceState({}, "", url);
+            try {
+                await loadThread(conversationId);
+                await loadConversations();
+                updateConversationList();
+                if (window.matchMedia("(max-width: 700px)").matches) {
+                    thread.scrollIntoView({ behavior: "smooth", block: "start" });
+                }
+            } catch (error) {
+                threadStatus.textContent = error.message;
+            }
+        }
+
+        async function startFromProduct(productId, tagProduct) {
+            if (!/^[a-f\d]{24}$/i.test(productId)) throw new Error("That product link is not valid.");
+            const result = await requestJson(`/api/products/${encodeURIComponent(productId)}`);
+            if (!result.viewer?.canMessageSeller) throw new Error("You cannot start a conversation with this seller.");
+            showPendingProduct(result.product, tagProduct);
+        }
+
+        messageForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const message = messageInput.value.trim();
+            if (!message) {
+                threadStatus.textContent = "Write a message before sending.";
+                return;
+            }
+            sendButton.disabled = true;
+            threadStatus.textContent = "Sending...";
+            threadStatus.classList.remove("success");
+            try {
+                if (pendingProductId) {
+                    const result = await requestJson("/api/messages/start", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ productId: pendingProductId, message, tagProduct: tagProductCheckbox.checked })
+                    });
+                    activeConversationId = result.conversationId;
+                    pendingProductId = "";
+                } else if (activeConversationId) {
+                    await requestJson(`/api/messages/conversations/${encodeURIComponent(activeConversationId)}`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ message, tagProduct: tagProductCheckbox.checked })
+                    });
+                } else {
+                    throw new Error("Choose a conversation or open chat from a product page first.");
+                }
+                messageInput.value = "";
+                tagProductCheckbox.checked = false;
+                threadStatus.textContent = "Message sent.";
+                threadStatus.classList.add("success");
+                await loadConversations();
+                const url = new URL(window.location.href);
+                url.searchParams.set("conversation", activeConversationId);
+                url.searchParams.delete("productId");
+                url.searchParams.delete("tagProduct");
+                window.history.replaceState({}, "", url);
+                await loadThread(activeConversationId);
+                updateConversationList();
+            } catch (error) {
+                threadStatus.textContent = error.message || "Could not send your message.";
+            } finally {
+                sendButton.disabled = false;
+            }
+        });
+
+        async function initializeInbox() {
+            try {
+                inboxStatus.textContent = "";
+                await loadConversations();
+                if (requestedConversationId) {
+                    if (!conversations.some((conversation) => conversation.id === requestedConversationId)) {
+                        throw new Error("That conversation is not available in your inbox.");
+                    }
+                    await selectConversation(requestedConversationId, requestedTagProduct);
+                } else if (requestedProductId) {
+                    const existing = conversations.find((conversation) => conversation.productId === requestedProductId);
+                    if (existing) await selectConversation(existing.id, requestedTagProduct);
+                    else await startFromProduct(requestedProductId, requestedTagProduct);
+                }
+                refreshTimer = window.setInterval(async () => {
+                    try {
+                        await loadConversations();
+                        updateConversationList();
+                        if (activeConversationId) await loadThread(activeConversationId);
+                    } catch (error) {
+                        inboxStatus.textContent = error.message;
+                    }
+                }, 5000);
+            } catch (error) {
+                inboxStatus.textContent = error.message || "Could not load your inbox.";
+                conversationStatus.textContent = "";
+            }
+        }
+
+        window.addEventListener("beforeunload", () => window.clearInterval(refreshTimer));
+        void initializeInbox();
+    </script>
+</body>
+</html>

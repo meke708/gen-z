@@ -26,6 +26,13 @@ const { createVerificationEmail } = require('./email-templates');
 const { getStatementSigningKey, signStatement, verifyStatement } = require('./statement-signature');
 const { getStatementPdfChecks } = require('./statement-pdf');
 const {
+  MAX_CHAT_MESSAGE_LENGTH,
+  normalizeChatMessage,
+  getChatParticipantRole,
+  createChatProductTag,
+  getConversationProductTag
+} = require('./direct-chat');
+const {
   isEmailVerificationLinkAllowed,
   parseEmailVerificationTestEmails
 } = require('./email-verification-settings');
@@ -150,6 +157,13 @@ const listingReportRateLimit = rateLimit({
   standardHeaders: 'draft-8',
   legacyHeaders: false,
   message: { error: 'Too many listing reports. Please try again later.' }
+});
+const directChatRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 30,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { error: 'You are sending messages too quickly. Please wait a moment.' }
 });
 const suspensionAppealRateLimit = rateLimit({
   windowMs: 60 * 60 * 1000,
@@ -400,6 +414,32 @@ productSchema.index(
   { shopId: 1, duplicateKey: 1 },
   { unique: true, partialFilterExpression: { duplicateKey: { $type: 'string' } } }
 );
+const chatProductTagSchema = new mongoose.Schema({
+  productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+  title: { type: String, required: true, trim: true, maxlength: 100 },
+  imageUrl: { type: String, default: '' },
+  priceNAD: { type: Number, required: true, min: 0 }
+}, { _id: false });
+const chatConversationSchema = new mongoose.Schema({
+  buyerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  shopId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', required: true, index: true },
+  productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+  productTag: { type: chatProductTagSchema, default: null },
+  lastMessageText: { type: String, default: '', maxlength: MAX_CHAT_MESSAGE_LENGTH },
+  lastMessageAt: { type: Date, default: null, index: true },
+  lastMessageSenderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  buyerUnreadCount: { type: Number, default: 0, min: 0 },
+  sellerUnreadCount: { type: Number, default: 0, min: 0 }
+}, { timestamps: true });
+chatConversationSchema.index({ buyerId: 1, productId: 1 }, { unique: true });
+chatConversationSchema.index({ shopId: 1, lastMessageAt: -1 });
+const chatMessageSchema = new mongoose.Schema({
+  conversationId: { type: mongoose.Schema.Types.ObjectId, ref: 'ChatConversation', required: true },
+  senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  body: { type: String, required: true, trim: true, maxlength: MAX_CHAT_MESSAGE_LENGTH },
+  productTag: { type: chatProductTagSchema, default: null }
+}, { timestamps: { createdAt: true, updatedAt: false } });
+chatMessageSchema.index({ conversationId: 1, createdAt: 1 });
 const promotionCampaignSchema = new mongoose.Schema({
   productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
   sellerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
@@ -632,6 +672,8 @@ const PasswordReset = mongoose.model('PasswordReset', passwordResetSchema);
 const EmailVerification = mongoose.model('EmailVerification', emailVerificationSchema);
 const Shop = mongoose.model('Shop', shopSchema);
 const Product = mongoose.model('Product', productSchema);
+const ChatConversation = mongoose.model('ChatConversation', chatConversationSchema);
+const ChatMessage = mongoose.model('ChatMessage', chatMessageSchema);
 const PromotionCampaign = mongoose.model('PromotionCampaign', promotionCampaignSchema);
 const PromotionEngagement = mongoose.model('PromotionEngagement', promotionEngagementSchema);
 const ListingReport = mongoose.model('ListingReport', listingReportSchema);
@@ -770,6 +812,15 @@ app.get('/sell/notifications', async (req, res) => {
   if (shop?.sellerSuspended) return res.redirect('/dashboard?section=profile&sellerSuspended=1');
   if (!shop) return res.redirect('/sell/setup');
   return res.sendFile(path.join(__dirname, '..', 'client', 'sell.html'));
+});
+
+app.get('/sell/messages', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.redirect(`/login?returnTo=${encodeURIComponent(req.originalUrl)}`);
+  const shop = await Shop.findOne({ ownerId: user._id }).select('sellerSuspended');
+  if (shop?.sellerSuspended) return res.redirect('/dashboard?section=profile&sellerSuspended=1');
+  if (!shop) return res.redirect('/sell/setup');
+  return res.sendFile(path.join(__dirname, '..', 'client', 'messages.html'));
 });
 
 app.get('/sell/transactions', async (req, res) => {
@@ -1005,6 +1056,12 @@ app.get('/checkout', async (req, res) => {
 
 app.get('/product/:id', (req, res) => {
   return res.sendFile(path.join(__dirname, '..', 'client', 'product.html'));
+});
+
+app.get('/messages', async (req, res) => {
+  const returnTo = req.originalUrl;
+  if (!await getSessionUser(req)) return res.redirect(`/login?returnTo=${encodeURIComponent(returnTo)}`);
+  return res.sendFile(path.join(__dirname, '..', 'client', 'messages.html'));
 });
 
 app.get('/shops', (req, res) => {
@@ -6983,10 +7040,12 @@ app.get('/api/products/:id', async (req, res) => {
   await releaseExpiredReservations();
   if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: 'Product not found.' });
   const product = await Product.findOne({ _id: req.params.id, status: 'active', isAvailable: { $ne: false }, reviewStatus: { $in: ['approved', null] }, moderationStatus: { $ne: 'hidden' } })
-    .populate('shopId', 'name slug description town sellerSuspended approvalStatus sellerRestrictionStatus sellerRestrictedUntil')
+    .populate('shopId', 'ownerId name slug description town sellerSuspended approvalStatus sellerRestrictionStatus sellerRestrictedUntil')
     .lean();
 
   if (!product?.shopId || !isPublicSellerShop(product.shopId)) return res.status(404).json({ error: 'Product not found.' });
+  const viewer = await getSessionUser(req);
+  const { ownerId, ...publicShop } = product.shopId;
   return res.json({
     product: {
       id: product._id.toString(),
@@ -6997,9 +7056,194 @@ app.get('/api/products/:id', async (req, res) => {
       category: product.category,
       town: product.town,
       imageUrl: product.imageUrl,
-      shop: product.shopId
-    }
+      shop: publicShop
+    },
+    viewer: { canMessageSeller: Boolean(viewer && viewer._id.toString() !== ownerId.toString()) }
   });
+});
+
+app.post('/api/messages/start', directChatRateLimit, async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to message this seller.' });
+  if (typeof req.body?.productId !== 'string' || !mongoose.isValidObjectId(req.body.productId)) {
+    return res.status(404).json({ error: 'Product not found.' });
+  }
+  const body = normalizeChatMessage(req.body?.message);
+  if (!body) return res.status(400).json({ error: `Enter a message of 1-${MAX_CHAT_MESSAGE_LENGTH} characters.` });
+
+  const product = await Product.findOne({
+    _id: req.body.productId,
+    status: 'active',
+    isAvailable: { $ne: false },
+    reviewStatus: { $in: ['approved', null] },
+    moderationStatus: { $ne: 'hidden' }
+  }).populate('shopId', 'ownerId name sellerSuspended approvalStatus sellerRestrictionStatus sellerRestrictedUntil');
+  if (!product?.shopId || !isPublicSellerShop(product.shopId)) return res.status(404).json({ error: 'Product not found.' });
+  if (product.shopId.ownerId.toString() === user._id.toString()) {
+    return res.status(403).json({ error: 'You cannot message yourself about your own product.' });
+  }
+
+  let conversation;
+  try {
+    conversation = await ChatConversation.findOneAndUpdate(
+      { buyerId: user._id, productId: product._id },
+      { $setOnInsert: { buyerId: user._id, shopId: product.shopId._id, productId: product._id } },
+      { upsert: true, new: true, setDefaultsOnInsert: true, runValidators: true }
+    );
+  } catch (error) {
+    if (error.code !== 11000) throw error;
+    conversation = await ChatConversation.findOne({ buyerId: user._id, productId: product._id });
+    if (!conversation) throw error;
+  }
+
+  const productTag = req.body?.tagProduct === true ? createChatProductTag(product) : null;
+  const message = await ChatMessage.create({
+    conversationId: conversation._id,
+    senderId: user._id,
+    body,
+    productTag
+  });
+  await ChatConversation.updateOne(
+    { _id: conversation._id },
+    {
+      $set: {
+        lastMessageText: body,
+        lastMessageAt: message.createdAt,
+        lastMessageSenderId: user._id,
+        ...(productTag ? { productTag } : {})
+      },
+      $inc: { sellerUnreadCount: 1 }
+    }
+  );
+  return res.status(201).json({ conversationId: conversation._id.toString() });
+});
+
+app.get('/api/messages/conversations', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to view your conversations.' });
+  const shopIds = await Shop.find({ ownerId: user._id }).distinct('_id');
+  const conversations = await ChatConversation.find({
+    $or: [{ buyerId: user._id }, { shopId: { $in: shopIds } }]
+  })
+    .sort({ lastMessageAt: -1, updatedAt: -1 })
+    .limit(100)
+    .populate('buyerId', 'name')
+    .populate('shopId', 'name ownerId')
+    .populate('productId', 'title')
+    .lean();
+
+  return res.json({
+    conversations: conversations.map((conversation) => {
+      const role = getChatParticipantRole(conversation, user._id, conversation.shopId?.ownerId);
+      if (!role) return null;
+      return {
+        id: conversation._id.toString(),
+        productId: conversation.productId?._id?.toString() || '',
+        productTitle: conversation.productId?.title || 'Product no longer available',
+        participantName: role === 'buyer' ? conversation.shopId?.name || 'Shop' : conversation.buyerId?.name || 'Buyer',
+        role,
+        lastMessageText: conversation.lastMessageText,
+        lastMessageAt: conversation.lastMessageAt,
+        unreadCount: role === 'buyer' ? conversation.buyerUnreadCount : conversation.sellerUnreadCount
+      };
+    }).filter(Boolean)
+  });
+});
+
+app.get('/api/messages/conversations/:id', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to view this conversation.' });
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: 'Conversation not found.' });
+  const conversation = await ChatConversation.findById(req.params.id)
+    .populate('buyerId', 'name')
+    .populate('shopId', 'name ownerId')
+    .populate('productId', 'title')
+    .lean();
+  if (!conversation) return res.status(404).json({ error: 'Conversation not found.' });
+  const role = getChatParticipantRole(conversation, user._id, conversation.shopId?.ownerId);
+  if (!role) return res.status(404).json({ error: 'Conversation not found.' });
+
+  const unreadField = role === 'buyer' ? 'buyerUnreadCount' : 'sellerUnreadCount';
+  if (conversation[unreadField] > 0) {
+    await ChatConversation.updateOne({ _id: conversation._id }, { $set: { [unreadField]: 0 } });
+  }
+  const messages = await ChatMessage.find({ conversationId: conversation._id })
+    .sort({ createdAt: -1 })
+    .limit(100)
+    .lean();
+  messages.reverse();
+  const taggedMessage = conversation.productTag ? null : await ChatMessage.findOne({
+    conversationId: conversation._id,
+    'productTag.productId': { $exists: true }
+  }).sort({ createdAt: -1 }).select('productTag').lean();
+  const productTag = getConversationProductTag(conversation, taggedMessage);
+  const participantName = role === 'buyer' ? conversation.shopId?.name || 'Shop' : conversation.buyerId?.name || 'Buyer';
+
+  return res.json({
+    conversation: {
+      id: conversation._id.toString(),
+      productId: conversation.productId?._id?.toString() || '',
+      productTitle: conversation.productId?.title || 'Product no longer available',
+      productTag: productTag ? {
+        productId: productTag.productId.toString(),
+        title: productTag.title,
+        imageUrl: productTag.imageUrl,
+        priceNAD: productTag.priceNAD
+      } : null,
+      participantName,
+      role
+    },
+    messages: messages.map((message) => {
+      const mine = message.senderId.toString() === user._id.toString();
+      return {
+        id: message._id.toString(),
+        body: message.body,
+        senderName: mine ? user.name : participantName,
+        mine,
+        productTag: message.productTag ? {
+          productId: message.productTag.productId.toString(),
+          title: message.productTag.title,
+          imageUrl: message.productTag.imageUrl,
+          priceNAD: message.productTag.priceNAD
+        } : null,
+        createdAt: message.createdAt
+      };
+    })
+  });
+});
+
+app.post('/api/messages/conversations/:id', directChatRateLimit, async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to send a message.' });
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: 'Conversation not found.' });
+  const body = normalizeChatMessage(req.body?.message);
+  if (!body) return res.status(400).json({ error: `Enter a message of 1-${MAX_CHAT_MESSAGE_LENGTH} characters.` });
+  const conversation = await ChatConversation.findById(req.params.id).select('buyerId shopId productId');
+  if (!conversation) return res.status(404).json({ error: 'Conversation not found.' });
+  const shop = await Shop.findById(conversation.shopId).select('ownerId');
+  const role = getChatParticipantRole(conversation, user._id, shop?.ownerId);
+  if (!role) return res.status(404).json({ error: 'Conversation not found.' });
+
+  let productTag = null;
+  if (req.body?.tagProduct === true) {
+    const product = await Product.findById(conversation.productId).select('title imageUrl priceNAD').lean();
+    if (!product) return res.status(409).json({ error: 'This product is no longer available to tag.' });
+    productTag = createChatProductTag(product);
+  }
+  const message = await ChatMessage.create({ conversationId: conversation._id, senderId: user._id, body, productTag });
+  await ChatConversation.updateOne(
+    { _id: conversation._id },
+    {
+      $set: {
+        lastMessageText: body,
+        lastMessageAt: message.createdAt,
+        lastMessageSenderId: user._id,
+        ...(productTag ? { productTag } : {})
+      },
+      $inc: { [role === 'buyer' ? 'sellerUnreadCount' : 'buyerUnreadCount']: 1 }
+    }
+  );
+  return res.status(201).json({ messageId: message._id.toString() });
 });
 
 app.get('/api/shops', async (req, res) => {
