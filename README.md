@@ -123,7 +123,8 @@ function doPost(e) {
   const message = {
     to: recipient,
     subject: data.subject,
-    body: body
+    body: body,
+    name: 'Z Namibia'
   };
   if (htmlBody) message.htmlBody = htmlBody;
   MailApp.sendEmail(message);

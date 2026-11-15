@@ -37,6 +37,7 @@ test('verification email uses Z branding without promotional content', () => {
   assert.match(email.html, />Z<\/td>/);
   assert.match(email.html, /NAMIBIA/);
   assert.doesNotMatch(email.html, />Z NAMIBIA</);
+  assert.doesNotMatch(email.html, /Your local marketplace|exploring local shops/i);
   assert.doesNotMatch(email.html, /A promoted find|View product|Handmade basket/);
   assert.doesNotMatch(email.text, /Sponsored find|Handmade basket/);
 });

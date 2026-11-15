@@ -26,7 +26,6 @@ function createVerificationEmail({ name, verificationUrl }) {
               <td width="48" height="48" align="center" valign="middle" style="width:48px;height:48px;border-radius:50%;background:#18382e;border:2px solid #d8f36a;color:#d8f36a;font-family:Georgia,'Times New Roman',serif;font-size:38px;font-style:italic;font-weight:bold;line-height:44px;">Z</td>
               <td style="padding-left:12px;">
                 <div style="font-size:18px;font-weight:bold;letter-spacing:1px;">NAMIBIA</div>
-                <div style="margin-top:4px;font-size:13px;color:#d8f36a;">Your local marketplace</div>
               </td>
             </tr>
           </table>
@@ -35,7 +34,7 @@ function createVerificationEmail({ name, verificationUrl }) {
       <tr>
         <td style="padding:30px;">
           <h1 style="margin:0 0 14px;font-size:25px;line-height:1.3;color:#18382e;">Thanks for registering, ${safeName}!</h1>
-          <p style="margin:0 0 22px;font-size:16px;line-height:1.6;color:#526257;">We're glad you're here. Verify your email to finish setting up your account and start exploring local shops.</p>
+          <p style="margin:0 0 22px;font-size:16px;line-height:1.6;color:#526257;">Please verify your email address to activate your account.</p>
           <p style="margin:0 0 24px;">
             <a href="${safeUrl}" style="display:inline-block;padding:13px 22px;border-radius:6px;background:#d8f36a;color:#18382e;font-size:15px;font-weight:bold;text-decoration:none;">Verify email address</a>
           </p>
