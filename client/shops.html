@@ -42,6 +42,7 @@
         .browse-link:hover { background: var(--lime); }
         .filters { display: grid; grid-template-columns: minmax(220px, 1fr) 210px auto; gap: 9px; padding: 15px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
         .filters input, .filters select { width: 100%; min-width: 0; height: 43px; padding: 0 12px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: var(--white); font-size: 12px; }
+        .town-filter { display: grid; min-width: 0; gap: 8px; }
         .filters button { padding: 0 14px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: transparent; cursor: pointer; font-size: 11px; font-weight: 700; }
         .filters button:hover { border-color: var(--ink); }
         .results { min-height: 47px; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 11px; }
@@ -107,22 +108,19 @@
         </section>
         <form class="filters" id="shop-filters">
             <input id="shop-search" type="search" aria-label="Search shops" placeholder="Search shop names or descriptions">
-            <select id="shop-town" aria-label="Filter shops by town">
-                <option value="">All towns</option>
-                <option>Windhoek</option>
-                <option>Swakopmund</option>
-                <option>Walvis Bay</option>
-                <option>Oshakati</option>
-                <option>Rundu</option>
-                <option>Otjiwarongo</option>
-                <option>Other</option>
-            </select>
+            <div class="town-filter">
+                <select id="shop-town" aria-label="Filter shops by town" data-town-picker data-empty-label="All towns" data-other-input="shop-town-other">
+                    <option value="">Loading towns...</option>
+                </select>
+                <input id="shop-town-other" type="text" maxlength="80" placeholder="Enter a town to filter" aria-label="Enter a town to filter" hidden>
+            </div>
             <button id="clear-filters" type="button">Clear</button>
         </form>
         <div class="results"><span id="shop-count" aria-live="polite">Loading shops...</span><span>Local shops, all in one place</span></div>
         <section class="shop-grid" id="shop-grid" aria-label="Shops" aria-live="polite"></section>
     </main>
     <footer><span>Z Namibia</span><span>Independent shops. Right here at home.</span></footer>
+    <script src="/town-picker.js"></script>
     <script>
         const shopGrid = document.querySelector("#shop-grid");
         const shopCount = document.querySelector("#shop-count");
@@ -231,7 +229,8 @@
         async function loadShops() {
             const params = new URLSearchParams();
             if (shopSearch.value.trim()) params.set("q", shopSearch.value.trim());
-            if (shopTown.value) params.set("town", shopTown.value);
+            const selectedTown = window.ZNamibiaTownPicker.getValue("shop-town");
+            if (selectedTown) params.set("town", selectedTown);
             shopCount.textContent = "Loading shops...";
             shopGrid.replaceChildren();
             try {
@@ -256,9 +255,10 @@
 
         document.querySelector("#shop-filters").addEventListener("submit", (event) => { event.preventDefault(); loadShops(); });
         shopTown.addEventListener("change", loadShops);
+        document.querySelector("#shop-town-other").addEventListener("input", loadShops);
         document.querySelector("#clear-filters").addEventListener("click", () => {
             shopSearch.value = "";
-            shopTown.value = "";
+            window.ZNamibiaTownPicker.setValue("shop-town", "");
             loadShops();
         });
         updateSellerStatus();

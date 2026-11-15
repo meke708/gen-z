@@ -39,6 +39,25 @@
         .cover-photo-button.is-disabled { opacity: 0.6; pointer-events: none; }
         .cover-photo-message { min-height: 18px; margin: 0; color: var(--warning); font-size: 11px; }
         .cover-photo-message.success { color: #397d54; }
+        .location-settings { margin-top: 18px; padding: 22px 26px; border: 1px solid var(--line); background: var(--white); }
+        .location-settings h3 { margin: 0; font-family: Georgia, serif; font-size: 21px; font-weight: 400; }
+        .location-settings > p { max-width: 720px; margin: 8px 0 18px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+        .location-settings label:not(.visibility-toggle) { display: block; margin-bottom: 7px; font-size: 11px; font-weight: 700; }
+        .location-settings input[type="text"] { display: block; width: min(520px, 100%); min-height: 44px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 2px; color: var(--ink); background: var(--white); font: inherit; font-size: 12px; }
+        .location-settings input[type="text"]:focus { outline: 2px solid rgba(24, 56, 46, 0.2); border-color: var(--forest); }
+        .location-hint { margin: 6px 0 16px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+        .street-suggestions { display: grid; width: min(520px, 100%); max-height: 190px; gap: 4px; overflow-y: auto; margin-top: 7px; padding: 6px; border: 1px solid var(--line); background: var(--white); }
+        .street-suggestions[hidden] { display: none; }
+        .street-suggestion { width: 100%; min-height: 38px; padding: 8px 10px; border: 0; border-radius: 2px; color: var(--ink); background: transparent; text-align: left; cursor: pointer; font: inherit; font-size: 12px; }
+        .street-suggestion:hover, .street-suggestion:focus-visible { outline: 2px solid rgba(24, 56, 46, 0.2); background: #edf2e2; }
+        .location-settings .visibility-toggle { display: flex; width: fit-content; align-items: flex-start; gap: 9px; margin: 0 0 7px; font-size: 11px; font-weight: 700; line-height: 1.5; }
+        .location-settings .visibility-toggle input { width: 16px; height: 16px; flex: 0 0 16px; margin: 1px 0 0; }
+        .location-settings .visibility-hint { margin: 0 0 15px 25px; }
+        .location-submit { min-height: 40px; padding: 0 14px; border: 1px solid var(--ink); border-radius: 3px; color: var(--white); background: var(--ink); cursor: pointer; font-size: 11px; font-weight: 700; }
+        .location-submit:hover { color: var(--ink); background: var(--lime); }
+        .location-submit:disabled { opacity: 0.6; cursor: wait; }
+        .location-message { min-height: 18px; margin: 10px 0 0; color: var(--warning); font-size: 11px; }
+        .location-message.success { color: #397d54; }
         .verified-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 9px; border: 1px solid #8da78f; border-radius: 2px; color: #285b3a; background: #e8efdf; font-size: 10px; font-weight: 700; }
         .verified-badge[hidden] { display: none; }
         .profile-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; margin: 20px 0 0; }
@@ -105,6 +124,7 @@
             main { width: calc(100% - 36px); padding-top: 34px; }
             .profile-header { padding: 18px; }
             .cover-photo { padding: 14px; }
+            .location-settings { padding: 18px; }
             .cover-photo-avatar { width: 72px; height: 72px; flex-basis: 72px; font-size: 34px; }
             .profile-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
@@ -166,6 +186,23 @@
                     </div>
                 </div>
             </section>
+            <form class="location-settings" id="location-settings-form">
+                <h3>Shop location and privacy</h3>
+                <p>Street details are optional and private by default. When enabled, your exact address appears on your public shop page and is sent to Google Maps for its map. Keep it off unless you are comfortable sharing a precise location.</p>
+                <label for="shop-street-address">Street or physical address</label>
+                <input id="shop-street-address" name="streetAddress" type="text" maxlength="200" autocomplete="street-address" aria-autocomplete="list" aria-controls="shop-street-suggestions" aria-expanded="false" placeholder="Type 2+ letters to see street choices">
+                <div class="street-suggestions" id="shop-street-suggestions" role="group" aria-label="Mapped street suggestions" hidden></div>
+                <p class="location-hint">Type at least two letters to see mapped street choices below, or enter the full address manually.</p>
+                <p class="location-hint">Suggestions use <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap data</a> via <a href="https://photon.komoot.io/" target="_blank" rel="noopener noreferrer">Photon</a>. Your street search and town are sent to Photon; house numbers are omitted. Mapped streets may be incomplete.</p>
+                <p class="location-hint" id="street-suggestions-status" role="status" aria-live="polite"></p>
+                <label class="visibility-toggle" for="show-address-publicly">
+                    <input id="show-address-publicly" name="showAddressPublicly" type="checkbox">
+                    <span>Show my exact address on my public shop page</span>
+                </label>
+                <p class="location-hint visibility-hint">When this is off, shoppers only see your town.</p>
+                <button class="location-submit" id="save-location" type="submit">Save location settings</button>
+                <p class="location-message" id="location-message" role="status" aria-live="polite"></p>
+            </form>
             <dl class="profile-fields">
                 <div><dt>Business town</dt><dd id="shop-town"></dd></div>
                 <div><dt>On Z since</dt><dd id="member-since"></dd></div>
@@ -180,6 +217,7 @@
         </section>
         <p class="error" id="error-message" role="alert" hidden></p>
     </main>
+    <script src="/street-picker.js"></script>
     <script>
         const loading = document.querySelector("#loading");
         const profile = document.querySelector("#profile");
@@ -190,6 +228,18 @@
         const coverPhotoFallback = document.querySelector(".cover-photo-avatar");
         const coverPhotoMessage = document.querySelector("#cover-photo-message");
         const developerProfileLink = document.querySelector("#developer-profile-link");
+        const locationSettingsForm = document.querySelector("#location-settings-form");
+        const streetAddressInput = document.querySelector("#shop-street-address");
+        const showAddressPubliclyInput = document.querySelector("#show-address-publicly");
+        const saveLocationButton = document.querySelector("#save-location");
+        const locationMessage = document.querySelector("#location-message");
+        const streetSuggestionsStatus = document.querySelector("#street-suggestions-status");
+        let profileShopTown = "";
+        const streetPicker = window.ZNamibiaStreetPicker.attach(
+            streetAddressInput,
+            () => profileShopTown,
+            streetSuggestionsStatus
+        );
 
         coverPhotoPreview.addEventListener("load", () => { coverPhotoPreview.hidden = false; });
         coverPhotoPreview.addEventListener("error", () => { coverPhotoPreview.hidden = true; });
@@ -221,6 +271,11 @@
                 }
                 const shop = shopResult.shop;
                 const verification = verificationResult.verification;
+                profileShopTown = shop.town;
+                streetAddressInput.value = typeof shop.streetAddress === "string" ? shop.streetAddress : "";
+                streetPicker.refresh(false);
+                showAddressPubliclyInput.checked = shop.showAddressPublicly === true;
+                streetAddressInput.required = showAddressPubliclyInput.checked;
                 if (typeof shop.coverImageUrl === "string" && shop.coverImageUrl) coverPhotoPreview.src = shop.coverImageUrl;
                 else coverPhotoFallback.firstChild.textContent = shop.name.trim().charAt(0).toLocaleUpperCase();
                 coverPhotoFallback.setAttribute("aria-label", `${shop.name} business profile photo`);
@@ -305,6 +360,34 @@
                 coverPhotoInput.value = "";
                 coverPhotoButton.classList.remove("is-disabled");
                 coverPhotoButton.textContent = "Change photo";
+            }
+        });
+
+        showAddressPubliclyInput.addEventListener("change", () => {
+            streetAddressInput.required = showAddressPubliclyInput.checked;
+        });
+
+        locationSettingsForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            if (!locationSettingsForm.reportValidity()) return;
+            saveLocationButton.disabled = true;
+            locationMessage.classList.remove("success");
+            locationMessage.textContent = "Saving location settings...";
+            try {
+                await requestJson("/api/seller/shop/location", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        streetAddress: streetAddressInput.value,
+                        showAddressPublicly: showAddressPubliclyInput.checked
+                    })
+                });
+                locationMessage.textContent = "Location and privacy settings saved.";
+                locationMessage.classList.add("success");
+            } catch (error) {
+                locationMessage.textContent = error.message || "Could not save your location settings.";
+            } finally {
+                saveLocationButton.disabled = false;
             }
         });
 

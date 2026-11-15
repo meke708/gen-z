@@ -69,6 +69,7 @@
         .filter-dropdown > #filter-form { display: grid; }
         .filters { display: grid; grid-template-columns: minmax(200px, 1fr) 190px 190px auto; gap: 10px; padding: 15px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
         .filters input, .filters select { width: 100%; min-width: 0; height: 42px; padding: 0 12px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: var(--white); font-size: 12px; }
+        .town-filter { display: grid; min-width: 0; gap: 8px; }
         .filters button { height: 42px; padding: 0 15px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: transparent; cursor: pointer; font-size: 12px; font-weight: 700; }
         .filters button:hover { border-color: var(--ink); }
 
@@ -260,16 +261,12 @@
                         <option>Food &amp; Agriculture</option>
                         <option>Second-hand clothes</option>
                     </select>
-                    <select id="filter-town" aria-label="Filter by town">
-                        <option value="">All towns</option>
-                        <option>Windhoek</option>
-                        <option>Swakopmund</option>
-                        <option>Walvis Bay</option>
-                        <option>Oshakati</option>
-                        <option>Rundu</option>
-                        <option>Otjiwarongo</option>
-                        <option>Other</option>
-                    </select>
+                    <div class="town-filter">
+                        <select id="filter-town" aria-label="Filter by town" data-town-picker data-empty-label="All towns" data-other-input="filter-town-other">
+                            <option value="">Loading towns...</option>
+                        </select>
+                        <input id="filter-town-other" type="text" maxlength="80" placeholder="Enter a town to filter" aria-label="Enter a town to filter" hidden>
+                    </div>
                     <button type="button" id="clear-filters">Clear filters</button>
                 </form>
             </details>
@@ -293,6 +290,7 @@
     <script src="/cart-sync.js"></script>
     <script src="/wishlist-sync.js"></script>
     <script src="/promotion-analytics.js"></script>
+    <script src="/town-picker.js"></script>
     <script>
         const productGrid = document.querySelector("#products");
         const promotedSection = document.querySelector("#promoted-section");
@@ -301,6 +299,7 @@
         const queryInput = document.querySelector("#filter-query");
         const categorySelect = document.querySelector("#filter-category");
         const townSelect = document.querySelector("#filter-town");
+        const normalizeTown = (town) => String(town || "").trim().replace(/\s+/g, " ").toLocaleLowerCase("en");
         const accountLink = document.querySelector("#account-link");
         const sellLink = document.querySelector(".sell-link");
         const searchInput = document.querySelector("#search-input");
@@ -506,7 +505,7 @@
         }
 
         function hasMarketplaceFilters() {
-            return Boolean(queryInput.value.trim() || categorySelect.value || townSelect.value);
+            return Boolean(queryInput.value.trim() || categorySelect.value || window.ZNamibiaTownPicker.getValue("filter-town"));
         }
 
         function getActivePromotedProducts() {
@@ -674,7 +673,7 @@
             const requestSequence = ++productLoadSequence;
             const queryText = queryInput.value.trim();
             const selectedCategory = categorySelect.value;
-            const selectedTown = townSelect.value;
+            const selectedTown = window.ZNamibiaTownPicker.getValue("filter-town");
             const params = new URLSearchParams();
             if (queryText) params.set("q", queryText);
             if (selectedCategory) params.set("category", selectedCategory);
@@ -696,7 +695,7 @@
                 const query = queryText.toLocaleLowerCase();
                 const matchingPromotedProducts = promotedProducts.filter((product) => {
                     if (selectedCategory && product.category !== selectedCategory) return false;
-                    if (selectedTown && product.town !== selectedTown) return false;
+                    if (selectedTown && normalizeTown(product.town) !== normalizeTown(selectedTown)) return false;
                     if (!query) return true;
                     return `${product.title || ""} ${product.description || ""}`.toLocaleLowerCase().includes(query);
                 }).map((product) => ({ ...product, promoted: true }));
@@ -756,11 +755,12 @@
         });
         categorySelect.addEventListener("change", loadProducts);
         townSelect.addEventListener("change", loadProducts);
+        document.querySelector("#filter-town-other").addEventListener("input", loadProducts);
         document.querySelector("#clear-filters").addEventListener("click", () => {
             queryInput.value = "";
             searchInput.value = "";
             categorySelect.value = "";
-            townSelect.value = "";
+            window.ZNamibiaTownPicker.setValue("filter-town", "");
             const url = new URL(window.location.href);
             url.searchParams.delete("q");
             window.history.replaceState({}, "", url);

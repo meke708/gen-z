@@ -73,12 +73,12 @@
         .sidebar-identity strong { font-family: Georgia, "Times New Roman", serif; font-size: 20px; font-weight: 400; }
         .sidebar-identity span { margin-top: 5px; color: var(--muted); font-size: 12px; }
         .sidebar-nav { display: grid; gap: 4px; margin-top: 14px; }
-        .sidebar-nav button { display: flex; min-height: 44px; align-items: center; gap: 10px; padding: 0 12px; border: 0; border-radius: 3px; color: var(--ink); background: transparent; cursor: pointer; font-size: 13px; font-weight: 700; text-align: left; }
-        .sidebar-nav button:hover, .sidebar-nav button[aria-current="page"] { color: var(--forest); background: #edf2e2; }
-        .sidebar-nav button:focus-visible { outline: 2px solid #397d54; outline-offset: 2px; }
+        .sidebar-nav button, .sidebar-nav a { display: flex; min-height: 44px; align-items: center; gap: 10px; padding: 0 12px; border: 0; border-radius: 3px; color: var(--ink); background: transparent; cursor: pointer; font-size: 13px; font-weight: 700; text-align: left; text-decoration: none; }
+        .sidebar-nav button:hover, .sidebar-nav button[aria-current="page"], .sidebar-nav a:hover { color: var(--forest); background: #edf2e2; }
+        .sidebar-nav button:focus-visible, .sidebar-nav a:focus-visible { outline: 2px solid #397d54; outline-offset: 2px; }
         .sidebar-nav button:disabled { color: #858b86; cursor: not-allowed; }
         .sidebar-nav button:disabled:hover { background: transparent; }
-        .sidebar-nav button span:first-child { width: 20px; color: var(--forest); text-align: center; }
+        .sidebar-nav button span:first-child, .sidebar-nav a span:first-child { width: 20px; color: var(--forest); text-align: center; }
         .sidebar-nav .notification-count { display: inline-grid; min-width: 20px; height: 20px; margin-left: auto; padding: 0 6px; place-items: center; border-radius: 999px; color: var(--white); background: #b65b22; font-size: 10px; font-weight: 700; line-height: 1; }
         .sidebar-nav button:disabled span:first-child { color: #858b86; }
         .sidebar-nav .nav-note { width: auto !important; margin-left: auto; color: var(--muted); font-size: 10px; font-weight: 400; text-align: right; }
@@ -93,11 +93,6 @@
         .account-view[hidden] { display: none !important; }
         .account-view .eyebrow { color: var(--muted); }
         .account-view h2 { margin: 0 0 10px; font-family: Georgia, "Times New Roman", serif; font-size: 30px; font-weight: 400; }
-        .conversation-view-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
-        .conversation-view-header h2 { margin: 0; }
-        .conversation-view-header .account-action { display: inline-flex; align-items: center; justify-self: auto; text-decoration: none; }
-        .conversation-view-header .account-action:hover { border-color: var(--lime); color: var(--ink); background: var(--lime); }
-        .conversation-view-header .account-action:focus-visible { outline: 2px solid var(--forest); outline-offset: 3px; }
         .account-view > p:not(.eyebrow) { margin: 0 0 18px; color: var(--muted); font-size: 14px; line-height: 1.7; }
         .account-view .hero { margin-top: 22px; }
         .profile-form { display: grid; max-width: 620px; gap: 16px; }
@@ -522,7 +517,7 @@
                 <nav class="sidebar-nav" aria-label="Account menu">
                     <button type="button" data-account-target="overview" aria-current="page"><span aria-hidden="true">⌂</span>Overview</button>
                     <button type="button" data-account-target="notifications"><span aria-hidden="true">♧</span>Notifications<span class="notification-count" id="notification-count" aria-label="Unread notifications" hidden></span></button>
-                    <button type="button" data-account-target="conversations"><span aria-hidden="true">✉</span>Conversations<span class="notification-count" id="conversation-count" aria-label="Unread messages" hidden></span></button>
+                    <a href="/messages"><span aria-hidden="true">✉</span>Conversations</a>
                     <button type="button" data-account-target="wishlist"><span aria-hidden="true">♡</span>Wishlist</button>
                     <button type="button" data-account-target="orders"><span aria-hidden="true">▤</span>Orders</button>
                     <button type="button" data-account-target="profile"><span aria-hidden="true">○</span>Profile</button>
@@ -593,17 +588,6 @@
                     </section>
                 </section>
 
-                <section class="account-view" id="account-view-conversations" data-account-view="conversations" aria-labelledby="conversations-title" hidden>
-                    <p class="eyebrow">Talk to a shop</p>
-                    <div class="conversation-view-header">
-                        <h2 id="conversations-title">Conversations</h2>
-                        <a class="account-action" href="/messages">Open conversation inbox</a>
-                    </div>
-                    <p>Message sellers about products and continue your chats here.</p>
-                    <p class="login-activity-status" id="buyer-conversations-status" role="status" aria-live="polite">Loading your conversations...</p>
-                    <ol class="login-activity-list" id="buyer-conversations-list"></ol>
-                </section>
-
                 <section class="account-view" id="account-view-wishlist" data-account-view="wishlist" aria-labelledby="wishlist-title" hidden>
                     <p class="eyebrow">Saved for later</p>
                     <h2 id="wishlist-title">Your wishlist</h2>
@@ -629,7 +613,8 @@
                         <label for="profile-name">Full name<input id="profile-name" name="name" type="text" autocomplete="name" maxlength="80" required></label>
                         <label for="account-email">Email address<input id="account-email" type="email" readonly></label>
                         <label for="profile-phone">Phone number<input id="profile-phone" name="phone" type="tel" autocomplete="tel" maxlength="24" placeholder="+264 81 123 4567"></label>
-                        <label for="profile-town">Town<select id="profile-town" name="town"><option value="">Choose your town</option><option>Windhoek</option><option>Swakopmund</option><option>Walvis Bay</option><option>Oshakati</option><option>Rundu</option><option>Otjiwarongo</option><option>Other</option></select></label>
+                        <label for="profile-town">Town<select id="profile-town" name="town" data-town-picker data-empty-label="Choose your town" data-other-input="profile-town-other"><option value="">Loading towns...</option></select></label>
+                        <input id="profile-town-other" class="profile-input" type="text" maxlength="80" placeholder="Enter your town" aria-label="Enter your town" data-required="true" hidden>
                         <button type="submit" id="save-profile">Save profile</button>
                         <p class="account-feedback" id="profile-feedback" role="status" aria-live="polite"></p>
                     </form>
@@ -671,6 +656,7 @@
 
     <script src="/wishlist-sync.js"></script>
     <script src="/promotion-analytics.js"></script>
+    <script src="/town-picker.js"></script>
     <script>
         const customerName = document.querySelector("#customer-name");
         const sidebarName = document.querySelector("#sidebar-name");
@@ -705,7 +691,6 @@
         const profileForm = document.querySelector("#profile-form");
         const profileNameInput = document.querySelector("#profile-name");
         const profilePhoneInput = document.querySelector("#profile-phone");
-        const profileTownInput = document.querySelector("#profile-town");
         const profileFeedback = document.querySelector("#profile-feedback");
         const emailVerificationStatus = document.querySelector("#email-verification-status");
         const verificationFeedback = document.querySelector("#verification-feedback");
@@ -993,7 +978,7 @@
             profileNameInput.value = user.name;
             accountEmail.value = user.email;
             profilePhoneInput.value = user.phone || "";
-            profileTownInput.value = user.town || "";
+            window.ZNamibiaTownPicker.setValue("profile-town", user.town || "");
             setEmailVerificationStatus(user);
         }
 
@@ -1049,45 +1034,8 @@
             if (section === "notifications") void loadLoginActivity();
             if (section === "notifications") void loadAccountNotifications();
             if (section === "notifications") void loadSupportNotifications();
-            if (section === "conversations") void loadBuyerConversations();
             if (section === "wishlist") void loadWishlist();
             return true;
-        }
-
-        async function loadBuyerConversations() {
-            const status = document.querySelector("#buyer-conversations-status");
-            const list = document.querySelector("#buyer-conversations-list");
-            const badge = document.querySelector("#conversation-count");
-            status.textContent = "Loading your conversations...";
-            list.replaceChildren();
-            try {
-                const response = await fetch("/api/messages/conversations");
-                const result = await response.json();
-                if (!response.ok) throw new Error(result.error || "Could not load your conversations.");
-                const conversations = Array.isArray(result.conversations) ? result.conversations : [];
-                const unreadCount = conversations.reduce((total, conversation) => total + (conversation.role === "buyer" ? conversation.unreadCount : 0), 0);
-                badge.textContent = String(unreadCount);
-                badge.hidden = unreadCount === 0;
-                const buyerConversations = conversations.filter((conversation) => conversation.role === "buyer");
-                status.textContent = buyerConversations.length
-                    ? `${buyerConversations.length} ${buyerConversations.length === 1 ? "conversation" : "conversations"}.`
-                    : "No conversations yet. Open a product page and choose Message seller to start one.";
-                buyerConversations.forEach((conversation) => {
-                    const item = document.createElement("li");
-                    item.classList.toggle("is-new", conversation.unreadCount > 0);
-                    const link = document.createElement("a");
-                    link.href = `/messages?conversation=${encodeURIComponent(conversation.id)}`;
-                    link.textContent = `${conversation.participantName} · ${conversation.productTitle}`;
-                    const preview = document.createElement("span");
-                    preview.className = "login-activity-status";
-                    preview.textContent = conversation.lastMessageText || "Open conversation";
-                    item.append(link, preview);
-                    list.append(item);
-                });
-            } catch (error) {
-                badge.hidden = true;
-                status.textContent = error.message || "Could not load your conversations.";
-            }
         }
 
         function renderWishlist() {
@@ -1898,6 +1846,7 @@
 
         profileForm.addEventListener("submit", async (event) => {
             event.preventDefault();
+            await window.ZNamibiaTownPicker.ready;
             if (!profileForm.reportValidity()) return;
             const saveButton = document.querySelector("#save-profile");
             saveButton.disabled = true;
@@ -1910,7 +1859,7 @@
                     body: JSON.stringify({
                         name: profileNameInput.value,
                         phone: profilePhoneInput.value,
-                        town: profileTownInput.value
+                        town: window.ZNamibiaTownPicker.getValue("profile-town")
                     })
                 });
                 const result = await response.json();

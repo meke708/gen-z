@@ -296,7 +296,7 @@
                 <p id="shop-location-footer-town"></p>
                 <a id="shop-location-footer-link" target="_blank" rel="noopener noreferrer">Open location in Google Maps</a>
             </div>
-            <iframe class="shop-location-map" id="shop-location-map" title="Map showing the business town" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+            <iframe class="shop-location-map" id="shop-location-map" title="Map showing the business location" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
         </section>
         <div class="shop-footer-brand">Z Namibia · Independent shops, right here at home.</div>
     </footer>
@@ -458,7 +458,8 @@
                 document.title = `${shop.name} | Z Namibia`;
                 document.querySelector("#breadcrumb-shop").textContent = shop.name;
                 const shopLocation = document.querySelector("#shop-town");
-                const location = `${shop.town}, Namibia`;
+                const streetAddress = typeof shop.streetAddress === "string" ? shop.streetAddress.trim() : "";
+                const location = `${streetAddress ? `${streetAddress}, ` : ""}${shop.town}, Namibia`;
                 shopLocation.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`;
                 shopLocation.setAttribute("aria-label", `View ${location} on Google Maps (opens in a new tab)`);
                 document.querySelector("#shop-location-label").textContent = location;

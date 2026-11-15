@@ -29,11 +29,23 @@
         textarea { min-height: 110px; resize: vertical; line-height: 1.55; }
         input:focus, select:focus, textarea:focus { outline: 2px solid rgba(24, 56, 46, 0.2); border-color: var(--forest); }
         .hint { margin: 6px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+        .street-suggestions { display: grid; max-height: 190px; gap: 4px; overflow-y: auto; margin-top: 7px; padding: 6px; border: 1px solid var(--line); background: var(--white); }
+        .street-suggestions[hidden] { display: none; }
+        .street-suggestion { width: 100%; min-height: 38px; padding: 8px 10px; border: 0; border-radius: 2px; color: var(--ink); background: transparent; text-align: left; cursor: pointer; font-size: 12px; }
+        .street-suggestion:hover, .street-suggestion:focus-visible { outline: 2px solid rgba(24, 56, 46, 0.2); background: #edf2e2; }
+        .visibility-toggle { display: flex; align-items: flex-start; gap: 9px; margin: 0 0 17px; font-size: 11px; font-weight: 700; line-height: 1.5; }
+        .visibility-toggle input { width: 16px; min-height: 16px; flex: 0 0 16px; margin: 1px 0 0; padding: 0; }
+        .visibility-hint { margin: -10px 0 17px 25px; }
         .submit { min-height: 44px; padding: 0 14px; border: 1px solid var(--ink); border-radius: 3px; color: var(--white); background: var(--ink); cursor: pointer; font-size: 11px; font-weight: 700; }
         .submit:hover { color: var(--ink); background: var(--lime); }
         .submit:disabled { opacity: 0.6; cursor: wait; }
         .feedback { min-height: 18px; margin: 11px 0 0; color: #8b3b2f; font-size: 11px; line-height: 1.5; }
         .feedback.success { color: var(--forest); }
+        .town-map { margin-top: 24px; padding: 18px; border: 1px solid var(--line); background: var(--white); }
+        .town-map h2 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 22px; font-weight: 400; }
+        .town-map p { margin: 7px 0 13px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+        .town-map iframe { display: block; width: 100%; height: 330px; border: 0; background: var(--paper); }
+        .town-map-link { display: inline-flex; margin-top: 11px; color: var(--forest); font-size: 11px; font-weight: 700; }
         [hidden] { display: none !important; }
         @media (max-width: 540px) { .site-header { min-height: 64px; padding: 10px 18px; } .header-links { gap: 12px; font-size: 10px; } main { width: calc(100% - 36px); padding-top: 34px; } h1 { font-size: 34px; } }
     </style>
@@ -57,17 +69,26 @@
             </div>
             <div class="field">
                 <label for="shop-town">Business town</label>
-                <select id="shop-town" name="town" required>
-                    <option value="">Choose your town</option>
-                    <option>Windhoek</option>
-                    <option>Swakopmund</option>
-                    <option>Walvis Bay</option>
-                    <option>Oshakati</option>
-                    <option>Rundu</option>
-                    <option>Otjiwarongo</option>
-                    <option>Other</option>
+                <select id="shop-town" name="town" data-town-picker data-empty-label="Choose your town" data-other-input="shop-town-other" data-error-target="town-load-error" required>
+                    <option value="">Loading towns...</option>
                 </select>
+                <input id="shop-town-other" type="text" maxlength="80" placeholder="Enter your town" aria-label="Enter your town" data-required="true" hidden>
+                <p class="hint" id="town-load-error" role="status" hidden></p>
+                <p class="hint">If your town is not listed, choose “Other” and enter it.</p>
             </div>
+            <div class="field">
+                <label for="shop-street-address">Street or physical address (optional)</label>
+                <input id="shop-street-address" name="streetAddress" type="text" maxlength="200" autocomplete="street-address" aria-autocomplete="list" aria-controls="shop-street-suggestions" aria-expanded="false" placeholder="Type 2+ letters to see street choices">
+                <div class="street-suggestions" id="shop-street-suggestions" role="group" aria-label="Mapped street suggestions" hidden></div>
+                <p class="hint">Choose a town, then type at least two letters. Matching streets will appear below; you can also enter the full address manually.</p>
+                <p class="hint">Suggestions use <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap data</a> via <a href="https://photon.komoot.io/" target="_blank" rel="noopener noreferrer">Photon</a>. Your street search and town are sent to Photon; house numbers are omitted. Mapped streets may be incomplete.</p>
+                <p class="hint" id="street-suggestions-status" role="status" aria-live="polite"></p>
+            </div>
+            <label class="visibility-toggle" for="show-address-publicly">
+                <input id="show-address-publicly" name="showAddressPublicly" type="checkbox">
+                <span>Show my exact address on my public shop page</span>
+            </label>
+            <p class="hint visibility-hint">Off by default: shoppers and the map preview only see your town. When enabled, your exact address appears publicly and is sent to Google Maps. Only enable an address you are comfortable sharing; you can change this later in your seller profile.</p>
             <div class="field">
                 <label for="shop-description">About your shop</label>
                 <textarea id="shop-description" name="description" maxlength="500" placeholder="Tell shoppers what you make or sell." required></textarea>
@@ -76,11 +97,56 @@
             <button class="submit" id="create-shop" type="submit">Create storefront</button>
             <p class="feedback" id="shop-message" role="status" aria-live="polite"></p>
         </form>
+        <section class="town-map" id="town-map-preview" aria-labelledby="town-map-title" hidden>
+            <h2 id="town-map-title">Business location</h2>
+            <p id="town-map-description">Choose a town to preview its location on the map.</p>
+            <iframe id="town-map-frame" title="Map preview of the selected business town" loading="lazy" referrerpolicy="no-referrer" allowfullscreen></iframe>
+            <a class="town-map-link" id="town-map-link" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer">Open map in Google Maps</a>
+        </section>
     </main>
+    <script src="/town-picker.js"></script>
+    <script src="/street-picker.js"></script>
     <script>
         const shopForm = document.querySelector("#shop-form");
         const shopMessage = document.querySelector("#shop-message");
         const createShopButton = document.querySelector("#create-shop");
+        const shopTownSelect = document.querySelector("#shop-town");
+        const shopTownOther = document.querySelector("#shop-town-other");
+        const shopStreetAddress = document.querySelector("#shop-street-address");
+        const streetSuggestionsStatus = document.querySelector("#street-suggestions-status");
+        const showAddressPublicly = document.querySelector("#show-address-publicly");
+        const townMapPreview = document.querySelector("#town-map-preview");
+        const townMapFrame = document.querySelector("#town-map-frame");
+        const townMapDescription = document.querySelector("#town-map-description");
+        const townMapLink = document.querySelector("#town-map-link");
+        let townMapUpdateTimer = null;
+        const streetPicker = window.ZNamibiaStreetPicker.attach(
+            shopStreetAddress,
+            () => window.ZNamibiaTownPicker.getValue("shop-town"),
+            streetSuggestionsStatus
+        );
+
+        function updateTownMap() {
+            const town = window.ZNamibiaTownPicker.getValue("shop-town");
+            if (!town) {
+                townMapPreview.hidden = true;
+                townMapFrame.removeAttribute("src");
+                return;
+            }
+            const streetAddress = showAddressPublicly.checked ? shopStreetAddress.value.trim() : "";
+            const location = streetAddress ? `${streetAddress}, ${town}, Namibia` : `${town}, Namibia`;
+            const query = encodeURIComponent(location);
+            const mapUrl = `https://www.google.com/maps?q=${query}&output=embed`;
+            townMapPreview.hidden = false;
+            townMapDescription.textContent = streetAddress
+                ? `Map preview for ${location}. This exact address will be shown on your public shop page.`
+                : shopStreetAddress.value.trim()
+                    ? `Approximate business location in ${town}, Namibia. Your address is hidden from shoppers and is not sent to Google Maps while this setting is off.`
+                : `Approximate business location in ${town}, Namibia.`;
+            townMapFrame.title = `Map preview showing ${location}`;
+            townMapFrame.src = mapUrl;
+            townMapLink.href = `https://www.google.com/maps/search/?api=1&query=${query}`;
+        }
 
         async function requestJson(url, options = {}) {
             const response = await fetch(url, options);
@@ -100,8 +166,29 @@
             }
         }
 
+        shopTownSelect.addEventListener("change", () => {
+            updateTownMap();
+            streetPicker.refresh();
+        });
+        shopTownOther.addEventListener("input", () => {
+            window.clearTimeout(townMapUpdateTimer);
+            townMapUpdateTimer = window.setTimeout(updateTownMap, 650);
+            streetPicker.refresh();
+        });
+        shopStreetAddress.addEventListener("input", () => {
+            window.clearTimeout(townMapUpdateTimer);
+            townMapUpdateTimer = window.setTimeout(updateTownMap, 650);
+        });
+        shopStreetAddress.addEventListener("change", updateTownMap);
+        showAddressPublicly.addEventListener("change", () => {
+            shopStreetAddress.required = showAddressPublicly.checked;
+            updateTownMap();
+        });
+
         shopForm.addEventListener("submit", async (event) => {
             event.preventDefault();
+            await window.ZNamibiaTownPicker.ready;
+            if (!shopForm.reportValidity()) return;
             createShopButton.disabled = true;
             shopMessage.textContent = "Creating your storefront...";
             shopMessage.classList.remove("success");
@@ -111,8 +198,10 @@
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         name: document.querySelector("#shop-name").value,
-                        town: document.querySelector("#shop-town").value,
-                        description: document.querySelector("#shop-description").value
+                        town: window.ZNamibiaTownPicker.getValue("shop-town"),
+                        description: document.querySelector("#shop-description").value,
+                        streetAddress: shopStreetAddress.value,
+                        showAddressPublicly: showAddressPublicly.checked
                     })
                 });
                 shopMessage.classList.add("success");

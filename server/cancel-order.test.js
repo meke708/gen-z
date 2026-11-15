@@ -316,7 +316,7 @@ test('password reset credentials require a valid token and password length', () 
   assert.throws(() => normalizePasswordResetInput({ token, password: 'short' }), { statusCode: 400 });
 });
 
-test('profile updates validate required names, optional phone numbers, and known towns', () => {
+test('profile updates validate names and phones while normalizing known and custom towns', () => {
   assert.deepEqual(normalizeProfileInput({
     name: '  Alex Nam ',
     phone: '+264 81 123 4567',
@@ -331,10 +331,16 @@ test('profile updates validate required names, optional phone numbers, and known
     phone: '',
     town: ''
   });
+  assert.deepEqual(normalizeProfileInput({ name: 'Alex', phone: '', town: '  omatako settlement ' }), {
+    name: 'Alex',
+    phone: '',
+    town: 'Omatako Settlement'
+  });
   assert.throws(() => normalizeProfileInput({ name: ' ', phone: '', town: '' }), { statusCode: 400 });
   assert.throws(() => normalizeProfileInput({ name: 'Alex', phone: 'not a phone', town: '' }), { statusCode: 400 });
   assert.throws(() => normalizeProfileInput({ name: 'Alex', phone: '1-------', town: '' }), { statusCode: 400 });
-  assert.throws(() => normalizeProfileInput({ name: 'Alex', phone: '', town: 'Mars' }), { statusCode: 400 });
+  assert.throws(() => normalizeProfileInput({ name: 'Alex', phone: '', town: 'Other' }), { statusCode: 400 });
+  assert.throws(() => normalizeProfileInput({ name: 'Alex', phone: '', town: '<script>' }), { statusCode: 400 });
 });
 
 test('email verification tokens require a 64-character lowercase hex token', () => {
@@ -401,9 +407,14 @@ test('image URLs must use HTTPS', () => {
 });
 
 test('image uploads require bytes matching the declared image type', () => {
+  const webp = Buffer.alloc(12);
+  webp.write('RIFF', 0, 'ascii');
+  webp.write('WEBP', 8, 'ascii');
   assert.equal(hasValidImageSignature({ mimetype: 'image/jpeg', buffer: Buffer.from([0xff, 0xd8, 0xff]) }), true);
   assert.equal(hasValidImageSignature({ mimetype: 'image/png', buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]) }), true);
+  assert.equal(hasValidImageSignature({ mimetype: 'image/webp', buffer: webp }), true);
   assert.equal(hasValidImageSignature({ mimetype: 'image/jpeg', buffer: Buffer.from('not an image') }), false);
+  assert.equal(hasValidImageSignature({ mimetype: 'image/webp', buffer: Buffer.from('not an image') }), false);
 });
 
 test('seller earnings move from held into the Z balance after the delivery hold', () => {

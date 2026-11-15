@@ -20,6 +20,9 @@ const { getProductBasicDataIssues, getProductReviewDecision } = require('./produ
 const { getServerDiagnostics } = require('./runtime-diagnostics');
 const { listAllowedTests, runAllowedTest, runAllAllowedTests } = require('./approved-test-runner');
 const { DEFAULT_LOGIN_WALLPAPER, normalizeLoginWallpaper } = require('./login-wallpaper');
+const { NAMIBIAN_TOWNS: namibianTowns, normalizeNamibianTown } = require('./namibian-towns');
+const { resolveShippingZone } = require('./shipping-zones');
+const { getPublicShopStreetAddress, normalizeShopStreetAddress } = require('./shop-location');
 const { normalizeBankPayoutAccount, normalizePayoutRequestAmount } = require('./payout-settings');
 const { createEmailDeliveryConfig, sendAccountEmail } = require('./email-delivery');
 const { createVerificationEmail } = require('./email-templates');
@@ -29,8 +32,11 @@ const {
   MAX_CHAT_MESSAGE_LENGTH,
   normalizeChatMessage,
   getChatParticipantRole,
+  getChatParticipantImageUrl,
+  isChatParticipantOnline,
   createChatProductTag,
-  getConversationProductTag
+  getConversationProductTag,
+  getMergedChatConversationState
 } = require('./direct-chat');
 const {
   isEmailVerificationLinkAllowed,
@@ -165,6 +171,16 @@ const directChatRateLimit = rateLimit({
   legacyHeaders: false,
   message: { error: 'You are sending messages too quickly. Please wait a moment.' }
 });
+const chatTypingRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 120,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { error: 'Typing updates are limited. Please try again shortly.' }
+});
+const chatTypingStates = new Map();
+const chatPresenceStates = new Map();
+const chatPresenceTtlMs = 10000;
 const suspensionAppealRateLimit = rateLimit({
   windowMs: 60 * 60 * 1000,
   limit: 3,
@@ -211,6 +227,16 @@ const imageUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 1, fieldSize: 32 },
   fileFilter: (req, file, callback) => callback(null, ['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype))
+});
+const chatImageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 3, fieldSize: MAX_CHAT_MESSAGE_LENGTH * 4 },
+  fileFilter: (req, file, callback) => {
+    if (['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) return callback(null, true);
+    const error = new Error('Upload a valid JPG, PNG, or WebP image.');
+    error.code = 'CHAT_IMAGE_TYPE';
+    return callback(error);
+  }
 });
 const kycDocumentUpload = multer({
   storage: multer.memoryStorage(),
@@ -370,9 +396,12 @@ const shopSchema = new mongoose.Schema({
   description: { type: String, required: true, trim: true, maxlength: 500 },
   coverImageUrl: { type: String, default: '' },
   town: { type: String, required: true },
+  streetAddress: { type: String, trim: true, maxlength: 200, default: '' },
+  showAddressPublicly: { type: Boolean, default: false },
   autoApprovalEnabled: { type: Boolean, default: false },
   shippingRates: {
     localNAD: { type: Number, min: 0, default: 30 },
+    regionalNAD: { type: Number, min: 0, default: 50 },
     hubNAD: { type: Number, min: 0, default: 70 },
     remoteNAD: { type: Number, min: 0, default: 120 },
     freeThresholdNAD: { type: Number, min: 0, default: 800 }
@@ -429,15 +458,20 @@ const chatConversationSchema = new mongoose.Schema({
   lastMessageAt: { type: Date, default: null, index: true },
   lastMessageSenderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   buyerUnreadCount: { type: Number, default: 0, min: 0 },
-  sellerUnreadCount: { type: Number, default: 0, min: 0 }
-}, { timestamps: true });
-chatConversationSchema.index({ buyerId: 1, productId: 1 }, { unique: true });
+  sellerUnreadCount: { type: Number, default: 0, min: 0 },
+  mergeOperationKey: { type: String, default: null, select: false },
+  mergeTargetProductId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', default: null, select: false }
+}, { timestamps: true, autoIndex: false });
+chatConversationSchema.index({ buyerId: 1, shopId: 1 }, { unique: true });
 chatConversationSchema.index({ shopId: 1, lastMessageAt: -1 });
 const chatMessageSchema = new mongoose.Schema({
   conversationId: { type: mongoose.Schema.Types.ObjectId, ref: 'ChatConversation', required: true },
   senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  body: { type: String, required: true, trim: true, maxlength: MAX_CHAT_MESSAGE_LENGTH },
-  productTag: { type: chatProductTagSchema, default: null }
+  body: { type: String, default: '', trim: true, maxlength: MAX_CHAT_MESSAGE_LENGTH },
+  imageData: { type: Buffer, select: false },
+  imageContentType: { type: String, enum: ['image/jpeg', 'image/png', 'image/webp', null], default: null },
+  productTag: { type: chatProductTagSchema, default: null },
+  readAt: { type: Date, default: null }
 }, { timestamps: { createdAt: true, updatedAt: false } });
 chatMessageSchema.index({ conversationId: 1, createdAt: 1 });
 const promotionCampaignSchema = new mongoose.Schema({
@@ -535,7 +569,7 @@ const sellerOrderSchema = new mongoose.Schema({
   shopName: { type: String, required: true },
   sellerTown: { type: String, required: true },
   deliveryTown: { type: String, required: true },
-  shippingZone: { type: String, enum: ['local', 'hub', 'remote'], required: true },
+  shippingZone: { type: String, enum: ['local', 'regional', 'hub', 'remote'], required: true },
   items: { type: [orderLineSchema], required: true },
   productsSubtotalNAD: { type: Number, required: true, min: 0 },
   shippingNAD: { type: Number, required: true, min: 0 },
@@ -701,8 +735,6 @@ const productCategories = [
   'Health & Medicines (NMRC)', 'Telecom / Wi-Fi / Bluetooth (CRAN)',
   'Food & Agriculture', 'Second-hand clothes'
 ];
-const namibianTowns = ['Windhoek', 'Swakopmund', 'Walvis Bay', 'Oshakati', 'Rundu', 'Otjiwarongo', 'Other'];
-const hubTowns = new Set(['Windhoek', 'Swakopmund', 'Walvis Bay', 'Oshakati', 'Rundu', 'Otjiwarongo']);
 const commissionRate = Number(process.env.PLATFORM_COMMISSION_RATE || 0.1);
 if (!Number.isFinite(commissionRate) || commissionRate < 0 || commissionRate > 1) {
   throw new Error('PLATFORM_COMMISSION_RATE must be between 0 and 1.');
@@ -730,7 +762,7 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       fontSrc: ["'self'", 'https://fonts.gstatic.com'],
       imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
-      connectSrc: ["'self'"],
+      connectSrc: ["'self'", 'https://photon.komoot.io'],
       frameSrc: ["'self'", 'https://www.google.com'],
       objectSrc: ["'none'"],
       frameAncestors: ["'none'"],
@@ -1128,13 +1160,14 @@ function getSafeReturnPath(value, fallback = '/dashboard') {
 function normalizeProfileInput(input = {}, towns = namibianTowns) {
   const name = typeof input.name === 'string' ? input.name.trim() : '';
   const phone = typeof input.phone === 'string' ? input.phone.trim() : '';
-  const town = typeof input.town === 'string' ? input.town.trim() : '';
+  const rawTown = typeof input.town === 'string' ? input.town : '';
+  const town = rawTown.trim() ? normalizeNamibianTown(rawTown, towns) : '';
   if (!name || name.length > 80) throw apiError(400, 'Enter a name between 1 and 80 characters.');
   const phoneDigits = phone.replace(/\D/g, '');
   if (phone && (!/^\+?[0-9][0-9\s()-]{6,19}$/.test(phone) || phoneDigits.length < 7 || phoneDigits.length > 15)) {
     throw apiError(400, 'Enter a valid phone number.');
   }
-  if (town && !towns.includes(town)) throw apiError(400, 'Choose a valid town.');
+  if (rawTown.trim() && (!town || town === 'Other')) throw apiError(400, 'Choose a valid town.');
   return { name, phone, town };
 }
 
@@ -2441,14 +2474,9 @@ function calculatePromotionClickThroughRate(impressions, clicks) {
   return impressions > 0 ? Math.round((clicks / impressions) * 10000) / 100 : 0;
 }
 
-function resolveShippingZone(sellerTown, deliveryTown) {
-  if (sellerTown === deliveryTown) return 'local';
-  if (hubTowns.has(sellerTown) && hubTowns.has(deliveryTown)) return 'hub';
-  return 'remote';
-}
-
 async function buildOrderQuote(rawItems, deliveryTown) {
-  if (!namibianTowns.includes(deliveryTown)) throw apiError(400, 'Choose a valid delivery town.');
+  deliveryTown = normalizeNamibianTown(deliveryTown);
+  if (!deliveryTown) throw apiError(400, 'Choose a valid delivery town.');
   const requestedItems = normalizeCartItems(rawItems);
   const [unavailableShopIds, activeCommissionRate] = await Promise.all([
     getUnavailableShopIds(),
@@ -2494,7 +2522,7 @@ async function buildOrderQuote(rawItems, deliveryTown) {
     const freeThresholdNAD = rates.freeThresholdNAD ?? 800;
     const shippingNAD = freeThresholdNAD > 0 && productsSubtotalNAD >= freeThresholdNAD
       ? 0
-      : roundNAD(rates[rateKey] ?? ({ local: 30, hub: 70, remote: 120 }[shippingZone]));
+      : roundNAD(rates[rateKey] ?? ({ local: 30, regional: 50, hub: 70, remote: 120 }[shippingZone]));
     const commissionNAD = roundNAD(productsSubtotalNAD * activeCommissionRate);
 
     return {
@@ -6745,7 +6773,8 @@ app.get('/api/products', async (req, res) => {
     expiresAt: { $gt: now }
   });
   const { q = '', category = '', town = '' } = req.query;
-  if (typeof q !== 'string' || q.length > 80 || (category && !productCategories.includes(category)) || (town && !namibianTowns.includes(town))) {
+  const normalizedTown = typeof town === 'string' && town ? normalizeNamibianTown(town) : '';
+  if (typeof q !== 'string' || q.length > 80 || (category && !productCategories.includes(category)) || (town && !normalizedTown)) {
     return res.status(400).json({ error: 'Invalid marketplace filters.' });
   }
 
@@ -6759,7 +6788,7 @@ app.get('/api/products', async (req, res) => {
     moderationStatus: { $ne: 'hidden' }
   };
   if (category) filter.category = category;
-  if (town) filter.town = town;
+  if (normalizedTown) filter.town = normalizedTown;
   if (q.trim()) {
     const safeQuery = q.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     filter.$or = [
@@ -7056,20 +7085,79 @@ app.get('/api/products/:id', async (req, res) => {
       category: product.category,
       town: product.town,
       imageUrl: product.imageUrl,
-      shop: publicShop
+      shop: publicShop,
+      shopId: product.shopId._id.toString()
     },
     viewer: { canMessageSeller: Boolean(viewer && viewer._id.toString() !== ownerId.toString()) }
   });
 });
 
-app.post('/api/messages/start', directChatRateLimit, async (req, res) => {
-  const user = await getSessionUser(req);
-  if (!user) return res.status(401).json({ error: 'Sign in to message this seller.' });
+function requireChatMessageUser(message) {
+  return async (req, res, next) => {
+    try {
+      const user = await getSessionUser(req);
+      if (!user) return res.status(401).json({ error: message });
+      req.chatUser = user;
+      return next();
+    } catch (error) {
+      return next(error);
+    }
+  };
+}
+
+async function requireChatConversationParticipant(req, res, next) {
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: 'Conversation not found.' });
+  const conversation = await ChatConversation.findById(req.params.id).select('buyerId shopId productId');
+  if (!conversation) return res.status(404).json({ error: 'Conversation not found.' });
+  const shop = await Shop.findById(conversation.shopId).select('ownerId');
+  const role = getChatParticipantRole(conversation, req.chatUser._id, shop?.ownerId);
+  if (!role) return res.status(404).json({ error: 'Conversation not found.' });
+  req.chatConversation = conversation;
+  req.chatRole = role;
+  return next();
+}
+
+function parseChatImageUpload(req, res, next) {
+  if (!req.is('multipart/form-data')) return next();
+  return chatImageUpload.single('file')(req, res, next);
+}
+
+function cleanupChatTypingStates() {
+  const now = Date.now();
+  for (const [conversationId, typingUsers] of chatTypingStates) {
+    for (const [userId, expiresAt] of typingUsers) {
+      if (expiresAt <= now) typingUsers.delete(userId);
+    }
+    if (!typingUsers.size) chatTypingStates.delete(conversationId);
+  }
+}
+
+function cleanupChatPresenceStates() {
+  const now = Date.now();
+  for (const [conversationId, presenceUsers] of chatPresenceStates) {
+    for (const [userId, expiresAt] of presenceUsers) {
+      if (expiresAt <= now) presenceUsers.delete(userId);
+    }
+    if (!presenceUsers.size) chatPresenceStates.delete(conversationId);
+  }
+}
+
+function normalizeOptionalChatBody(value) {
+  if (value === undefined || value === null || (typeof value === 'string' && !value.trim())) return '';
+  return normalizeChatMessage(value);
+}
+
+app.post('/api/messages/start', directChatRateLimit, requireChatMessageUser('Sign in to message this seller.'), parseChatImageUpload, async (req, res) => {
+  const user = req.chatUser;
   if (typeof req.body?.productId !== 'string' || !mongoose.isValidObjectId(req.body.productId)) {
     return res.status(404).json({ error: 'Product not found.' });
   }
-  const body = normalizeChatMessage(req.body?.message);
-  if (!body) return res.status(400).json({ error: `Enter a message of 1-${MAX_CHAT_MESSAGE_LENGTH} characters.` });
+  const body = normalizeOptionalChatBody(req.body?.message);
+  if (body === null) return res.status(400).json({ error: `Enter a message of 1-${MAX_CHAT_MESSAGE_LENGTH} characters.` });
+  if (!body && !req.file) return res.status(400).json({ error: 'Write a message or attach a photo.' });
+  if (req.file && !hasValidImageSignature(req.file)) {
+    return res.status(400).json({ error: 'Upload a valid JPG, PNG, or WebP image.' });
+  }
 
   const product = await Product.findOne({
     _id: req.body.productId,
@@ -7086,28 +7174,35 @@ app.post('/api/messages/start', directChatRateLimit, async (req, res) => {
   let conversation;
   try {
     conversation = await ChatConversation.findOneAndUpdate(
-      { buyerId: user._id, productId: product._id },
-      { $setOnInsert: { buyerId: user._id, shopId: product.shopId._id, productId: product._id } },
+      { buyerId: user._id, shopId: product.shopId._id },
+      {
+        $set: { productId: product._id },
+        $setOnInsert: { buyerId: user._id, shopId: product.shopId._id }
+      },
       { upsert: true, new: true, setDefaultsOnInsert: true, runValidators: true }
     );
   } catch (error) {
     if (error.code !== 11000) throw error;
-    conversation = await ChatConversation.findOne({ buyerId: user._id, productId: product._id });
+    conversation = await ChatConversation.findOne({ buyerId: user._id, shopId: product.shopId._id });
     if (!conversation) throw error;
   }
 
-  const productTag = req.body?.tagProduct === true ? createChatProductTag(product) : null;
+  const productTag = req.body?.tagProduct === true || req.body?.tagProduct === 'true'
+    ? createChatProductTag(product)
+    : null;
   const message = await ChatMessage.create({
     conversationId: conversation._id,
     senderId: user._id,
     body,
+    ...(req.file ? { imageData: req.file.buffer, imageContentType: req.file.mimetype } : {}),
     productTag
   });
   await ChatConversation.updateOne(
     { _id: conversation._id },
     {
       $set: {
-        lastMessageText: body,
+        productId: product._id,
+        lastMessageText: body || (req.file ? 'Photo' : ''),
         lastMessageAt: message.createdAt,
         lastMessageSenderId: user._id,
         ...(productTag ? { productTag } : {})
@@ -7128,19 +7223,27 @@ app.get('/api/messages/conversations', async (req, res) => {
     .sort({ lastMessageAt: -1, updatedAt: -1 })
     .limit(100)
     .populate('buyerId', 'name')
-    .populate('shopId', 'name ownerId')
+    .populate('shopId', 'name ownerId coverImageUrl')
     .populate('productId', 'title')
     .lean();
 
+  cleanupChatPresenceStates();
+  res.set('Cache-Control', 'private, no-store');
   return res.json({
     conversations: conversations.map((conversation) => {
       const role = getChatParticipantRole(conversation, user._id, conversation.shopId?.ownerId);
       if (!role) return null;
       return {
         id: conversation._id.toString(),
+        shopId: conversation.shopId?._id?.toString() || '',
         productId: conversation.productId?._id?.toString() || '',
         productTitle: conversation.productId?.title || 'Product no longer available',
         participantName: role === 'buyer' ? conversation.shopId?.name || 'Shop' : conversation.buyerId?.name || 'Buyer',
+        participantImageUrl: getChatParticipantImageUrl(conversation, role),
+        participantOnline: isChatParticipantOnline(
+          chatPresenceStates.get(conversation._id.toString()),
+          role === 'buyer' ? conversation.shopId?.ownerId : conversation.buyerId?._id
+        ),
         role,
         lastMessageText: conversation.lastMessageText,
         lastMessageAt: conversation.lastMessageAt,
@@ -7154,9 +7257,15 @@ app.get('/api/messages/conversations/:id', async (req, res) => {
   const user = await getSessionUser(req);
   if (!user) return res.status(401).json({ error: 'Sign in to view this conversation.' });
   if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: 'Conversation not found.' });
+  const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
+  if (search.length > 100) return res.status(400).json({ error: 'Search text must be 100 characters or fewer.' });
+  const aroundMessageId = typeof req.query.around === 'string' ? req.query.around : '';
+  if (aroundMessageId && !mongoose.isValidObjectId(aroundMessageId)) {
+    return res.status(400).json({ error: 'The selected message is not valid.' });
+  }
   const conversation = await ChatConversation.findById(req.params.id)
     .populate('buyerId', 'name')
-    .populate('shopId', 'name ownerId')
+    .populate('shopId', 'name ownerId coverImageUrl')
     .populate('productId', 'title')
     .lean();
   if (!conversation) return res.status(404).json({ error: 'Conversation not found.' });
@@ -7167,21 +7276,53 @@ app.get('/api/messages/conversations/:id', async (req, res) => {
   if (conversation[unreadField] > 0) {
     await ChatConversation.updateOne({ _id: conversation._id }, { $set: { [unreadField]: 0 } });
   }
-  const messages = await ChatMessage.find({ conversationId: conversation._id })
+  const messageFilter = { conversationId: conversation._id };
+  if (search) messageFilter.body = { $regex: escapeRegex(search), $options: 'i' };
+  if (aroundMessageId) {
+    const aroundMessage = await ChatMessage.findOne({
+      _id: aroundMessageId,
+      conversationId: conversation._id
+    }).select('createdAt').lean();
+    if (!aroundMessage) return res.status(404).json({ error: 'The selected message was not found.' });
+    messageFilter.createdAt = { $lte: aroundMessage.createdAt };
+  }
+  const messages = await ChatMessage.find(messageFilter)
     .sort({ createdAt: -1 })
     .limit(100)
     .lean();
   messages.reverse();
+  const incomingMessageIds = messages
+    .filter((message) => message.senderId.toString() !== user._id.toString())
+    .map((message) => message._id);
+  if (incomingMessageIds.length) {
+    await ChatMessage.updateMany(
+      { _id: { $in: incomingMessageIds }, conversationId: conversation._id, readAt: null },
+      { $set: { readAt: new Date() } }
+    );
+  }
   const taggedMessage = conversation.productTag ? null : await ChatMessage.findOne({
     conversationId: conversation._id,
     'productTag.productId': { $exists: true }
   }).sort({ createdAt: -1 }).select('productTag').lean();
   const productTag = getConversationProductTag(conversation, taggedMessage);
   const participantName = role === 'buyer' ? conversation.shopId?.name || 'Shop' : conversation.buyerId?.name || 'Buyer';
+  const conversationId = conversation._id.toString();
+  cleanupChatTypingStates();
+  const typingUsers = chatTypingStates.get(conversationId);
+  const typing = Boolean(typingUsers && [...typingUsers.keys()].some((userId) => userId !== user._id.toString()));
+  cleanupChatPresenceStates();
+  const presenceUsers = chatPresenceStates.get(conversationId) || new Map();
+  const now = Date.now();
+  presenceUsers.set(user._id.toString(), now + chatPresenceTtlMs);
+  chatPresenceStates.set(conversationId, presenceUsers);
+  const participantId = role === 'buyer' ? conversation.shopId?.ownerId : conversation.buyerId?._id;
+  const participantOnline = isChatParticipantOnline(presenceUsers, participantId, now);
 
+  res.set('Cache-Control', 'private, no-store');
   return res.json({
     conversation: {
       id: conversation._id.toString(),
+      shopId: conversation.shopId?._id?.toString() || '',
       productId: conversation.productId?._id?.toString() || '',
       productTitle: conversation.productId?.title || 'Product no longer available',
       productTag: productTag ? {
@@ -7191,13 +7332,19 @@ app.get('/api/messages/conversations/:id', async (req, res) => {
         priceNAD: productTag.priceNAD
       } : null,
       participantName,
-      role
+      participantImageUrl: getChatParticipantImageUrl(conversation, role),
+      role,
+      typing,
+      online: participantOnline
     },
     messages: messages.map((message) => {
       const mine = message.senderId.toString() === user._id.toString();
       return {
         id: message._id.toString(),
         body: message.body,
+        imageUrl: message.imageContentType
+          ? `/api/messages/conversations/${encodeURIComponent(conversationId)}/media/${encodeURIComponent(message._id.toString())}`
+          : '',
         senderName: mine ? user.name : participantName,
         mine,
         productTag: message.productTag ? {
@@ -7206,54 +7353,199 @@ app.get('/api/messages/conversations/:id', async (req, res) => {
           imageUrl: message.productTag.imageUrl,
           priceNAD: message.productTag.priceNAD
         } : null,
-        createdAt: message.createdAt
+        createdAt: message.createdAt,
+        readAt: message.readAt || null
       };
     })
   });
 });
 
-app.post('/api/messages/conversations/:id', directChatRateLimit, async (req, res) => {
+app.get('/api/messages/conversations/:id/media', async (req, res) => {
   const user = await getSessionUser(req);
-  if (!user) return res.status(401).json({ error: 'Sign in to send a message.' });
+  if (!user) return res.status(401).json({ error: 'Sign in to view shared media.' });
   if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: 'Conversation not found.' });
-  const body = normalizeChatMessage(req.body?.message);
-  if (!body) return res.status(400).json({ error: `Enter a message of 1-${MAX_CHAT_MESSAGE_LENGTH} characters.` });
-  const conversation = await ChatConversation.findById(req.params.id).select('buyerId shopId productId');
-  if (!conversation) return res.status(404).json({ error: 'Conversation not found.' });
-  const shop = await Shop.findById(conversation.shopId).select('ownerId');
-  const role = getChatParticipantRole(conversation, user._id, shop?.ownerId);
-  if (!role) return res.status(404).json({ error: 'Conversation not found.' });
-
-  let productTag = null;
-  if (req.body?.tagProduct === true) {
-    const product = await Product.findById(conversation.productId).select('title imageUrl priceNAD').lean();
-    if (!product) return res.status(409).json({ error: 'This product is no longer available to tag.' });
-    productTag = createChatProductTag(product);
+  const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
+  if (search.length > 100) return res.status(400).json({ error: 'Search text must be 100 characters or fewer.' });
+  const conversation = await ChatConversation.findById(req.params.id)
+    .populate('buyerId', '_id')
+    .populate('shopId', 'ownerId')
+    .lean();
+  if (!conversation || !getChatParticipantRole(conversation, user._id, conversation.shopId?.ownerId)) {
+    return res.status(404).json({ error: 'Conversation not found.' });
   }
-  const message = await ChatMessage.create({ conversationId: conversation._id, senderId: user._id, body, productTag });
-  await ChatConversation.updateOne(
-    { _id: conversation._id },
-    {
-      $set: {
-        lastMessageText: body,
-        lastMessageAt: message.createdAt,
-        lastMessageSenderId: user._id,
-        ...(productTag ? { productTag } : {})
-      },
-      $inc: { [role === 'buyer' ? 'sellerUnreadCount' : 'buyerUnreadCount']: 1 }
+
+  const mediaFilter = {
+    conversationId: conversation._id,
+    $or: [
+      { imageContentType: { $in: ['image/jpeg', 'image/png', 'image/webp'] } },
+      { 'productTag.productId': { $exists: true } }
+    ]
+  };
+  if (search) {
+    mediaFilter.$and = [{
+      $or: [
+        { body: { $regex: escapeRegex(search), $options: 'i' } },
+        { 'productTag.title': { $regex: escapeRegex(search), $options: 'i' } }
+      ]
+    }];
+  }
+  const messages = await ChatMessage.find(mediaFilter)
+    .select('body productTag imageContentType createdAt')
+    .sort({ createdAt: -1 })
+    .limit(200)
+    .lean();
+  const conversationId = conversation._id.toString();
+  const items = messages.flatMap((message) => {
+    const messageId = message._id.toString();
+    const sharedItems = [];
+    if (message.imageContentType) {
+      sharedItems.push({
+        id: `${messageId}-photo`,
+        messageId,
+        kind: 'photo',
+        title: 'Photo',
+        imageUrl: `/api/messages/conversations/${encodeURIComponent(conversationId)}/media/${encodeURIComponent(messageId)}`,
+        caption: message.body,
+        createdAt: message.createdAt
+      });
     }
-  );
-  return res.status(201).json({ messageId: message._id.toString() });
+    if (message.productTag) {
+      sharedItems.push({
+        id: `${messageId}-product`,
+        messageId,
+        kind: 'product',
+        title: message.productTag.title,
+        imageUrl: message.productTag.imageUrl,
+        caption: message.body,
+        createdAt: message.createdAt
+      });
+    }
+    return sharedItems;
+  });
+  res.set('Cache-Control', 'private, no-store');
+  return res.json({ items });
 });
+
+app.get('/api/messages/conversations/:id/media/:messageId', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to view this photo.' });
+  if (!mongoose.isValidObjectId(req.params.id) || !mongoose.isValidObjectId(req.params.messageId)) {
+    return res.status(404).json({ error: 'Photo not found.' });
+  }
+  const conversation = await ChatConversation.findById(req.params.id)
+    .populate('buyerId', '_id')
+    .populate('shopId', 'ownerId')
+    .lean();
+  if (!conversation || !getChatParticipantRole(conversation, user._id, conversation.shopId?.ownerId)) {
+    return res.status(404).json({ error: 'Photo not found.' });
+  }
+  const message = await ChatMessage.findOne({
+    _id: req.params.messageId,
+    conversationId: conversation._id
+  }).select('+imageData imageContentType');
+  if (!Buffer.isBuffer(message?.imageData) || !hasValidImageSignature({
+    buffer: message.imageData,
+    mimetype: message.imageContentType
+  })) {
+    return res.status(404).json({ error: 'Photo not found.' });
+  }
+  res.set({
+    'Cache-Control': 'private, no-store',
+    'Content-Security-Policy': "default-src 'none'; sandbox",
+    'X-Content-Type-Options': 'nosniff'
+  });
+  return res.type(message.imageContentType).send(message.imageData);
+});
+
+app.post(
+  '/api/messages/conversations/:id/typing',
+  chatTypingRateLimit,
+  requireChatMessageUser('Sign in to update typing status.'),
+  requireChatConversationParticipant,
+  async (req, res) => {
+    const user = req.chatUser;
+    const conversation = req.chatConversation;
+    if (typeof req.body?.typing !== 'boolean') return res.status(400).json({ error: 'Typing status must be true or false.' });
+
+    cleanupChatTypingStates();
+    const conversationId = conversation._id.toString();
+    const userId = user._id.toString();
+    const typingUsers = chatTypingStates.get(conversationId) || new Map();
+    if (req.body.typing) typingUsers.set(userId, Date.now() + 4000);
+    else typingUsers.delete(userId);
+    if (typingUsers.size) chatTypingStates.set(conversationId, typingUsers);
+    else chatTypingStates.delete(conversationId);
+    return res.json({ typing: req.body.typing });
+  }
+);
+
+app.post(
+  '/api/messages/conversations/:id',
+  directChatRateLimit,
+  requireChatMessageUser('Sign in to send a message.'),
+  requireChatConversationParticipant,
+  parseChatImageUpload,
+  async (req, res) => {
+    const user = req.chatUser;
+    const body = normalizeOptionalChatBody(req.body?.message);
+    if (body === null) return res.status(400).json({ error: `Enter a message of 1-${MAX_CHAT_MESSAGE_LENGTH} characters.` });
+    if (!body && !req.file) return res.status(400).json({ error: 'Write a message or attach a photo.' });
+    if (req.file && !hasValidImageSignature(req.file)) {
+      return res.status(400).json({ error: 'Upload a valid JPG, PNG, or WebP image.' });
+    }
+    const conversation = req.chatConversation;
+    const role = req.chatRole;
+
+    let productTag = null;
+    let taggedProductId = conversation.productId;
+    if (req.body?.tagProduct === true || req.body?.tagProduct === 'true') {
+      const rawProductId = req.body?.productId || conversation.productId.toString();
+      if (typeof rawProductId !== 'string' || !mongoose.isValidObjectId(rawProductId)) {
+        return res.status(400).json({ error: 'Choose a valid product to attach to the message.' });
+      }
+      const product = await Product.findById(rawProductId).select('shopId title imageUrl priceNAD').lean();
+      if (!product || product.shopId.toString() !== conversation.shopId.toString()) {
+        return res.status(409).json({ error: 'This product cannot be tagged in this conversation.' });
+      }
+      productTag = createChatProductTag(product);
+      taggedProductId = product._id;
+    }
+    const message = await ChatMessage.create({
+      conversationId: conversation._id,
+      senderId: user._id,
+      body,
+      ...(req.file ? { imageData: req.file.buffer, imageContentType: req.file.mimetype } : {}),
+      productTag
+    });
+    const typingUsers = chatTypingStates.get(conversation._id.toString());
+    typingUsers?.delete(user._id.toString());
+    if (typingUsers && !typingUsers.size) chatTypingStates.delete(conversation._id.toString());
+    await ChatConversation.updateOne(
+      { _id: conversation._id },
+      {
+        $set: {
+          ...(productTag ? { productId: taggedProductId } : {}),
+          lastMessageText: body || (req.file ? 'Photo' : ''),
+          lastMessageAt: message.createdAt,
+          lastMessageSenderId: user._id,
+          ...(productTag ? { productTag } : {})
+        },
+        $inc: { [role === 'buyer' ? 'sellerUnreadCount' : 'buyerUnreadCount']: 1 }
+      }
+    );
+    return res.status(201).json({ messageId: message._id.toString() });
+  }
+);
 
 app.get('/api/shops', async (req, res) => {
   const { q = '', town = '' } = req.query;
-  if (typeof q !== 'string' || q.length > 80 || (town && !namibianTowns.includes(town))) {
+  const normalizedTown = typeof town === 'string' && town ? normalizeNamibianTown(town) : '';
+  if (typeof q !== 'string' || q.length > 80 || (town && !normalizedTown)) {
     return res.status(400).json({ error: 'Invalid shop filters.' });
   }
 
   const filter = getPublicShopFilter();
-  if (town) filter.town = town;
+  if (normalizedTown) filter.town = normalizedTown;
   if (q.trim()) {
     const safeQuery = q.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     filter.$and.push({ $or: [
@@ -7323,6 +7615,7 @@ app.get('/api/shops/:slug', async (req, res) => {
       businessVerified: shop.kycStatus === 'verified',
       description: shop.description,
       town: shop.town,
+      streetAddress: getPublicShopStreetAddress(shop),
       coverImageUrl: shop.coverImageUrl || '',
       assistantAvailable: Boolean(assistantPlanPaid && shop.assistantEnabled && assistantServiceConfigured),
       averageRating: Number(averageRating.toFixed(1)),
@@ -7555,6 +7848,25 @@ app.get('/api/seller/shop', async (req, res) => {
   });
 });
 
+app.patch('/api/seller/shop/location', async (req, res) => {
+  const user = await getSessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Sign in to update your shop location.' });
+
+  const streetAddress = normalizeShopStreetAddress(req.body?.streetAddress);
+  const showAddressPublicly = req.body?.showAddressPublicly;
+  if (streetAddress === null || typeof showAddressPublicly !== 'boolean' || (showAddressPublicly && !streetAddress)) {
+    return res.status(400).json({ error: 'Enter a valid street address and choose whether to show it publicly.' });
+  }
+
+  const shop = await Shop.findOneAndUpdate(
+    { ownerId: user._id },
+    { $set: { streetAddress, showAddressPublicly } },
+    { returnDocument: 'after', runValidators: true }
+  ).select('streetAddress showAddressPublicly');
+  if (!shop) return res.status(404).json({ error: 'Shop not found.' });
+  return res.json({ streetAddress: shop.streetAddress, showAddressPublicly: shop.showAddressPublicly });
+});
+
 app.get('/api/seller/shop/verification', async (req, res) => {
   const user = await getSessionUser(req);
   if (!user) return res.status(401).json({ error: 'Sign in to manage business verification.' });
@@ -7724,20 +8036,25 @@ app.post('/api/seller/shop/assistant/simulate-purchase', async (req, res) => {
 app.patch('/api/seller/shop/shipping', async (req, res) => {
   const user = await getSessionUser(req);
   if (!user) return res.status(401).json({ error: 'Sign in to update delivery settings.' });
-  const values = ['localNAD', 'hubNAD', 'remoteNAD', 'freeThresholdNAD'];
-  const shippingRates = {};
+  const values = ['localNAD', 'regionalNAD', 'hubNAD', 'remoteNAD', 'freeThresholdNAD'];
+  const shippingRateUpdates = {};
   for (const key of values) {
+    if (key === 'regionalNAD' && req.body?.[key] === undefined) continue;
     const value = Number(req.body?.[key]);
     if (!Number.isFinite(value) || value < 0 || value > 1000000) {
       return res.status(400).json({ error: 'Enter valid non-negative delivery rates and threshold.' });
     }
-    shippingRates[key] = roundNAD(value);
+    shippingRateUpdates[`shippingRates.${key}`] = roundNAD(value);
   }
 
   const rawAutoApproval = req.body?.autoApprovalEnabled;
   const autoApprovalEnabled = typeof rawAutoApproval === 'boolean' ? rawAutoApproval : Boolean(rawAutoApproval === 'true');
 
-  const shop = await Shop.findOneAndUpdate({ ownerId: user._id }, { $set: { shippingRates, autoApprovalEnabled } }, { returnDocument: 'after', runValidators: true });
+  const shop = await Shop.findOneAndUpdate(
+    { ownerId: user._id },
+    { $set: { ...shippingRateUpdates, autoApprovalEnabled } },
+    { returnDocument: 'after', runValidators: true }
+  );
   if (!shop) return res.status(404).json({ error: 'Shop not found.' });
   return res.json({ shippingRates: shop.shippingRates, autoApprovalEnabled: shop.autoApprovalEnabled });
 });
@@ -7775,10 +8092,13 @@ app.post('/api/seller/shop', async (req, res) => {
 
   const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
   const description = typeof req.body?.description === 'string' ? req.body.description.trim() : '';
-  const town = req.body?.town;
+  const town = normalizeNamibianTown(req.body?.town);
+  const streetAddress = req.body?.streetAddress === undefined ? '' : normalizeShopStreetAddress(req.body.streetAddress);
+  const showAddressPublicly = req.body?.showAddressPublicly === undefined ? false : req.body.showAddressPublicly;
   const nameKey = name ? normalizeDuplicateText(name) : '';
-  if (!name || name.length > 80 || !nameKey || !description || description.length > 500 || !namibianTowns.includes(town)) {
-    return res.status(400).json({ error: 'Enter a shop name, a short description, and a valid town.' });
+  if (!name || name.length > 80 || !nameKey || !description || description.length > 500 || !town || town === 'Other'
+      || streetAddress === null || typeof showAddressPublicly !== 'boolean' || (showAddressPublicly && !streetAddress)) {
+    return res.status(400).json({ error: 'Enter a shop name, a short description, a valid town, and a valid public address setting.' });
   }
   if (await findDuplicateShopName(nameKey)) {
     return res.status(409).json({ error: 'A shop with the same name already exists.' });
@@ -7786,7 +8106,7 @@ app.post('/api/seller/shop', async (req, res) => {
 
   const slug = `${name.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50) || 'shop'}-${randomBytes(3).toString('hex')}`;
   try {
-    const shop = await Shop.create({ ownerId: user._id, name, nameKey, description, town, slug, approvalStatus: 'pending' });
+    const shop = await Shop.create({ ownerId: user._id, name, nameKey, description, town, streetAddress, showAddressPublicly, slug, approvalStatus: 'pending' });
     return res.status(201).json({ shop: { id: shop._id.toString(), name: shop.name, description: shop.description, town: shop.town, slug: shop.slug, approvalStatus: shop.approvalStatus } });
   } catch (error) {
     if (error.code === 11000 && error.keyPattern?.ownerId) {
@@ -8262,6 +8582,9 @@ app.use('/api', (req, res) => {
 
 app.use((error, req, res, next) => {
   if (res.headersSent) return next(error);
+  if (error.code === 'CHAT_IMAGE_TYPE') {
+    return res.status(400).json({ error: 'Upload a valid JPG, PNG, or WebP image.' });
+  }
   if (error instanceof multer.MulterError) {
     const message = error.code === 'LIMIT_FILE_SIZE'
       ? 'Image files must be 5 MB or smaller.'
@@ -8276,6 +8599,99 @@ app.use((error, req, res, next) => {
   return res.status(statusCode).json({ error: message });
 });
 
+async function mergeExistingChatConversations() {
+  const collectionExists = await mongoose.connection.db
+    .listCollections({ name: ChatConversation.collection.name }, { nameOnly: true })
+    .hasNext();
+  let mergedConversationCount = 0;
+
+  if (collectionExists) {
+    const groups = await ChatConversation.aggregate([
+      { $sort: { createdAt: 1, _id: 1 } },
+      {
+        $group: {
+          _id: { buyerId: '$buyerId', shopId: '$shopId' },
+          conversations: { $push: '$$ROOT' }
+        }
+      },
+      { $match: { $expr: { $gt: [{ $size: '$conversations' }, 1] } } }
+    ]).exec();
+
+    for (const group of groups) {
+      const merged = getMergedChatConversationState(group.conversations);
+      const conversationIds = [merged.canonicalId, ...merged.duplicateIds];
+      const canonical = group.conversations.find((conversation) => String(conversation._id) === String(merged.canonicalId));
+      const targetProductId = canonical.mergeOperationKey === merged.operationKey
+        ? canonical.mergeTargetProductId || merged.updates.productId
+        : merged.updates.productId;
+      if (canonical.mergeOperationKey !== merged.operationKey) {
+        const { productId, ...conversationUpdates } = merged.updates;
+        await ChatConversation.updateOne(
+          { _id: merged.canonicalId },
+          {
+            $set: {
+              ...conversationUpdates,
+              mergeOperationKey: merged.operationKey,
+              mergeTargetProductId: productId
+            }
+          }
+        );
+      }
+
+      for (const conversation of group.conversations) {
+        if (!conversation.productTag) continue;
+        await ChatMessage.findOneAndUpdate(
+          { conversationId: conversation._id, productTag: null },
+          { $set: { productTag: conversation.productTag } },
+          { sort: { createdAt: -1 } }
+        );
+      }
+
+      await ChatMessage.updateMany(
+        { conversationId: { $in: conversationIds } },
+        { $set: { conversationId: merged.canonicalId } }
+      );
+      await ChatConversation.deleteMany({ _id: { $in: merged.duplicateIds } });
+      await ChatConversation.updateOne(
+        { _id: merged.canonicalId },
+        {
+          $set: { productId: targetProductId },
+          $unset: { mergeOperationKey: '', mergeTargetProductId: '' }
+        }
+      );
+      mergedConversationCount += merged.duplicateIds.length;
+    }
+
+    const pendingMerges = await ChatConversation.find({ mergeOperationKey: { $type: 'string' } })
+      .select('_id mergeTargetProductId')
+      .lean();
+    for (const pending of pendingMerges) {
+      await ChatConversation.updateOne(
+        { _id: pending._id },
+        {
+          ...(pending.mergeTargetProductId ? { $set: { productId: pending.mergeTargetProductId } } : {}),
+          $unset: { mergeOperationKey: '', mergeTargetProductId: '' }
+        }
+      );
+    }
+
+    const indexes = await ChatConversation.collection.listIndexes().toArray();
+    const productUniqueIndex = indexes.find((index) =>
+      index.unique
+      && index.key.buyerId === 1
+      && index.key.productId === 1
+      && Object.keys(index.key).length === 2
+    );
+    if (productUniqueIndex) await ChatConversation.collection.dropIndex(productUniqueIndex.name);
+  }
+
+  await ChatConversation.createIndexes();
+  await ChatMessage.createIndexes();
+  if (mergedConversationCount) {
+    console.log(`Merged ${mergedConversationCount} duplicate buyer-seller conversation(s).`);
+  }
+}
+
 async function startServer() {
   assertProductionPaymentConfiguration();
   assertProductionAdminConfiguration();
@@ -8283,13 +8699,19 @@ async function startServer() {
     throw new Error('Missing MONGODB_URI. Add it to server/.env before starting Z.');
   }
 
+  console.log('Connecting to MongoDB...');
   await mongoose.connect(process.env.MONGODB_URI);
+  console.log('MongoDB connected; initializing database indexes...');
   await Promise.all([User.init(), Session.init(), PasswordReset.init(), Shop.init(), Product.init(), PromotionCampaign.init(), PromotionEngagement.init(), Order.init(), WalletTransaction.init(), WalletReconciliationAlert.init(), ListingReport.init(), ListingThresholdEvent.init(), ModerationAudit.init(), SupportRequest.init(), SupportNotification.init(), SellerNotification.init(), AccountNotification.init(), SuspensionAppeal.init(), SuspensionAppealAccess.init(), PlatformSetting.init(), LoginWallpaper.init()]);
+  console.log('Database indexes ready; merging chat conversations...');
+  await mergeExistingChatConversations();
+  console.log('Chat conversations ready; processing payouts...');
   const reservationSweep = setInterval(() => {
     releaseExpiredReservations().catch((error) => console.error('Reservation cleanup failed:', error.message));
   }, 60 * 1000);
   reservationSweep.unref();
   await advancePayoutLifecycle();
+  console.log('Payouts ready; processing seller restrictions...');
   const payoutSweep = setInterval(() => {
     advancePayoutLifecycle().catch((error) => console.error('Seller wallet credit sweep failed:', error.message));
   }, payoutSweepIntervalMs);

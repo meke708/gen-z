@@ -75,16 +75,6 @@ body.layout-seller .seller-account-identity {
     gap: 9px;
 }
 
-body.layout-seller .seller-account-avatar-link {
-    position: relative;
-    display: inline-grid;
-    width: 36px;
-    min-height: 36px;
-    flex: 0 0 36px;
-    place-items: center;
-    border-radius: 999px;
-}
-
 body.layout-seller .seller-account-business-name {
     min-width: 0;
     overflow: hidden;
@@ -115,11 +105,6 @@ body.layout-seller .seller-account-verification-warning {
 
 body.layout-seller .seller-account-verification-warning[hidden] {
     display: none;
-}
-
-body.layout-seller .seller-account-avatar-link:focus-visible {
-    outline: 2px solid #397d54;
-    outline-offset: 3px;
 }
 
 body.layout-seller .seller-account-avatar img {

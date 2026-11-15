@@ -91,6 +91,18 @@
         if (isProductPage) document.body.classList.add("layout-product");
         if (isSellerPortal) document.body.classList.add("layout-seller");
         if (isAdminPage) document.body.classList.add("layout-admin");
+        if (isSellerPortal) {
+            let sidebarCollapsed = false;
+            try {
+                sidebarCollapsed = window.localStorage.getItem("z_seller_sidebar_collapsed") === "true";
+            } catch (error) {
+                console.error("Seller navigation preference could not be loaded:", error);
+            }
+            document.body.classList.toggle(
+                "seller-sidebar-collapsed",
+                sidebarCollapsed && window.matchMedia("(min-width: 901px)").matches
+            );
+        }
 
         const layoutStylesheet = document.createElement("link");
         layoutStylesheet.rel = "stylesheet";
@@ -142,7 +154,7 @@
         const identity = document.createElement("div");
         identity.className = "seller-account-identity";
         const link = document.createElement("a");
-        link.className = "seller-account-avatar-link";
+        link.className = "seller-account-profile-link";
         link.href = "/sell/profile";
         link.setAttribute("aria-label", "Open business profile");
         const verificationWarning = document.createElement("span");
@@ -170,11 +182,17 @@
             fallback.hidden = false;
         });
         avatar.append(image, fallback, verificationWarning);
-        link.append(avatar);
-        const businessName = document.createElement("span");
+        const businessCopy = document.createElement("span");
+        businessCopy.className = "seller-account-business-copy";
+        const businessName = document.createElement("strong");
         businessName.className = "seller-account-business-name";
-        identity.append(link, businessName);
-        return { identity, link, fallback, image, businessName, verificationWarning };
+        const businessCaption = document.createElement("span");
+        businessCaption.className = "seller-account-business-caption";
+        businessCaption.textContent = "Seller profile";
+        businessCopy.append(businessName, businessCaption);
+        link.append(avatar, businessCopy);
+        identity.append(link);
+        return { identity, link, fallback, image, businessName, businessCaption, verificationWarning };
     };
 
     const adminLinks = [
@@ -196,6 +214,7 @@
     const sellerLinks = [
         ["/sell/dashboard", "Dashboard"],
         ["/sell/orders", "Manage orders"],
+        ["/sell/messages", "Conversations"],
         ["/sell/listings", "Manage listings"],
         ["/sell/notifications", "Updates"],
         ["/sell/transactions", "Transactions"],
@@ -207,6 +226,21 @@
         ["/marketplace", "Marketplace"],
         ["/dashboard", "Buyer's account"]
     ];
+    const sellerLinkIcons = {
+        "/sell/dashboard": "⌂",
+        "/sell/orders": "▤",
+        "/sell/messages": "✉",
+        "/sell/listings": "▧",
+        "/sell/notifications": "♧",
+        "/sell/transactions": "↔",
+        "/sell/billing": "N$",
+        "/sell/assistant": "✦",
+        "/sell/profile": "○",
+        "/sell/verification": "✓",
+        "/support": "?",
+        "/marketplace": "⌕",
+        "/dashboard": "↗"
+    };
 
     const orderedLinks = path.startsWith("/admin/") ? adminLinks : isSellerPortal ? sellerLinks : [];
     if (isSellerPortal) nav.replaceChildren();
@@ -217,6 +251,14 @@
             anchor.href = href;
         }
         setNavLabel(anchor, label);
+        if (isSellerPortal) {
+            anchor.title = label;
+            const icon = document.createElement("span");
+            icon.className = "seller-nav-icon";
+            icon.setAttribute("aria-hidden", "true");
+            icon.textContent = sellerLinkIcons[href] || "";
+            anchor.prepend(icon);
+        }
         if (isSellerPortal && href === "/sell/notifications") {
             anchor.classList.add("seller-updates-link");
             anchor.setAttribute("aria-label", "Seller updates");
@@ -227,7 +269,57 @@
             badge.hidden = true;
             anchor.append(badge);
         }
+        if (isSellerPortal && href === "/sell/messages") {
+            const badge = document.createElement("span");
+            badge.className = "seller-conversations-unread";
+            badge.id = "seller-conversations-unread";
+            badge.setAttribute("aria-label", "Unread buyer messages");
+            badge.hidden = true;
+            anchor.append(badge);
+        }
         nav.append(anchor);
+    }
+
+    if (isSellerPortal) {
+        const signOutButton = document.createElement("button");
+        signOutButton.className = "seller-nav-sign-out";
+        signOutButton.type = "button";
+        signOutButton.title = "Sign out";
+        signOutButton.setAttribute("aria-label", "Sign out");
+        const icon = document.createElement("span");
+        icon.className = "seller-nav-icon";
+        icon.setAttribute("aria-hidden", "true");
+        icon.textContent = "↪";
+        const label = document.createElement("span");
+        label.className = "seller-nav-sign-out-label";
+        label.textContent = "Sign out";
+        signOutButton.append(icon, label);
+
+        const status = document.createElement("span");
+        status.className = "seller-nav-sign-out-status";
+        status.setAttribute("role", "status");
+        status.setAttribute("aria-live", "polite");
+        status.hidden = true;
+
+        signOutButton.addEventListener("click", async () => {
+            signOutButton.disabled = true;
+            signOutButton.setAttribute("aria-busy", "true");
+            status.hidden = true;
+            status.textContent = "";
+            try {
+                const response = await fetch("/api/auth/logout", { method: "POST" });
+                if (!response.ok) throw new Error("Sign-out failed. Please try again.");
+                window.location.assign("/login");
+            } catch (error) {
+                status.textContent = error.message || "Could not reach Z. Try again.";
+                status.hidden = false;
+                signOutButton.disabled = false;
+                signOutButton.removeAttribute("aria-busy");
+                console.error("Seller sign-out failed:", error);
+            }
+        });
+
+        nav.append(signOutButton, status);
     }
 
     let accountLink = [...nav.querySelectorAll("a")].find((anchor) => {
@@ -256,6 +348,32 @@
             })
             .catch((error) => console.error("Seller update count could not be loaded:", error));
     }
+    const refreshSellerConversationUnread = async () => {
+        const badge = document.querySelector("#seller-conversations-unread");
+        if (!badge) return;
+        try {
+            const response = await fetch("/api/messages/conversations");
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || "Could not load seller conversations.");
+            const unreadCount = (Array.isArray(result.conversations) ? result.conversations : [])
+                .filter((conversation) => conversation.role === "seller")
+                .reduce((total, conversation) => total + (Number(conversation.unreadCount) || 0), 0);
+            badge.textContent = unreadCount > 99 ? "99+" : String(unreadCount);
+            badge.hidden = unreadCount === 0;
+            badge.setAttribute("aria-label", `${unreadCount} unread buyer message${unreadCount === 1 ? "" : "s"}`);
+        } catch (error) {
+            console.error("Seller conversation count could not be loaded:", error);
+        }
+    };
+    if (isSellerPortal) {
+        void refreshSellerConversationUnread();
+        window.setInterval(() => {
+            if (!document.hidden) void refreshSellerConversationUnread();
+        }, 15000);
+        document.addEventListener("visibilitychange", () => {
+            if (!document.hidden) void refreshSellerConversationUnread();
+        });
+    }
     const sellerAvatar = isSellerPortal ? createSellerAvatar() : null;
     if (sellerAvatar) {
         let avatarSlot = header.querySelector("#seller-avatar-slot");
@@ -273,24 +391,61 @@
         avatarSlot.replaceChildren(sellerAvatar.identity);
     }
 
-    const sellerMenuToggle = header.querySelector("#seller-mobile-nav-toggle");
-    if (sellerMenuToggle) {
+    let sellerMenuToggle = header.querySelector("#seller-mobile-nav-toggle");
+    if (isSellerPortal && !sellerMenuToggle) {
+        sellerMenuToggle = document.createElement("button");
+        sellerMenuToggle.className = "seller-mobile-nav-toggle";
+        sellerMenuToggle.id = "seller-mobile-nav-toggle";
+        sellerMenuToggle.type = "button";
+        sellerMenuToggle.setAttribute("aria-controls", "seller-navigation");
+        sellerMenuToggle.innerHTML = "<span></span><span></span><span></span>";
+    }
+    if (isSellerPortal && sellerMenuToggle) {
+        header.querySelector(".header-left")?.append(sellerMenuToggle);
         const closeSellerMenu = () => {
             nav.classList.remove("is-open");
-            sellerMenuToggle.setAttribute("aria-expanded", "false");
-            sellerMenuToggle.setAttribute("aria-label", "Open seller navigation menu");
+            updateSellerToggle();
+        };
+        const mobileNavQuery = window.matchMedia("(max-width: 720px)");
+        const desktopNavQuery = window.matchMedia("(min-width: 901px)");
+        const updateSellerToggle = () => {
+            const mobileOpen = nav.classList.contains("is-open");
+            const sidebarCollapsed = document.body.classList.contains("seller-sidebar-collapsed");
+            if (mobileNavQuery.matches) {
+                sellerMenuToggle.removeAttribute("aria-pressed");
+                sellerMenuToggle.setAttribute("aria-expanded", String(mobileOpen));
+                sellerMenuToggle.setAttribute("aria-label", mobileOpen ? "Close seller navigation menu" : "Open seller navigation menu");
+            } else if (desktopNavQuery.matches) {
+                sellerMenuToggle.setAttribute("aria-pressed", String(sidebarCollapsed));
+                sellerMenuToggle.setAttribute("aria-expanded", String(!sidebarCollapsed));
+                sellerMenuToggle.setAttribute("aria-label", sidebarCollapsed ? "Expand seller navigation" : "Collapse seller navigation");
+            } else {
+                sellerMenuToggle.removeAttribute("aria-pressed");
+                sellerMenuToggle.removeAttribute("aria-expanded");
+                sellerMenuToggle.setAttribute("aria-label", "Seller navigation");
+            }
         };
         sellerMenuToggle.addEventListener("click", () => {
-            const isOpen = nav.classList.toggle("is-open");
-            sellerMenuToggle.setAttribute("aria-expanded", String(isOpen));
-            sellerMenuToggle.setAttribute("aria-label", isOpen ? "Close seller navigation menu" : "Open seller navigation menu");
+            if (mobileNavQuery.matches) {
+                nav.classList.toggle("is-open");
+            } else if (desktopNavQuery.matches) {
+                const sidebarCollapsed = document.body.classList.toggle("seller-sidebar-collapsed");
+                try {
+                    window.localStorage.setItem("z_seller_sidebar_collapsed", String(sidebarCollapsed));
+                } catch (error) {
+                    console.error("Seller navigation preference could not be saved:", error);
+                }
+            }
+            updateSellerToggle();
         });
         nav.addEventListener("click", (event) => {
-            if (event.target.closest("a")) closeSellerMenu();
+            if (mobileNavQuery.matches && event.target.closest("a")) closeSellerMenu();
         });
         document.addEventListener("keydown", (event) => {
-            if (event.key === "Escape") closeSellerMenu();
+            if (mobileNavQuery.matches && event.key === "Escape") closeSellerMenu();
         });
+        window.addEventListener("resize", updateSellerToggle);
+        updateSellerToggle();
     }
 
     for (const anchor of nav.querySelectorAll("a")) {
@@ -347,6 +502,8 @@
                     .then(({ shop }) => {
                         if (!shop) return;
                         sellerAvatar.businessName.textContent = shop.name || "Business profile";
+                        sellerAvatar.businessName.title = shop.name || "Business profile";
+                        sellerAvatar.businessCaption.textContent = shop.kycStatus === "verified" ? "Verified seller" : "Seller profile";
                         sellerAvatar.link.setAttribute("aria-label", `Open ${shop.name || "business"} profile`);
                         sellerAvatar.fallback.textContent = shop.name?.trim()?.charAt(0)?.toLocaleUpperCase() || "?";
                         if (shop.kycStatus !== "verified") {

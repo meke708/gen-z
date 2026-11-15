@@ -39,6 +39,8 @@
         .checkout-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 55px; align-items: start; }
         .section-heading { margin: 0 0 15px; padding-bottom: 10px; border-bottom: 1px solid var(--ink); font-family: Georgia, serif; font-size: 23px; font-weight: 400; letter-spacing: 0; }
         .town-field { max-width: 420px; margin: 0 0 22px; }
+        .town-field input { width: 100%; height: 45px; margin-top: 8px; padding: 0 12px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: var(--white); font-size: 12px; }
+        .town-field [hidden] { display: none !important; }
         label { display: block; margin-bottom: 7px; font-size: 11px; font-weight: 700; }
         select { width: 100%; height: 45px; padding: 0 12px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: var(--white); font-size: 12px; }
         .help { max-width: 480px; margin: 0 0 24px; color: var(--muted); font-size: 10px; line-height: 1.7; }
@@ -100,16 +102,12 @@
                 <h2 class="section-heading" id="delivery-heading">Delivery area</h2>
                 <div class="town-field">
                     <label for="delivery-town">Deliver to town</label>
-                    <select id="delivery-town">
-                        <option value="">Choose a town</option>
-                        <option>Windhoek</option>
-                        <option>Swakopmund</option>
-                        <option>Walvis Bay</option>
-                        <option>Oshakati</option>
-                        <option>Rundu</option>
-                        <option>Otjiwarongo</option>
-                        <option>Other</option>
+                    <select id="delivery-town" data-town-picker data-empty-label="Choose a town" data-other-input="delivery-town-other" data-error-target="town-load-error" required>
+                        <option value="">Loading towns...</option>
                     </select>
+                    <input id="delivery-town-other" type="text" maxlength="80" placeholder="Enter your town" aria-label="Enter your town" data-required="true" hidden>
+                    <p class="help" id="town-load-error" role="status" hidden></p>
+                    <p class="help">If your town is not listed, choose “Other” and enter it.</p>
                 </div>
                 <p class="help">Each seller sets flat local, main-hub, and remote delivery rates. Free-shipping thresholds apply to that seller’s product subtotal only.</p>
                 <h2 class="section-heading">Items</h2>
@@ -139,6 +137,7 @@
         </section>
     </main>
     <script src="/cart-sync.js"></script>
+    <script src="/town-picker.js"></script>
     <script>
         const cartKey = "z_cart";
         const priceFormat = new Intl.NumberFormat("en-NA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -230,7 +229,7 @@
 
         async function refreshQuote() {
             const requestId = ++quoteRequest;
-            const deliveryTown = document.querySelector("#delivery-town").value;
+            const deliveryTown = window.ZNamibiaTownPicker.getValue("delivery-town");
             quote = null;
             createOrderButton.disabled = true;
             document.querySelector("#seller-breakdown").replaceChildren();
@@ -341,6 +340,7 @@
             choice.addEventListener("change", () => updatePaymentBreakdown());
         });
         document.querySelector("#delivery-town").addEventListener("change", refreshQuote);
+        document.querySelector("#delivery-town-other").addEventListener("input", refreshQuote);
         createOrderButton.addEventListener("click", async () => {
             if (!quote || activeOrder) return;
             createOrderButton.disabled = true;
@@ -350,7 +350,7 @@
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         items: cart,
-                        deliveryTown: document.querySelector("#delivery-town").value,
+                        deliveryTown: window.ZNamibiaTownPicker.getValue("delivery-town"),
                         paymentMethod: walletPaymentChoice.checked ? "wallet" : "card"
                     })
                 });
