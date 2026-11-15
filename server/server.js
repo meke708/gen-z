@@ -165,13 +165,6 @@ const passwordResetRateLimit = rateLimit({
   legacyHeaders: false,
   message: { error: 'Too many password reset attempts. Try again in an hour.' }
 });
-const emailVerificationRateLimit = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  limit: 5,
-  standardHeaders: 'draft-8',
-  legacyHeaders: false,
-  message: { error: 'You have requested several verification emails. Try again in an hour.' }
-});
 const sellerUploadRateLimit = rateLimit({
   windowMs: 60 * 60 * 1000,
   limit: 30,
@@ -2930,7 +2923,7 @@ app.get('/api/auth/me', async (req, res) => {
   return res.json({ user: publicUser(user) });
 });
 
-app.post('/api/auth/verify-email/resend', emailVerificationRateLimit, async (req, res) => {
+app.post('/api/auth/verify-email/resend', async (req, res) => {
   const user = await getSessionUser(req);
   if (!user) return res.status(401).json({ error: 'Sign in to verify your email address.' });
   if (user.emailVerified) return res.status(409).json({ error: 'Your email address is already verified.' });
