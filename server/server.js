@@ -66,6 +66,8 @@ app.set('trust proxy', trustProxyHops);
 const scryptAsync = promisify(scrypt);
 const sessionCookie = 'z_session';
 const sessionDuration = 7 * 24 * 60 * 60 * 1000;
+const mobileAccessTokenDuration = 15 * 60 * 1000;
+const mobileRefreshTokenDuration = 30 * 24 * 60 * 60 * 1000;
 const promotionPriceNAD = 50;
 const promotionDurationDays = 7;
 const assistantPriceNAD = 50;
@@ -357,9 +359,20 @@ developerApiUsageSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 const sessionSchema = new mongoose.Schema({
   tokenHash: { type: String, required: true, unique: true },
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  authType: { type: String, enum: ['web', 'mobile'], default: 'web' },
+  mobileFamilyId: { type: String, default: null },
   expiresAt: { type: Date, required: true, expires: 0 }
 }, { timestamps: true });
 sessionSchema.index({ userId: 1, createdAt: -1 });
+sessionSchema.index({ mobileFamilyId: 1 });
+const mobileRefreshTokenSchema = new mongoose.Schema({
+  tokenHash: { type: String, required: true, unique: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  familyId: { type: String, required: true, index: true },
+  usedAt: { type: Date, default: null },
+  revokedAt: { type: Date, default: null },
+  expiresAt: { type: Date, required: true, expires: 0 }
+}, { timestamps: true });
 const loginActivitySchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   device: { type: String, required: true, maxlength: 80 },
@@ -701,6 +714,7 @@ const loginWallpaperSchema = new mongoose.Schema({
 }, { timestamps: true });
 const User = mongoose.model('User', userSchema);
 const Session = mongoose.model('Session', sessionSchema);
+const MobileRefreshToken = mongoose.model('MobileRefreshToken', mobileRefreshTokenSchema);
 const LoginActivity = mongoose.model('LoginActivity', loginActivitySchema);
 const PasswordReset = mongoose.model('PasswordReset', passwordResetSchema);
 const EmailVerification = mongoose.model('EmailVerification', emailVerificationSchema);
@@ -771,7 +785,13 @@ app.use(helmet({
   }
 }));
 app.use(express.json({ limit: '10kb' }));
-app.use(['/api/auth/register', '/api/auth/login'], authRateLimit);
+app.use([
+  '/api/auth/register',
+  '/api/auth/login',
+  '/api/mobile/auth/register',
+  '/api/mobile/auth/login',
+  '/api/mobile/auth/refresh'
+], authRateLimit);
 
 app.get(['/dashboard', '/dashboard.html'], async (req, res) => {
   if (!await getSessionUser(req)) return res.redirect('/login');
@@ -1422,6 +1442,16 @@ function getSessionToken(req) {
   return cookie?.slice(sessionCookie.length + 1) || '';
 }
 
+function getMobileBearerToken(req) {
+  return parseMobileBearerToken(req.get('authorization') || '');
+}
+
+function parseMobileBearerToken(authorization) {
+  const match = /^Bearer ([a-f0-9]{64})$/i.exec(authorization);
+  if (!match || !/^[a-f0-9]{64}$/.test(match[1])) return '';
+  return match[1];
+}
+
 function hashSessionToken(token) {
   return createHash('sha256').update(token).digest('hex');
 }
@@ -1503,14 +1533,61 @@ async function createSession(res, user, onCreated = null) {
   setSessionCookie(res, token, Math.floor(sessionDuration / 1000));
 }
 
+async function createMobileTokenPair(user, {
+  familyId = randomBytes(16).toString('hex'),
+  familyExpiresAt = new Date(Date.now() + mobileRefreshTokenDuration)
+} = {}) {
+  const accessToken = randomBytes(32).toString('hex');
+  const refreshToken = randomBytes(32).toString('hex');
+  const now = Date.now();
+  const refreshRecord = await MobileRefreshToken.create({
+    tokenHash: hashSessionToken(refreshToken),
+    userId: user._id,
+    familyId,
+    expiresAt: familyExpiresAt
+  });
+  try {
+    await Session.create({
+      tokenHash: hashSessionToken(accessToken),
+      userId: user._id,
+      authType: 'mobile',
+      mobileFamilyId: familyId,
+      expiresAt: new Date(now + mobileAccessTokenDuration)
+    });
+  } catch (error) {
+    await MobileRefreshToken.deleteOne({ _id: refreshRecord._id });
+    throw error;
+  }
+  return {
+    accessToken,
+    tokenType: 'Bearer',
+    expiresIn: Math.floor(mobileAccessTokenDuration / 1000),
+    refreshToken,
+    refreshExpiresAt: new Date(familyExpiresAt).toISOString()
+  };
+}
+
+async function revokeMobileTokenFamily(familyId) {
+  await Promise.all([
+    Session.deleteMany({ authType: 'mobile', mobileFamilyId: familyId }),
+    MobileRefreshToken.updateMany(
+      { familyId, revokedAt: null },
+      { $set: { revokedAt: new Date() } }
+    )
+  ]);
+}
+
 async function getSessionUser(req) {
-  const token = getSessionToken(req);
+  const hasAuthorizationHeader = Boolean(req.get('authorization'));
+  const token = hasAuthorizationHeader ? getMobileBearerToken(req) : getSessionToken(req);
   if (!token) return null;
 
-  const session = await Session.findOne({
+  const sessionQuery = {
     tokenHash: hashSessionToken(token),
     expiresAt: { $gt: new Date() }
-  }).populate('userId');
+  };
+  if (hasAuthorizationHeader) sessionQuery.authType = 'mobile';
+  const session = await Session.findOne(sessionQuery).populate('userId');
 
   const user = session?.userId || null;
   if (!user || user.isSuspended) return null;
@@ -2808,7 +2885,7 @@ async function advancePayoutLifecycle() {
 
 
 
-app.post('/api/auth/register', async (req, res) => {
+async function handleAccountRegistration(req, res, { mobileAuth = false } = {}) {
   const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
   const email = normalizeEmail(req.body?.email);
   const password = req.body?.password;
@@ -2856,7 +2933,8 @@ app.post('/api/auth/register', async (req, res) => {
     throw error;
   }
 
-  await createSession(res, user);
+  const mobileTokens = mobileAuth ? await createMobileTokenPair(user) : null;
+  if (!mobileAuth) await createSession(res, user);
   let verificationUrl = '';
   let verificationDeliveryFailed = false;
   try {
@@ -2868,6 +2946,7 @@ app.post('/api/auth/register', async (req, res) => {
 
   return res.status(201).json({
     user: publicUser(user),
+    ...(mobileTokens || {}),
     verificationRequired: true,
     verificationUrl,
     message: verificationDeliveryFailed
@@ -2876,9 +2955,12 @@ app.post('/api/auth/register', async (req, res) => {
         ? 'Open the verification link to verify your email before placing an order.'
         : 'We sent a verification link to your email. Verify it before placing an order.'
   });
-});
+}
 
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/register', async (req, res) => handleAccountRegistration(req, res));
+app.post('/api/mobile/auth/register', async (req, res) => handleAccountRegistration(req, res, { mobileAuth: true }));
+
+async function handlePasswordLogin(req, res, { mobileAuth = false } = {}) {
   const email = normalizeEmail(req.body?.email);
   const password = req.body?.password;
   const user = await User.findOne({ email });
@@ -2911,13 +2993,95 @@ app.post('/api/auth/login', async (req, res) => {
   }
 
   const loginNetwork = await resolveLoginNetwork(req.ip);
-  await createSession(res, user, () => LoginActivity.create({
+  const createLoginActivity = () => LoginActivity.create({
     userId: user._id,
     device: describeLoginDevice(req.get('user-agent')),
     ...loginNetwork,
     expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
-  }));
+  });
+  if (mobileAuth) {
+    await createLoginActivity();
+    const mobileTokens = await createMobileTokenPair(user);
+    return res.json({ user: publicUser(user), ...mobileTokens });
+  }
+  await createSession(res, user, createLoginActivity);
   return res.json({ user: publicUser(user) });
+}
+
+app.post('/api/auth/login', async (req, res) => handlePasswordLogin(req, res));
+app.post('/api/mobile/auth/login', async (req, res) => handlePasswordLogin(req, res, { mobileAuth: true }));
+
+app.post('/api/mobile/auth/refresh', async (req, res) => {
+  const refreshToken = typeof req.body?.refreshToken === 'string' ? req.body.refreshToken.trim() : '';
+  if (!/^[a-f0-9]{64}$/.test(refreshToken)) {
+    return res.status(400).json({ error: 'A valid refresh token is required.' });
+  }
+  const now = new Date();
+  const refreshRecord = await MobileRefreshToken.findOne({
+    tokenHash: hashSessionToken(refreshToken)
+  }).lean();
+  if (!refreshRecord) return res.status(401).json({ error: 'The mobile session has expired. Sign in again.' });
+  if (refreshRecord.usedAt) {
+    await revokeMobileTokenFamily(refreshRecord.familyId);
+    return res.status(401).json({ error: 'The mobile session was already refreshed. Sign in again.' });
+  }
+  if (refreshRecord.revokedAt || refreshRecord.expiresAt <= now) {
+    return res.status(401).json({ error: 'The mobile session has expired. Sign in again.' });
+  }
+  const consumedRefreshRecord = await MobileRefreshToken.findOneAndUpdate(
+    {
+      _id: refreshRecord._id,
+      usedAt: null,
+      revokedAt: null,
+      expiresAt: { $gt: now }
+    },
+    { $set: { usedAt: now } },
+    { returnDocument: 'after' }
+  );
+  if (!consumedRefreshRecord) {
+    await revokeMobileTokenFamily(refreshRecord.familyId);
+    return res.status(401).json({ error: 'The mobile session could not be refreshed. Sign in again.' });
+  }
+  const user = await User.findById(refreshRecord.userId);
+  if (!user) {
+    await revokeMobileTokenFamily(refreshRecord.familyId);
+    return res.status(401).json({ error: 'The mobile session is no longer available. Sign in again.' });
+  }
+  if (user.isSuspended) {
+    await revokeMobileTokenFamily(refreshRecord.familyId);
+    return res.status(403).json({
+      error: 'This account is suspended.',
+      account_status: 'suspended'
+    });
+  }
+  const mobileTokens = await createMobileTokenPair(user, {
+    familyId: refreshRecord.familyId,
+    familyExpiresAt: refreshRecord.expiresAt
+  });
+  if (await MobileRefreshToken.exists({ familyId: refreshRecord.familyId, revokedAt: { $ne: null } })) {
+    await revokeMobileTokenFamily(refreshRecord.familyId);
+    return res.status(401).json({ error: 'The mobile session could not be refreshed. Sign in again.' });
+  }
+  return res.json({ user: publicUser(user), ...mobileTokens });
+});
+
+app.post('/api/mobile/auth/logout', async (req, res) => {
+  const refreshToken = typeof req.body?.refreshToken === 'string' ? req.body.refreshToken.trim() : '';
+  if (/^[a-f0-9]{64}$/.test(refreshToken)) {
+    const refreshRecord = await MobileRefreshToken.findOne({
+      tokenHash: hashSessionToken(refreshToken)
+    }).select('familyId');
+    if (refreshRecord) await revokeMobileTokenFamily(refreshRecord.familyId);
+  }
+  const accessToken = getMobileBearerToken(req);
+  if (accessToken) {
+    const session = await Session.findOne({
+      tokenHash: hashSessionToken(accessToken),
+      authType: 'mobile'
+    }).select('mobileFamilyId');
+    if (session?.mobileFamilyId) await revokeMobileTokenFamily(session.mobileFamilyId);
+  }
+  return res.json({ ok: true });
 });
 
 app.post('/api/auth/forgot-password', passwordResetRateLimit, async (req, res) => {
@@ -2979,6 +3143,10 @@ app.post('/api/auth/reset-password', passwordResetRateLimit, async (req, res) =>
   await user.save();
   await Promise.all([
     Session.deleteMany({ userId: user._id }),
+    MobileRefreshToken.updateMany(
+      { userId: user._id, revokedAt: null },
+      { $set: { revokedAt: new Date() } }
+    ),
     PasswordReset.deleteMany({ userId: user._id })
   ]);
   return res.json({ ok: true, message: 'Your password has been reset. Sign in with your new password.' });
@@ -6613,7 +6781,15 @@ app.patch('/api/admin/users/:id/status', async (req, res) => {
   const previousStatus = Boolean(account.isSuspended);
   account.isSuspended = req.body.isSuspended;
   await account.save();
-  if (account.isSuspended) await Session.deleteMany({ userId: account._id });
+  if (account.isSuspended) {
+    await Promise.all([
+      Session.deleteMany({ userId: account._id }),
+      MobileRefreshToken.updateMany(
+        { userId: account._id, revokedAt: null },
+        { $set: { revokedAt: new Date() } }
+      )
+    ]);
+  }
   if (previousStatus !== account.isSuspended) {
     await recordModerationAudit({
       actorId: moderator._id,
@@ -8778,6 +8954,7 @@ module.exports = {
   isModeratorUser,
   isSandboxUser,
   isLocalMongoUri,
+  parseMobileBearerToken,
   getPublicRole,
   isValidCommissionRatePercent,
   validateImageUrl,
